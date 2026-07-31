@@ -1,0 +1,34 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "server-to-client",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "apdu-complex-ack-segment-0",
+  "description": "First segmented ComplexACK (MoreFollows) for ReadProperty",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "3c0500010c0c00800001",
+  "tags": [
+    "apdu",
+    "segmentation",
+    "horizon-1",
+    "gate-3"
+  ],
+  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+}

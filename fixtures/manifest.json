@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "Index of bacnet-interop fixtures. Every committed fixture metadata file must be listed here; CI validates shape and paths.",
+  "fixtures": [
+    {
+      "id": "bvlc-original-unicast-npdu-empty",
+      "path": "fixtures/codec/bvlc-original-unicast-npdu-empty.json"
+    },
+    {
+      "id": "bvlc-original-broadcast-npdu-empty",
+      "path": "fixtures/codec/bvlc-original-broadcast-npdu-empty.json"
+    },
+    {
+      "id": "bvlc-forwarded-npdu-empty",
+      "path": "fixtures/codec/bvlc-forwarded-npdu-empty.json"
+    },
+    {
+      "id": "bvlc-register-foreign-device-ttl-60",
+      "path": "fixtures/codec/bvlc-register-foreign-device-ttl-60.json"
+    },
+    {
+      "id": "bvlc-malformed-length-mismatch",
+      "path": "fixtures/codec/bvlc-malformed-length-mismatch.json"
+    },
+    {
+      "id": "npdu-local-who-is",
+      "path": "fixtures/codec/npdu-local-who-is.json"
+    },
+    {
+      "id": "npdu-routed-remote-station",
+      "path": "fixtures/codec/npdu-routed-remote-station.json"
+    },
+    {
+      "id": "apdu-confirmed-read-property",
+      "path": "fixtures/codec/apdu-confirmed-read-property.json"
+    },
+    {
+      "id": "apdu-read-property-ack-real",
+      "path": "fixtures/codec/apdu-read-property-ack-real.json"
+    },
+    {
+      "id": "apdu-error-unknown-property",
+      "path": "fixtures/codec/apdu-error-unknown-property.json"
+    },
+    {
+      "id": "apdu-reject",
+      "path": "fixtures/codec/apdu-reject.json"
+    },
+    {
+      "id": "apdu-abort",
+      "path": "fixtures/codec/apdu-abort.json"
+    },
+    {
+      "id": "apdu-segment-ack",
+      "path": "fixtures/codec/apdu-segment-ack.json"
+    },
+    {
+      "id": "apdu-complex-ack-segment-0",
+      "path": "fixtures/codec/apdu-complex-ack-segment-0.json"
+    },
+    {
+      "id": "service-rpm-ack-partial-error",
+      "path": "fixtures/codec/service-rpm-ack-partial-error.json"
+    },
+    {
+      "id": "service-write-property-null-priority-8",
+      "path": "fixtures/codec/service-write-property-null-priority-8.json"
+    },
+    {
+      "id": "service-subscribe-cov-true",
+      "path": "fixtures/codec/service-subscribe-cov-true.json"
+    },
+    {
+      "id": "service-subscribe-cov-false",
+      "path": "fixtures/codec/service-subscribe-cov-false.json"
+    },
+    {
+      "id": "service-subscribe-cov-property-cancel",
+      "path": "fixtures/codec/service-subscribe-cov-property-cancel.json"
+    },
+    {
+      "id": "tag-malformed-truncated-context",
+      "path": "fixtures/codec/tag-malformed-truncated-context.json"
+    }
+  ]
+}

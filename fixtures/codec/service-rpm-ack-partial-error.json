@@ -1,0 +1,38 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "server-to-client",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "15.7"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-rpm-ack-partial-error",
+  "description": "RPM ACK: object-name success + present-value propertyAccessError class=2 code=32",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "0c020000011e294d4e7200614f29555e090219205f1f",
+  "tags": [
+    "service",
+    "rpm",
+    "error",
+    "horizon-1",
+    "gate-3"
+  ],
+  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+}

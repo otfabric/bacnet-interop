@@ -1,0 +1,37 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "13.1"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-subscribe-cov-false",
+  "description": "SubscribeCOV IssueConfirmed=false with one-octet context boolean 0x00",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "09011c008000072900393c",
+  "tags": [
+    "service",
+    "cov",
+    "horizon-1",
+    "gate-3"
+  ],
+  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+}

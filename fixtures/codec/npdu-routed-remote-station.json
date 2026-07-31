@@ -1,0 +1,37 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "6"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "npdu-routed-remote-station",
+  "description": "Routed NPDU DNET=100, 6-octet DADR, hop=255, expecting reply, stub APDU",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "0124006406c0a8010abac0ff1008",
+  "tags": [
+    "npdu",
+    "routing",
+    "horizon-1",
+    "gate-3"
+  ],
+  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+}

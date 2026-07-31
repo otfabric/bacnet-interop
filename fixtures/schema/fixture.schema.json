@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/otfabric/bacnet-interop/fixtures/schema/fixture.schema.json",
+  "title": "bacnet-interop fixture provenance",
+  "description": "Provenance metadata for a BACnet corpus fixture (golden packet and/or semantic sidecar).\n\nAuthoring rules:\n- Every committed fixture must appear in fixtures/manifest.json.\n- Prefer independently-generated vectors; sanitize captures before commit.\n- Never commit credentials, live site identifiers, or uncleared vendor captures.\n- Set expect.* flags honestly: original_bytes_equal is strict and rare.\n- Adapters and go-bacnet assertions consume these fields; do not invent undocumented status values.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "source",
+    "capture",
+    "standard",
+    "expect",
+    "license"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional pointer to this schema for editor validation.",
+      "examples": ["../schema/fixture.schema.json"]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+      "description": "Stable kebab-case fixture identifier. Must be unique within the manifest.",
+      "examples": ["bvlc-original-unicast-npdu", "apdu-read-property-real"]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line summary of what this fixture exercises."
+    },
+    "source": {
+      "$ref": "#/$defs/source",
+      "description": "Implementation that produced or inspired the bytes."
+    },
+    "capture": {
+      "$ref": "#/$defs/capture",
+      "description": "How and where the bytes were obtained or constructed."
+    },
+    "standard": {
+      "$ref": "#/$defs/standard",
+      "description": "Normative baseline this fixture is intended to exercise."
+    },
+    "expect": {
+      "$ref": "#/$defs/expect",
+      "description": "Equality / round-trip expectations for consumers."
+    },
+    "license": {
+      "$ref": "#/$defs/license",
+      "description": "Redistribution and origin classification."
+    },
+    "input_hex": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-fA-F]{2})*$",
+      "description": "Optional even-length hex encoding of the wire input (two chars per byte). Prefer lowercase in new fixtures.",
+      "examples": ["810a00060100"]
+    },
+    "semantic_file": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional path (relative to the repository root) to a JSON/YAML semantic sidecar describing the expected decode structure.",
+      "examples": ["fixtures/codec/apdu-read-property-real.semantic.json"]
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Executable consumer operation name (e.g. decode_read_property_ack). Required with expected/expected_error when semantic_decode_equal is true and no semantic_file is provided.",
+      "examples": ["decode_read_property_ack", "decode_bvlc"]
+    },
+    "expected": {
+      "type": "object",
+      "description": "Machine-readable successful decode expectations for operation."
+    },
+    "expected_error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "layer"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["malformed", "unsupported", "protocol"]
+        },
+        "layer": {
+          "type": "string",
+          "enum": ["tag", "bvlc", "npdu", "apdu", "service"]
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Author notes: intentional non-canonical encodings, known peer quirks, or why a given expect flag is false."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Free-form labels for filtering (bvlc, npdu, apdu, discovery, cov, …).",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  },
+  "anyOf": [
+    { "required": ["input_hex"] },
+    { "required": ["semantic_file"] }
+  ],
+  "$defs": {
+    "source": {
+      "title": "Source implementation",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "version", "image_digest"],
+      "properties": {
+        "implementation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Peer or generator name (e.g. bacnet-stack, bacpypes3, otfabric-handwritten, wireshark-export).",
+          "examples": ["bacnet-stack", "bacpypes3", "otfabric-handwritten"]
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Upstream version, git describe, or generator revision. Use 'n/a' only for pure handwritten vectors with no peer binary.",
+          "examples": ["1.3.8", "0.0.98", "n/a"]
+        },
+        "image_digest": {
+          "type": "string",
+          "description": "Container image digest used when the fixture was produced (sha256:…), or 'none' when not produced from an adapter image.",
+          "pattern": "^(none|sha256:[a-f0-9]{64})$",
+          "examples": ["none", "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]
+        }
+      }
+    },
+    "capture": {
+      "title": "Capture context",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direction", "transport", "original_endpoint"],
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": ["client-to-server", "server-to-client", "broadcast", "constructed", "unknown"],
+          "description": "Traffic direction relative to the logical client/server roles, or constructed/unknown for synthetic vectors."
+        },
+        "transport": {
+          "type": "string",
+          "enum": ["bacnet-ip-udp", "bacnet-ip-tcp", "ethernet", "mstp", "virtual", "unspecified"],
+          "description": "Link/transport context. Horizon 1 fixtures are typically bacnet-ip-udp or virtual/constructed."
+        },
+        "original_endpoint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Sanitized endpoint label (host:port, device instance, or 'lab-synthetic'). Must not include customer or site-identifying hostnames.",
+          "examples": ["lab-synthetic", "127.0.0.1:47808", "device-instance:1234"]
+        }
+      }
+    },
+    "standard": {
+      "title": "Standard baseline",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base"],
+      "properties": {
+        "base": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Normative baseline identifier, e.g. ANSI/ASHRAE 135-2024 (protocol revision 31).",
+          "examples": ["ANSI/ASHRAE 135-2024", "ANSI/ASHRAE 135-2020"]
+        },
+        "protocol_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional BACnet protocol_revision integer when relevant.",
+          "examples": [31]
+        },
+        "clauses": {
+          "type": "array",
+          "description": "Optional clause or annex references aiding TRACEABILITY.md mapping.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "expect": {
+      "title": "Equality expectations",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic_decode_equal",
+        "deterministic_reencode_equal",
+        "original_bytes_equal"
+      ],
+      "properties": {
+        "semantic_decode_equal": {
+          "type": "boolean",
+          "description": "When true, decoded semantics must match the declared semantic sidecar / structure."
+        },
+        "deterministic_reencode_equal": {
+          "type": "boolean",
+          "description": "When true, encoding the decoded value must match a deterministic canonical encoding (not necessarily the original capture bytes)."
+        },
+        "original_bytes_equal": {
+          "type": "boolean",
+          "description": "When true, round-trip must preserve input_hex exactly. Use only when the capture is already canonical or when testing byte-identity deliberately."
+        }
+      }
+    },
+    "license": {
+      "title": "License classification",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "independently-generated",
+            "capture",
+            "malformed-constructed",
+            "standards-boundary",
+            "vendor-restricted"
+          ],
+          "description": "Origin / redistribution class.\n- independently-generated: written or regenerated by OT Fabric without copying peer source\n- capture: sanitized lab/pcap extract\n- malformed-constructed: deliberately invalid for negative tests\n- standards-boundary: exercises a standards edge case or interpretation\n- vendor-restricted: must not be redistributed publicly; keep out of public clones"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional clarification (e.g. capture sanitized on date, why vendor-restricted)."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": "bvlc-original-unicast-npdu-empty",
+      "description": "Minimal BVLC Original-Unicast-NPDU header for length parsing",
+      "source": {
+        "implementation": "otfabric-handwritten",
+        "version": "n/a",
+        "image_digest": "none"
+      },
+      "capture": {
+        "direction": "constructed",
+        "transport": "bacnet-ip-udp",
+        "original_endpoint": "lab-synthetic"
+      },
+      "standard": {
+        "base": "ANSI/ASHRAE 135-2024",
+        "protocol_revision": 31,
+        "clauses": ["Annex J"]
+      },
+      "expect": {
+        "semantic_decode_equal": true,
+        "deterministic_reencode_equal": true,
+        "original_bytes_equal": true
+      },
+      "license": {
+        "status": "independently-generated"
+      },
+      "input_hex": "810a00060100",
+      "tags": ["bvlc", "horizon-1"]
+    }
+  ]
+}

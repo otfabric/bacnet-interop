@@ -18,7 +18,8 @@ Same ownership split as [`mms-interop`](https://github.com/otfabric/mms-interop)
 
 ## Purpose
 
-- Publish reproducible peer adapter images for **bacnet-stack** (C) and **BACpypes3** (Python).
+- Publish reproducible peer adapter images for **bacnet-stack** (C), **BACpypes3** (Python), and **BACnet4J** (Java).
+- Provide a dual-homed **bip-router** topology aid for routed BACnet/IP interop.
 - Hold golden packet fixtures with explicit provenance and license classification.
 - Define the adapter readiness / JSON Lines output contract that consumers wait on.
 - Keep peer implementations out of the MIT-licensed Go tree: oracles run in containers, never linked into `go-bacnet`.
@@ -33,9 +34,9 @@ Aligned with the [`go-bacnet`](https://github.com/otfabric/go-bacnet) Horizon 1 
 | Who-Is / I-Am discovery peers | Full device/server product model |
 | ReadProperty / ReadPropertyMultiple / WriteProperty | WritePropertyMultiple unless free |
 | Confirmed-request / segmentation stress peers | Alarms, schedules, trends |
-| Routed network peer (IP↔remote) | Acting as BBMD / BDT management |
+| Routed network peer (IP↔remote via `bip-router`) | Product BBMD / BDT management |
 | COV subscribe + notifications | BTL certification itself |
-| Forwarded-NPDU receive / optional FD registration | Vendor hardware claims without evidence |
+| Peer-as-BBMD + foreign-device registration aid | Vendor hardware claims without evidence |
 
 Do not claim vendor or BTL interoperability from this repository alone. Evidence is produced by `go-bacnet` interop runs against pinned adapter digests.
 
@@ -45,19 +46,24 @@ Do not claim vendor or BTL interoperability from this repository alone. Evidence
 bacnet-interop/
 ├── README.md
 ├── PLAN.md
-├── COVERAGE.md                 # Adapter capability matrix (skeleton)
+├── COVERAGE.md                 # Adapter capability matrix
 ├── Makefile
 ├── LICENSE
 ├── scripts/
-│   └── validate-fixtures.py    # Manifest + schema checks
+│   ├── validate-fixtures.py    # Manifest + schema checks
+│   └── smoke-test.sh           # Ready-event smoke for images
 ├── fixtures/
 │   ├── README.md               # Provenance and licensing rules
-│   ├── manifest.json           # Fixture index + schema version
-│   └── schema/
-│       └── fixture.schema.json # Capture / provenance schema
+│   ├── manifest.json           # Codec fixture index + schema version
+│   ├── schema/
+│   │   └── fixture.schema.json
+│   ├── codec/                  # Wire goldens
+│   └── device/                 # Live adapter device model (device-baseline-v1)
 └── adapters/
-    ├── bacnet-stack/           # C bacnet-stack adapter (image TBD)
-    └── bacpypes3/              # BACpypes3 adapter (image TBD)
+    ├── bacnet-stack/           # Fixture-driven C device-server image
+    ├── bacpypes3/              # BACpypes3 device-server image (+ optional BBMD)
+    ├── bacnet4j/               # BACnet4J device-server image (+ optional BBMD)
+    └── bip-router/             # Dual-homed BIP↔BIP topology router
 ```
 
 ## Ownership boundary
@@ -77,14 +83,16 @@ BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.1.0 make inte
 BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest> make interop
 ```
 
-## Peers
+## Peers and topology aids
 
-| Peer | Role | Upstream |
+| Image | Role | Upstream / notes |
 |---|---|---|
-| **bacnet-stack** | Primary executable C oracle (server/client/router behaviours) | [bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
-| **BACpypes3** | Primary readable Python semantic oracle | [BACpypes3](https://github.com/JoelBender/BACpypes3) |
+| **bacnet-stack** | Primary executable C oracle (fixture-driven `device_server`) | [bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
+| **BACpypes3** | Primary readable Python semantic oracle (optional peer-as-BBMD) | [BACpypes3](https://github.com/JoelBender/BACpypes3) |
+| **BACnet4J** | Primary readable Java semantic oracle (optional peer-as-BBMD) | [BACnet4J](https://github.com/RadixIoT/BACnet4J) |
+| **bip-router** | Dual-homed BIP↔BIP topology aid for routed scenarios | Interop fixture only — not a product router |
 
-Additional peers (BACnet4J, bacnet-js, …) may be added later without changing ownership rules.
+Additional peers (bacnet-js, …) may be added later without changing ownership rules.
 
 Licensing note: peer stacks retain their upstream licenses inside adapter images. `bacnet-interop` original code and independently generated fixtures are MIT (OT Fabric). Captured or vendor-restricted material must declare `license.status` in fixture metadata and must not be redistributed beyond that classification.
 
@@ -93,34 +101,36 @@ Licensing note: peer stacks retain their upstream licenses inside adapter images
 Each server-mode adapter emits a single JSON Lines readiness event on stdout before accepting BACnet/IP traffic:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.3.8"}
 ```
 
-- Stdout is JSON Lines only (ready events, operation results).
+- Stdout is JSON Lines only (ready events; optional future probe results).
 - Diagnostics go to stderr.
+- `adapter` is one of `bacnet-stack`, `bacpypes3`, `bacnet4j`, or `bip-router`.
 - Consumers wait for `event=ready`, exercise `go-bacnet`, then stop the container.
 - No pre-running compose stack is required for automated interop.
+- `bip-router` uses fixture `topology-router-v1` and may include `networks` / `addresses`.
 
-Client-mode adapters emit one JSON Line per fixed-sequence operation (`ok`, `operation`, optional `value` / `error`), matching the mms-interop style.
+Fixed-sequence JSON Lines **client probe** adapters (mms-interop style) are not packaged yet.
 
 ## Fixtures
 
 Fixtures are provenance-tracked corpus entries: hex input and/or semantic sidecars plus metadata describing source implementation, capture context, standard baseline, and equality expectations. See [`fixtures/README.md`](fixtures/README.md) and [`fixtures/schema/fixture.schema.json`](fixtures/schema/fixture.schema.json).
 
-The empty [`fixtures/manifest.json`](fixtures/manifest.json) indexes committed fixtures. Codec and scenario fixtures grow with `go-bacnet` Stages 1–6; device-model fixtures for live adapters land when images exist.
+[`fixtures/manifest.json`](fixtures/manifest.json) indexes codec goldens. Live adapter device semantics are documented in [`fixtures/device/device-baseline-v1.json`](fixtures/device/device-baseline-v1.json) (not part of the codec manifest).
 
 ## Local commands
 
 ```bash
 make help               # List targets
 make validate-fixtures  # Schema / manifest checks (no Docker)
-make build              # Adapter images TBD (stub)
-make smoke              # Adapter smoke TBD (stub)
+make build              # Build bacnet-stack, bacpypes3, bacnet4j, and bip-router images
+make smoke              # Start each image, assert event=ready, stop
 ```
 
 ## Consuming from go-bacnet
 
-Interop tests live under `go-bacnet` with `//go:build interop`. Typical lifecycle once adapters ship:
+Interop tests live under `go-bacnet` with `//go:build interop`. Typical lifecycle:
 
 1. Start adapter container (`docker run`).
 2. Wait for the readiness JSON Line on stdout.
@@ -128,11 +138,19 @@ Interop tests live under `go-bacnet` with `//go:build interop`. Typical lifecycl
 4. Assert results in `go-bacnet/interop`.
 5. Stop the container; retain logs on failure.
 
+```bash
+# from bacnet-interop
+make build
+
+# from go-bacnet (sibling checkout)
+make interop
+```
+
 ## Prerequisites
 
 - Make
-- `python3` and/or `jq` for fixture validation
-- Docker (later, when adapter images exist)
+- `python3` for fixture validation
+- Docker (for `make build` / `make smoke` and consumer interop)
 
 ## License
 

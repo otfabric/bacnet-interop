@@ -1,0 +1,43 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "server-to-client",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "21"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "apdu-error-unknown-property",
+  "description": "Error PDU for ReadProperty: class=property(2) code=unknown-property(32)",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "50010c09021920",
+  "tags": [
+    "apdu",
+    "error",
+    "horizon-1",
+    "gate-3"
+  ],
+  "operation": "decode_error",
+  "expected": {
+    "invoke_id": 1,
+    "service": 12,
+    "error_class": 2,
+    "error_code": 32
+  }
+}

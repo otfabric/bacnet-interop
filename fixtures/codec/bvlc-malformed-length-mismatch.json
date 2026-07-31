@@ -1,0 +1,39 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31
+  },
+  "license": {
+    "status": "malformed-constructed",
+    "notes": "Negative length check"
+  },
+  "id": "bvlc-malformed-length-mismatch",
+  "description": "BVLC declares length 8 but datagram is 6 octets",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "810a00080100",
+  "tags": [
+    "bvlc",
+    "malformed",
+    "horizon-1",
+    "gate-3"
+  ],
+  "operation": "decode_bvlc",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "bvlc"
+  }
+}

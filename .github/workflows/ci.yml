@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-fixtures:
+    name: Validate fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate fixture manifest and schema
+        run: make validate-fixtures
+
+  build-and-smoke:
+    name: Build and smoke-test adapters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Detect adapter Dockerfiles
+        id: adapters
+        run: |
+          has_stack=false
+          has_bacpypes=false
+          has_bacnet4j=false
+          if [ -f adapters/bacnet-stack/Dockerfile ]; then has_stack=true; fi
+          if [ -f adapters/bacpypes3/Dockerfile ]; then has_bacpypes=true; fi
+          if [ -f adapters/bacnet4j/Dockerfile ]; then has_bacnet4j=true; fi
+          echo "bacnet_stack=${has_stack}" >> "$GITHUB_OUTPUT"
+          echo "bacpypes3=${has_bacpypes}" >> "$GITHUB_OUTPUT"
+          echo "bacnet4j=${has_bacnet4j}" >> "$GITHUB_OUTPUT"
+          echo "bacnet-stack Dockerfile present: ${has_stack}"
+          echo "bacpypes3 Dockerfile present: ${has_bacpypes}"
+          echo "bacnet4j Dockerfile present: ${has_bacnet4j}"
+
+      - name: Set up Docker Buildx
+        if: steps.adapters.outputs.bacnet_stack == 'true' || steps.adapters.outputs.bacpypes3 == 'true' || steps.adapters.outputs.bacnet4j == 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build bacnet-stack adapter image
+        if: steps.adapters.outputs.bacnet_stack == 'true'
+        run: make build-bacnet-stack
+
+      - name: Build BACpypes3 adapter image
+        if: steps.adapters.outputs.bacpypes3 == 'true'
+        run: make build-bacpypes3
+
+      - name: Build BACnet4J adapter image
+        if: steps.adapters.outputs.bacnet4j == 'true'
+        run: make build-bacnet4j
+
+      - name: Adapter stub build (no Dockerfiles yet)
+        if: steps.adapters.outputs.bacnet_stack != 'true' && steps.adapters.outputs.bacpypes3 != 'true' && steps.adapters.outputs.bacnet4j != 'true'
+        run: make build
+
+      - name: Smoke-test adapters
+        run: |
+          if [ "${{ steps.adapters.outputs.bacnet_stack }}" = "true" ] || [ "${{ steps.adapters.outputs.bacpypes3 }}" = "true" ] || [ "${{ steps.adapters.outputs.bacnet4j }}" = "true" ]; then
+            BACNET_STACK_IMAGE=bacnet-interop-bacnet-stack:local \
+            BACPYPES3_IMAGE=bacnet-interop-bacpypes3:local \
+            BACNET4J_IMAGE=bacnet-interop-bacnet4j:local \
+            make smoke
+          else
+            make smoke
+          fi
+
+      - name: Record build provenance
+        if: always()
+        run: |
+          echo "bacnet-interop SHA : ${{ github.sha }}"
+          echo "platform           : linux/amd64"
+          if [ -f adapters/bacnet-stack/Dockerfile ]; then
+            STACK_REF=$(grep -E 'BACNET_STACK_(SHA|VERSION|REF)=' adapters/bacnet-stack/Dockerfile \
+              | head -1 | cut -d= -f2- || echo "(unset)")
+            echo "bacnet-stack pin   : ${STACK_REF}"
+          else
+            echo "bacnet-stack pin   : Dockerfile not present yet"
+          fi
+          if [ -f adapters/bacpypes3/Dockerfile ]; then
+            BACP_REF=$(grep -E 'BACPYPES3_(VERSION|REF)=' adapters/bacpypes3/Dockerfile \
+              | head -1 | cut -d= -f2- || echo "(unset)")
+            echo "BACpypes3 pin      : ${BACP_REF}"
+          else
+            echo "BACpypes3 pin      : Dockerfile not present yet"
+          fi
+          if [ -f adapters/bacnet4j/Dockerfile ]; then
+            B4J_REF=$(grep -E 'BACNET4J_VERSION=' adapters/bacnet4j/Dockerfile \
+              | head -1 | cut -d= -f2- || echo "(unset)")
+            echo "BACnet4J pin       : ${B4J_REF}"
+          else
+            echo "BACnet4J pin       : Dockerfile not present yet"
+          fi

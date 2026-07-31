@@ -1,0 +1,34 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "server-to-client",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "apdu-abort",
+  "description": "Abort PDU server=true invoke=3 reason=segmentation-not-supported(4)",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "710304",
+  "tags": [
+    "apdu",
+    "abort",
+    "horizon-1",
+    "gate-3"
+  ],
+  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+}

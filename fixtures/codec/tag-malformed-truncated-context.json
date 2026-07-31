@@ -1,0 +1,38 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31
+  },
+  "license": {
+    "status": "malformed-constructed"
+  },
+  "id": "tag-malformed-truncated-context",
+  "description": "Context tag claims 4 value octets but only 1 remains",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "0c02",
+  "tags": [
+    "tags",
+    "malformed",
+    "horizon-1",
+    "gate-3"
+  ],
+  "operation": "decode_tag",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "tag"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "Annex J"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "bvlc-forwarded-npdu-empty",
+  "description": "BVLC Forwarded-NPDU with origin 10.0.0.5:47808 and empty NPDU",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "8104000c0a000005bac00100",
+  "tags": [
+    "bvlc",
+    "forwarded-npdu",
+    "horizon-1",
+    "gate-3"
+  ],
+  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+}

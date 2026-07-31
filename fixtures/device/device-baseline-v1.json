@@ -1,0 +1,37 @@
+{
+  "fixture": "device-baseline-v1",
+  "description": "Horizon 1 live-adapter baseline device model. Peer images advertise this fixture revision in their ready event.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice"
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5,
+      "description": "Interop AV-1 baseline present-value used for ReadProperty, WriteProperty, COV, and segmented RPM stress against BACpypes3."
+    },
+    {
+      "type": "binary-value",
+      "instance": 1,
+      "object_name": "BV-1",
+      "present_value": "inactive"
+    }
+  ],
+  "notes": [
+    "bacnet-stack adapter builds a fixture-driven device_server against pinned bacnet-stack (device + AV-1 + BV-1 only; not stock bacserv).",
+    "BACpypes3 adapter constructs the same objects from this JSON.",
+    "BACnet4J adapter constructs the same objects from this JSON."
+  ],
+  "alignment": {
+    "bacnet-stack": "full-object-graph",
+    "bacpypes3": "full-object-graph",
+    "bacnet4j": "full-object-graph"
+  }
+}

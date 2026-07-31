@@ -1,0 +1,37 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "Annex J"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "bvlc-original-unicast-npdu-empty",
+  "description": "Minimal BVLC Original-Unicast-NPDU with empty NPDU (version+control)",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "810a00060100",
+  "tags": [
+    "bvlc",
+    "npdu",
+    "horizon-1",
+    "gate-3"
+  ],
+  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+}

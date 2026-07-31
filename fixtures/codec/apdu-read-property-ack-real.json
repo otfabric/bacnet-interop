@@ -1,0 +1,49 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "server-to-client",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "15.5"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "apdu-read-property-ack-real",
+  "description": "ComplexACK ReadProperty present-value REAL 21.5 for AI:1",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "30010c0c0000000119553e4441ac00003f",
+  "tags": [
+    "apdu",
+    "read-property",
+    "horizon-1",
+    "gate-3"
+  ],
+  "operation": "decode_read_property_ack",
+  "expected": {
+    "invoke_id": 1,
+    "object": {
+      "type": 0,
+      "instance": 1
+    },
+    "property": 85,
+    "value": {
+      "kind": "real",
+      "value": 21.5
+    }
+  }
+}

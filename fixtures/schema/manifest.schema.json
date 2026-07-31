@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/otfabric/bacnet-interop/fixtures/schema/manifest.schema.json",
+  "title": "bacnet-interop fixture manifest",
+  "description": "Index of fixture metadata files. Entries are path references only; full provenance lives in each fixture metadata file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "fixtures"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "fixtures": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/manifestEntry"
+      }
+    }
+  },
+  "$defs": {
+    "manifestEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^fixtures/.+\\.json$",
+          "description": "Repository-relative path to the fixture metadata file."
+        }
+      }
+    }
+  }
+}
