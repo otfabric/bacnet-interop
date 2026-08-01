@@ -1,0 +1,35 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": ["15.5"]
+  },
+  "license": {
+    "status": "malformed-constructed",
+    "notes": "Valid APDU framing; empty ReadProperty service payload"
+  },
+  "id": "service-malformed-read-property-empty",
+  "description": "Confirmed ReadProperty with empty service payload (service-layer error)",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "0263010c",
+  "tags": ["apdu", "service", "malformed", "read-property", "horizon-1", "gate-3"],
+  "operation": "decode_read_property",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
+  }
+}

@@ -22,7 +22,7 @@
   "id": "service-write-property-null-priority-8",
   "description": "WriteProperty Null relinquish at priority 8 for AV:1 present-value",
   "expect": {
-    "semantic_decode_equal": false,
+    "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
@@ -33,5 +33,13 @@
     "horizon-1",
     "gate-3"
   ],
-  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+  "operation": "decode_write_property",
+  "expected": {
+    "object": {
+      "type": 2,
+      "instance": 1
+    },
+    "property": 85,
+    "priority": 8
+  }
 }

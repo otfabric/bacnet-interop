@@ -22,7 +22,7 @@
   "id": "bvlc-original-broadcast-npdu-empty",
   "description": "Minimal BVLC Original-Broadcast-NPDU with empty NPDU",
   "expect": {
-    "semantic_decode_equal": false,
+    "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
@@ -33,5 +33,9 @@
     "horizon-1",
     "gate-3"
   ],
-  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+  "operation": "decode_bvlc",
+  "expected": {
+    "function": 11,
+    "payload_len": 2
+  }
 }

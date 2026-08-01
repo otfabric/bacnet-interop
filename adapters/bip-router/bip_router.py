@@ -111,11 +111,11 @@ def parse_bvlc(data: bytes) -> tuple[int, bytes] | None:
     return function, data[4:]
 
 
-def encode_iam_router(networks: list[int]) -> bytes:
+def encode_iam_router(networks: list[int], bvlc_fn: int = BVLC_ORIGINAL_BROADCAST) -> bytes:
     body = bytes([NPDU_VERSION, NPDU_NETMSG, NETMSG_I_AM_ROUTER])
     for net in networks:
         body += struct.pack(">H", net)
-    return bvlc_wrap(BVLC_ORIGINAL_BROADCAST, body)
+    return bvlc_wrap(bvlc_fn, body)
 
 
 def decode_npdu(payload: bytes) -> dict | None:
@@ -276,9 +276,14 @@ class Router:
             announce = [p.network for p in self.ports if p.network != ingress.network]
         if not announce:
             return
-        frame = encode_iam_router(announce)
-        self.send(ingress, src, frame)
-        self.send(ingress, ("255.255.255.255", ingress.port), frame)
+        # Directed reply as Original-Unicast so docker/ephemeral clients that
+        # miss 255.255.255.255 still learn the next hop; also broadcast.
+        self.send(ingress, src, encode_iam_router(announce, BVLC_ORIGINAL_UNICAST))
+        self.send(
+            ingress,
+            ("255.255.255.255", ingress.port),
+            encode_iam_router(announce, BVLC_ORIGINAL_BROADCAST),
+        )
 
     def forward_with_dnet(self, ingress: Port, src: tuple[str, int], info: dict) -> None:
         dnet = info["dnet"]

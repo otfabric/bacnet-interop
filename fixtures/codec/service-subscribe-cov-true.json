@@ -22,7 +22,7 @@
   "id": "service-subscribe-cov-true",
   "description": "SubscribeCOV IssueConfirmed=true with one-octet context boolean 0x01",
   "expect": {
-    "semantic_decode_equal": false,
+    "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
@@ -33,5 +33,14 @@
     "horizon-1",
     "gate-3"
   ],
-  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+  "operation": "decode_subscribe_cov",
+  "expected": {
+    "process_identifier": 1,
+    "object": {
+      "type": 2,
+      "instance": 7
+    },
+    "issue_confirmed": true,
+    "lifetime": 60
+  }
 }

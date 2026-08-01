@@ -22,7 +22,7 @@
   "id": "service-rpm-ack-partial-error",
   "description": "RPM ACK: object-name success + present-value propertyAccessError class=2 code=32",
   "expect": {
-    "semantic_decode_equal": false,
+    "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
@@ -34,5 +34,10 @@
     "horizon-1",
     "gate-3"
   ],
-  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+  "operation": "decode_rpm_ack",
+  "expected": {
+    "result_count": 1,
+    "error_class": 2,
+    "error_code": 32
+  }
 }

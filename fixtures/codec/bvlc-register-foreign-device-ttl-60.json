@@ -22,7 +22,7 @@
   "id": "bvlc-register-foreign-device-ttl-60",
   "description": "BVLC Register-Foreign-Device with TTL 60 seconds",
   "expect": {
-    "semantic_decode_equal": false,
+    "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
@@ -33,5 +33,10 @@
     "horizon-1",
     "gate-3"
   ],
-  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+  "operation": "decode_bvlc",
+  "expected": {
+    "function": 5,
+    "ttl": 60,
+    "payload_len": 0
+  }
 }

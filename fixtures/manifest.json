@@ -81,6 +81,38 @@
     {
       "id": "tag-malformed-truncated-context",
       "path": "fixtures/codec/tag-malformed-truncated-context.json"
+    },
+    {
+      "id": "apdu-malformed-reserved-bit",
+      "path": "fixtures/codec/apdu-malformed-reserved-bit.json"
+    },
+    {
+      "id": "apdu-malformed-morefollows-without-seg",
+      "path": "fixtures/codec/apdu-malformed-morefollows-without-seg.json"
+    },
+    {
+      "id": "apdu-malformed-undefined-maxapdu",
+      "path": "fixtures/codec/apdu-malformed-undefined-maxapdu.json"
+    },
+    {
+      "id": "apdu-malformed-zero-window",
+      "path": "fixtures/codec/apdu-malformed-zero-window.json"
+    },
+    {
+      "id": "npdu-malformed-reserved-control",
+      "path": "fixtures/codec/npdu-malformed-reserved-control.json"
+    },
+    {
+      "id": "npdu-malformed-global-broadcast-dadr",
+      "path": "fixtures/codec/npdu-malformed-global-broadcast-dadr.json"
+    },
+    {
+      "id": "npdu-malformed-iam-router-odd",
+      "path": "fixtures/codec/npdu-malformed-iam-router-odd.json"
+    },
+    {
+      "id": "service-malformed-read-property-empty",
+      "path": "fixtures/codec/service-malformed-read-property-empty.json"
     }
   ]
 }
