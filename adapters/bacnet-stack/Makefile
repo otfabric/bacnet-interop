@@ -10,6 +10,8 @@ BACNET_OBJECT_DIR = $(BACNET_SRC_DIR)/bacnet/basic/object
 BACNET_LIB_DIR = $(BACNET_STACK_ROOT)/apps/lib
 BACNET_LIB = -L$(BACNET_LIB_DIR) -lbacnet
 
+BACNET_POSIX_DIR = $(BACNET_STACK_ROOT)/ports/posix
+
 BACDL_DEFINE = -DBACDL_BIP=1
 BBMD_DEFINE = -DBBMD_ENABLED=1 -DBBMD_CLIENT_ENABLED
 BACNET_DEFINES = $(BACDL_DEFINE) $(BBMD_DEFINE) -DWEAK_FUNC=
@@ -18,9 +20,11 @@ BACNET_DEFINES += -DBACAPP_ALL
 BACNET_DEFINES += -DBACFILE
 BACNET_DEFINES += -DINTRINSIC_REPORTING
 BACNET_DEFINES += -DBACNET_TIME_MASTER
+BACNET_DEFINES += -DBACNET_BACKUP_RESTORE
 BACNET_DEFINES += -DBACNET_PROPERTY_LISTS=1
 BACNET_DEFINES += -DBACNET_PROPERTY_ARRAY_LISTS=1
-BACNET_DEFINES += -DBACNET_PROTOCOL_REVISION=24
+# Match apps/Makefile for the pinned bacnet-stack release (1.6.0 → rev 28).
+BACNET_DEFINES += -DBACNET_PROTOCOL_REVISION=28
 # Single Trend Log (instance 0) for device-baseline-v2 ReadRange evidence.
 BACNET_DEFINES += -DMAX_TREND_LOGS=1
 
@@ -29,18 +33,27 @@ WARNINGS = -Wall -Wextra -Wno-sign-conversion -Wno-conversion -Wno-sign-compare
 WARNINGS += -Wno-long-long -Wno-attributes -Wno-implicit-fallthrough
 OPTIMIZATION ?= -Os
 
-INCLUDES = -I$(BACNET_SRC_DIR) -I$(BACNET_PORT_DIR)
+INCLUDES = -I$(BACNET_SRC_DIR) -I$(BACNET_PORT_DIR) -I$(BACNET_POSIX_DIR)
 CFLAGS = $(WARNINGS) $(OPTIMIZATION) $(BACNET_DEFINES) $(INCLUDES) $(CSTANDARD)
 CFLAGS += -ffunction-sections -fdata-sections
 PFLAGS = -pthread
 LFLAGS = $(BACNET_LIB) -Wl,-lc,-lgcc,-lrt,-lm -Wl,--gc-sections
 
-# Same object set as apps/server so device.c My_Object_Table resolves.
+# Same object set as apps/server so device.c Default_Object_Table resolves.
 SRC = device_server.c \
 	$(BACNET_OBJECT_DIR)/device.c \
+	$(BACNET_OBJECT_DIR)/access_credential.c \
+	$(BACNET_OBJECT_DIR)/access_door.c \
+	$(BACNET_OBJECT_DIR)/access_point.c \
+	$(BACNET_OBJECT_DIR)/access_rights.c \
+	$(BACNET_OBJECT_DIR)/access_user.c \
+	$(BACNET_OBJECT_DIR)/access_zone.c \
 	$(BACNET_OBJECT_DIR)/ai.c \
 	$(BACNET_OBJECT_DIR)/ao.c \
 	$(BACNET_OBJECT_DIR)/av.c \
+	$(BACNET_OBJECT_DIR)/acc.c \
+	$(BACNET_OBJECT_DIR)/auditlog.c \
+	$(BACNET_OBJECT_DIR)/bacfile.c \
 	$(BACNET_OBJECT_DIR)/bi.c \
 	$(BACNET_OBJECT_DIR)/bitstring_value.c \
 	$(BACNET_OBJECT_DIR)/bo.c \
@@ -51,32 +64,27 @@ SRC = device_server.c \
 	$(BACNET_OBJECT_DIR)/color_object.c \
 	$(BACNET_OBJECT_DIR)/color_temperature.c \
 	$(BACNET_OBJECT_DIR)/command.c \
+	$(BACNET_OBJECT_DIR)/credential_data_input.c \
 	$(BACNET_OBJECT_DIR)/csv.c \
 	$(BACNET_OBJECT_DIR)/iv.c \
 	$(BACNET_OBJECT_DIR)/lc.c \
 	$(BACNET_OBJECT_DIR)/lo.c \
+	$(BACNET_OBJECT_DIR)/loop.c \
 	$(BACNET_OBJECT_DIR)/lsp.c \
 	$(BACNET_OBJECT_DIR)/lsz.c \
 	$(BACNET_OBJECT_DIR)/ms-input.c \
 	$(BACNET_OBJECT_DIR)/mso.c \
 	$(BACNET_OBJECT_DIR)/msv.c \
-	$(BACNET_OBJECT_DIR)/osv.c \
-	$(BACNET_OBJECT_DIR)/piv.c \
 	$(BACNET_OBJECT_DIR)/nc.c \
 	$(BACNET_OBJECT_DIR)/netport.c \
-	$(BACNET_OBJECT_DIR)/time_value.c \
-	$(BACNET_OBJECT_DIR)/trendlog.c \
+	$(BACNET_OBJECT_DIR)/osv.c \
+	$(BACNET_OBJECT_DIR)/piv.c \
+	$(BACNET_OBJECT_DIR)/program.c \
 	$(BACNET_OBJECT_DIR)/schedule.c \
 	$(BACNET_OBJECT_DIR)/structured_view.c \
-	$(BACNET_OBJECT_DIR)/access_credential.c \
-	$(BACNET_OBJECT_DIR)/access_door.c \
-	$(BACNET_OBJECT_DIR)/access_point.c \
-	$(BACNET_OBJECT_DIR)/access_rights.c \
-	$(BACNET_OBJECT_DIR)/access_user.c \
-	$(BACNET_OBJECT_DIR)/access_zone.c \
-	$(BACNET_OBJECT_DIR)/credential_data_input.c \
-	$(BACNET_OBJECT_DIR)/acc.c \
-	$(BACNET_OBJECT_DIR)/bacfile.c
+	$(BACNET_OBJECT_DIR)/time_value.c \
+	$(BACNET_OBJECT_DIR)/timer.c \
+	$(BACNET_OBJECT_DIR)/trendlog.c
 
 OBJS = $(SRC:.c=.o)
 

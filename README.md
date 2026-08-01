@@ -103,7 +103,7 @@ Licensing note: peer stacks retain their upstream licenses inside adapter images
 Each server-mode adapter emits a single JSON Lines readiness event on stdout before accepting BACnet/IP traffic:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.3.8"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 - Stdout is JSON Lines only (ready events; optional future probe results).
@@ -136,7 +136,7 @@ Weekly (and `workflow_dispatch`) [Upstream candidates](.github/workflows/candida
 
 | Job | Resolves |
 |---|---|
-| `bacnet-stack-latest-tag` | newest `bacnet-stack-*` tag on [bacnet-stack/bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
+| `bacnet-stack-latest-tag` | newest semver tag `bacnet-stack-X.Y.Z` on [bacnet-stack/bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
 | `bacpypes3-latest` | latest [bacpypes3](https://pypi.org/project/bacpypes3/) on PyPI |
 | `bacnet4j-latest` | Maven `<release>` from the RadixIoT ias-release repo |
 

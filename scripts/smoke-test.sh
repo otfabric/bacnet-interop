@@ -70,14 +70,19 @@ start_bip_router_smoke() {
     local net_a="smoke-bip-a-$$"
     local net_b="smoke-bip-b-$$"
     local name="smoke-bip-router-$$"
+    # Static addressing avoids Docker eth0/eth1 reorder swapping BACnet nets.
+    local subnet_a="10.230.1.0/24" gw_a="10.230.1.1" addr_a="10.230.1.2"
+    local subnet_b="10.230.2.0/24" gw_b="10.230.2.1" addr_b="10.230.2.2"
 
-    docker network create "$net_a" >/dev/null
-    docker network create "$net_b" >/dev/null
-    docker create --name "$name" --network "$net_a" \
+    docker network create --subnet "$subnet_a" --gateway "$gw_a" "$net_a" >/dev/null
+    docker network create --subnet "$subnet_b" --gateway "$gw_b" "$net_b" >/dev/null
+    docker create --name "$name" --network "$net_a" --ip "$addr_a" \
         -e ADAPTER_VERSION=smoke \
         -e BACNET_NETWORKS=1,2 \
+        -e "BACNET_ADDR_NET1=${addr_a}" \
+        -e "BACNET_ADDR_NET2=${addr_b}" \
         "$image" >/dev/null
-    docker network connect "$net_b" "$name"
+    docker network connect --ip "$addr_b" "$net_b" "$name"
     docker start "$name" >/dev/null
 
     local ready=""

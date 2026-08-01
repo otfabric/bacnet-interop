@@ -41,19 +41,20 @@ static struct mstimer BACnet_Address_Timer;
 static struct mstimer BACnet_Object_Timer;
 static volatile sig_atomic_t Running = 1;
 
-/* Device, Network Port, AV, BV, TrendLog — terminator required by Device_Init. */
+/* Device, Network Port, AV, BV, TrendLog — terminator required by Device_Init.
+ * Field order matches object_functions_t through Object_Writable_Property_List. */
 static object_functions_t Interop_Object_Table[] = {
     { OBJECT_DEVICE, NULL, Device_Count, Device_Index_To_Instance,
         Device_Valid_Object_Instance_Number, Device_Object_Name,
         Device_Read_Property_Local, Device_Write_Property_Local,
         Device_Property_Lists, DeviceGetRRInfo, NULL, NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL },
+        NULL, NULL, NULL, NULL, NULL, NULL },
 #if (BACNET_PROTOCOL_REVISION >= 17)
     { OBJECT_NETWORK_PORT, Network_Port_Init, Network_Port_Count,
         Network_Port_Index_To_Instance, Network_Port_Valid_Instance,
         Network_Port_Object_Name, Network_Port_Read_Property,
         Network_Port_Write_Property, Network_Port_Property_Lists, NULL, NULL,
-        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
     { OBJECT_ANALOG_VALUE, Analog_Value_Init, Analog_Value_Count,
         Analog_Value_Index_To_Instance, Analog_Value_Valid_Instance,
@@ -61,21 +62,21 @@ static object_functions_t Interop_Object_Table[] = {
         Analog_Value_Write_Property, Analog_Value_Property_Lists, NULL, NULL,
         Analog_Value_Encode_Value_List, Analog_Value_Change_Of_Value,
         Analog_Value_Change_Of_Value_Clear, NULL, NULL, NULL,
-        Analog_Value_Create, Analog_Value_Delete, NULL },
+        Analog_Value_Create, Analog_Value_Delete, NULL, NULL },
     { OBJECT_BINARY_VALUE, Binary_Value_Init, Binary_Value_Count,
         Binary_Value_Index_To_Instance, Binary_Value_Valid_Instance,
         Binary_Value_Object_Name, Binary_Value_Read_Property,
         Binary_Value_Write_Property, Binary_Value_Property_Lists, NULL, NULL,
         Binary_Value_Encode_Value_List, Binary_Value_Change_Of_Value,
         Binary_Value_Change_Of_Value_Clear, NULL, NULL, NULL,
-        Binary_Value_Create, Binary_Value_Delete, NULL },
+        Binary_Value_Create, Binary_Value_Delete, NULL, NULL },
     { OBJECT_TRENDLOG, Trend_Log_Init, Trend_Log_Count,
         Trend_Log_Index_To_Instance, Trend_Log_Valid_Instance,
         Trend_Log_Object_Name, Trend_Log_Read_Property,
         Trend_Log_Write_Property, Trend_Log_Property_Lists, TrendLogGetRRInfo,
-        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
-    { MAX_BACNET_OBJECT_TYPE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+    { MAX_BACNET_OBJECT_TYPE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 };
 
 static void on_signal(int signo)
