@@ -8,6 +8,7 @@ network numbers. Supports:
   - Forwarding unicast/broadcast NPDUs with DNET toward the other side
   - Hop-count decrement (ASHRAE order: hop immediately after DADR, before SNET)
   - Return-path assist for peers that reply without reverse DNET/DADR
+  - Final unicast delivery omits SNET so non-routing peers reply locally
   - Local-broadcast forwarding with SNET (I-Am toward the originating net)
 
 This is topology infrastructure for go-bacnet interop, not a product BBMD/router.
@@ -335,10 +336,13 @@ class Router:
         dest = mac_to_endpoint(dadr)
         if dest is None:
             return
+        # Final unicast delivery omits SNET/SADR. Non-routing peers such as
+        # bacnet-stack then treat the request as local and reply to this
+        # router's BIP address; return-path assist forwards that reply.
+        # Including SNET forces those peers to reverse-route via DNET/DADR,
+        # which is unreliable without a learned router table.
         forwarded = encode_npdu(
             apdu=apdu,
-            snet=ingress.network,
-            sadr=smac,
             expecting_reply=expecting,
         )
         self.remember(dest, ingress, src)
@@ -448,10 +452,18 @@ def main(argv: Optional[list[str]] = None) -> int:
         [p.network for p in ports],
         [f"{p.addr}:{p.port}" for p in ports],
     )
-    for ingress in ports:
-        others = [p.network for p in ports if p is not ingress]
-        frame = encode_iam_router(others)
-        router.send(ingress, ("255.255.255.255", ingress.port), frame)
+
+    def announce_routers() -> None:
+        for ingress in ports:
+            others = [p.network for p in ports if p is not ingress]
+            frame = encode_iam_router(others)
+            router.send(ingress, ("255.255.255.255", ingress.port), frame)
+
+    # Repeat startup I-Am-Router: docker bridges occasionally drop the first
+    # UDP broadcast after network connect.
+    announce_routers()
+    time.sleep(0.2)
+    announce_routers()
 
     router.serve()
     return 0

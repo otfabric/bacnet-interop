@@ -9,6 +9,9 @@ Minimal dual-homed BACnet/IP router for Horizon 1 interop topology tests in
 - Forward Original-Unicast / Original-Broadcast NPDUs with DNET
 - Hop-count decrement
 - Return-path assist for peers that reply without reverse DNET/DADR
+- Final unicast DNET delivery omits SNET/SADR so non-routing peers (e.g.
+  bacnet-stack) reply to this router as a local station; return-path then
+  forwards the reply to the originating client
 - Local-broadcast forward with SNET (I-Am toward the originating network)
 
 ## Image
