@@ -2,7 +2,7 @@
 
 Containerized [BACpypes3](https://github.com/JoelBender/BACpypes3) peer for [`bacnet-interop`](../..).
 
-**Status:** device-server image available. Pin: `bacpypes3==0.0.98` (`BACPYPES3_VERSION` in Dockerfile).
+**Status:** device-server image available. Pin: `bacpypes3==0.0.106` (`BACPYPES3_VERSION` in Dockerfile).
 
 ## Role
 
@@ -34,7 +34,7 @@ ghcr.io/otfabric/bacnet-interop-bacpypes3@sha256:<digest>
 Same stdout contract as the bacnet-stack adapter:
 
 ```json
-{"event":"ready","adapter":"bacpypes3","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"0.0.98"}
+{"event":"ready","adapter":"bacpypes3","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"0.0.106"}
 ```
 
 Consumers can swap peers by image name without changing wait logic. See [`PLAN.md`](../../PLAN.md).

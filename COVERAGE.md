@@ -42,7 +42,7 @@ Adapter version: `unreleased` · Fixture revision: `device-baseline-v1`
 | Image | Peer / aid | Pin |
 |---|---|---|
 | `ghcr.io/otfabric/bacnet-interop-bacnet-stack` | [bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) | `bacnet-stack-1.6.0` |
-| `ghcr.io/otfabric/bacnet-interop-bacpypes3` | [BACpypes3](https://github.com/JoelBender/BACpypes3) | `0.0.98` |
+| `ghcr.io/otfabric/bacnet-interop-bacpypes3` | [BACpypes3](https://github.com/JoelBender/BACpypes3) | `0.0.106` |
 | `ghcr.io/otfabric/bacnet-interop-bacnet4j` | [BACnet4J](https://github.com/RadixIoT/BACnet4J) | `6.1.0` |
 | `ghcr.io/otfabric/bacnet-interop-bip-router` | interop BIP↔BIP router | topology fixture (not a product router) |
 
@@ -51,8 +51,8 @@ Adapter version: `unreleased` · Fixture revision: `device-baseline-v1`
 | Stack | Version | Direction | Capability | Reason | Consumer skip |
 |---|---|---|---|---|---|
 | all peers | — | transport | Host UDP to container on Docker Desktop | Bridge IPs are not host-routable; published-port return paths are unreliable for BACnet | `go-bacnet/interop` re-executes tests inside the peer docker network on macOS/Windows; routed tests always re-exec on the client net |
-| BACpypes3 | 0.0.98 | bind | `0.0.0.0/0` address | Confirmed-service replies fail; use `host:<port>` (adapter default) or numeric CIDR when `BACNET_BBMD=1` | — |
-| BACpypes3 | 0.0.98 | Reject | Unrecognized confirmed service | Application raises `RuntimeError` instead of emitting a Reject PDU | No BACpypes3 Reject assertion; covered by bacnet-stack + BACnet4J |
+| BACpypes3 | 0.0.106 | bind | `0.0.0.0/0` address | Confirmed-service replies fail; use `host:<port>` (adapter default) or numeric CIDR when `BACNET_BBMD=1` | — |
+| BACpypes3 | 0.0.106 | Reject | Unrecognized confirmed service | Application raises `RuntimeError` instead of emitting a Reject PDU | No BACpypes3 Reject assertion; covered by bacnet-stack + BACnet4J |
 | bacnet-stack | 1.6.0 | segmentation | Segmented ComplexACK | Stack TSM aborts with segmentation-not-supported rather than segmenting | Assert Abort; segmented reassembly covered by BACpypes3 + BACnet4J |
 | bip-router | — | discovery | Remote I-Am observation | Docker broadcast delivery to ephemeral clients is unreliable; RP via DNET/DADR is the hard assertion | Routed Who-Is I-Am is best-effort in `go-bacnet/INTEROP.md` |
 

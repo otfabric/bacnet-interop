@@ -53,7 +53,7 @@ Reject undocumented vendor dumps.
 | Deliverable | Status |
 |---|---|
 | bacnet-stack fixture-driven `device_server` | done (`bacnet-stack-1.6.0`) |
-| BACpypes3 `device_server.py` | done (`bacpypes3==0.0.98`) |
+| BACpypes3 `device_server.py` | done (`bacpypes3==0.0.106`) |
 | BACnet4J `DeviceServer.java` | done (`bacnet4j==6.1.0`) |
 | BIP↔BIP topology router (`bip-router`) | done (interop fixture) |
 | `device-baseline-v1` shared by all three peers | done |
