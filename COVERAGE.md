@@ -34,7 +34,7 @@ Adapter version: `unreleased` · Fixture revision: `device-baseline-v1`
 | Capability | bip-router | Notes |
 |---|:---:|---|
 | Who-Is-Router / I-Am-Router | ✓ | Dual-homed; `BACNET_NETWORKS=1,2` |
-| DNET/DADR forward + hop decrement | ✓ | Return-path assist for peers without reverse routing |
+| DNET/DADR forward + hop decrement | ✓ | Unicast delivery omits SNET; return-path assist for peers without reverse routing |
 | Readiness JSON Lines | ✓ | Fixture `topology-router-v1` |
 
 **Image names (target):**
