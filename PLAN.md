@@ -2,10 +2,12 @@
 
 Single source of truth for **bacnet-interop**-owned deliverables. Consumer
 assertions and scenario matrices live in [`go-bacnet`](https://github.com/otfabric/go-bacnet)
-(`INTEROP.md`, `interop/`).
+(`INTEROP.md`, `interop/`, `PLAN.md`).
 
 Horizon 1 peer set: **bacnet-stack**, **BACpypes3**, and **BACnet4J**. Topology
 aid: **bip-router** (not a product router or peer oracle).
+
+Status labels: `done` · `partial` · `open`.
 
 ---
 
@@ -30,6 +32,8 @@ aid: **bip-router** (not a product router or peer oracle).
 | `fixtures/manifest.json` authoritative index | done |
 | Device model `fixtures/device/device-baseline-v1.json` | done |
 | Consumed by `go-bacnet/internal/fixtures` | done |
+| Full executable semantics for all fixtures | open (consumer-side; see go-bacnet PLAN Batch 3) |
+| Strict `deterministic_reencode_equal` / expected error layer | open (consumer-side) |
 
 Equality flags (set per fixture):
 
@@ -70,11 +74,20 @@ Reject undocumented vendor dumps.
 - Same readiness / stdout contract as bacnet-stack so `go-bacnet/interop` can
   swap peers by image name.
 
+### BACnet4J (`adapters/bacnet4j`)
+
+- Java image pinning `BACNET4J_VERSION` (Maven artifact from RadixIoT).
+- Fixture-driven Device + AV-1 + BV-1; optional BBMD / max-APDU.
+- Same readiness / stdout contract as the other peers.
+
 ### bip-router (`adapters/bip-router`)
 
 - Dual-homed BACnet/IP router for routed interop topology (nets `1`/`2` by default).
 - Who-Is-Router / I-Am-Router, DNET forward, hop decrement, return-path assist.
 - Not a product BBMD or general-purpose router.
+- Evidence phrasing: validates go-bacnet routed addressing via this topology aid
+  with independent endpoint stacks behind it — **not** “proven with independent
+  BACnet routers” until a second router implementation or hardware is added.
 
 Fixed-sequence JSON Lines **client probe** adapters remain future work.
 
@@ -118,7 +131,7 @@ Adapter support for scenarios asserted in `go-bacnet/INTEROP.md`:
 | ReadProperty / RPM / WriteProperty | done (all three peers) |
 | Error / Reject / Abort paths | done (Reject: bacnet-stack + BACnet4J; Abort: bacnet-stack + BACpypes3) |
 | COV subscribe / notify / cancel (+ renew on BACpypes3) | done |
-| Routed remote device (via `bip-router`) | done (all three peers) |
+| Routed remote device (via `bip-router`) | done (all three peers; topology evidence caveat above) |
 | Peer-as-BBMD + foreign-device registration aid | done (BACpypes3 + BACnet4J) |
 | Segmentation / small max-APDU stress | done (BACpypes3 + BACnet4J) |
 
@@ -130,18 +143,43 @@ assertion matrix.
 
 ## Phase 5 — Publish and pin
 
-1. Publish `ghcr.io/otfabric/bacnet-interop-bacnet-stack`, `…-bacpypes3`, and
-   `…-bacnet4j` (and optionally `…-bip-router`) when cutting a tagged release.
-2. Record digests; `go-bacnet` CI pins digests.
-3. `make smoke` starts each server/router image, asserts a valid ready event,
-   exits — implemented locally; publish digests on first tagged release.
+| Deliverable | Status |
+|---|---|
+| Publish all four GHCR images (stack, bacpypes3, bacnet4j, bip-router) | done (`v0.1.0`) |
+| Native amd64/arm64 release runners (no QEMU) | done |
+| Release `manifest.json` + digests for all peers + topology | done |
+| `go-bacnet` CI pins release digests + fixture tag | done (see go-bacnet `interop.yml`) |
+| Local `make smoke` ready-event check | done |
+
+First tagged release: [`v0.1.0`](https://github.com/otfabric/bacnet-interop/releases/tag/v0.1.0).
+
+---
+
+## Phase 6 — Evidence integrity (post-review)
+
+This repository validates its own infrastructure only: fixture schema/manifest,
+adapter builds, and smoke readiness. It must **never** check out, build, or
+test against `go-bacnet`. Consumer assertions, fixture corpus execution, and
+peer scenario matrices are owned exclusively by
+[`go-bacnet`](https://github.com/otfabric/go-bacnet) (see `interop.yml`).
+
+| Deliverable | Status |
+|---|---|
+| CI builds **all** adapters via `PLATFORM=linux/amd64 make build` | done |
+| CI smoke with `BIP_ROUTER_REQUIRED=1` | done |
+| Capture build provenance as CI artifacts | done |
+| No CI / Makefile / release path depends on `go-bacnet` | done |
+| Single machine-readable adapter inventory (Makefile/CI/release/smoke) | open |
 
 ---
 
 ## Non-goals
 
+- Checking out, building, or asserting against `go-bacnet` from this repo
+  (inverted ownership; forbidden).
 - Go library assertions or `-tags=interop` tests (belong in `go-bacnet`).
 - Linking peer stacks into MIT Go binaries.
 - Vendor hardware claims without recorded evidence.
 - Full BBMD/BDT **product** server behaviour in Horizon 1 (peer-as-BBMD for
   FD registration tests is in scope; multi-BBMD failover is not).
+- Claiming independent BACnet **router** interoperability from `bip-router` alone.

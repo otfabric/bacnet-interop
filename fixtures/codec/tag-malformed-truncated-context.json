@@ -19,7 +19,7 @@
   "id": "tag-malformed-truncated-context",
   "description": "Context tag claims 4 value octets but only 1 remains",
   "expect": {
-    "semantic_decode_equal": false,
+    "semantic_decode_equal": true,
     "deterministic_reencode_equal": false,
     "original_bytes_equal": false
   },

@@ -4,11 +4,15 @@ package com.otfabric.bacnetinterop;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.net.DatagramSocket;
+import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -73,9 +77,10 @@ public final class DeviceServer {
             }
         }
 
+        String subnetMask = subnetMaskFor(bind);
         IpNetworkBuilder builder = new IpNetworkBuilder()
                 .withLocalBindAddress(bind)
-                .withSubnet("255.255.0.0", 16)
+                .withSubnet(subnetMask, prefixLength(subnetMask))
                 .withPort(port)
                 .withReuseAddress(true);
         if (networkNumber > 0) {
@@ -150,7 +155,7 @@ public final class DeviceServer {
         ready.put("adapter", "bacnet4j");
         ready.put("version", adapterVersion);
         ready.put("fixture", fixtureId);
-        ready.put("address", "0.0.0.0:" + port);
+        ready.put("address", bind + ":" + port);
         ready.put("peer_version", peerVersion);
         emitReady(ready);
         System.err.println("bacnet4j listening bind=" + bind + ":" + port
@@ -192,17 +197,85 @@ public final class DeviceServer {
         return BinaryPV.inactive;
     }
 
+    /**
+     * Prefer a non-loopback site-local IPv4 (typical docker bridge). Avoid
+     * InetAddress.getLocalHost(), which often returns 127.0.0.1 in containers
+     * and leaves the peer unreachable for routed topology tests.
+     */
     private static String primaryIPv4() {
+        String enumerated = firstNonLoopbackIPv4(true);
+        if (enumerated != null) {
+            return enumerated;
+        }
+        enumerated = firstNonLoopbackIPv4(false);
+        if (enumerated != null) {
+            return enumerated;
+        }
         try (DatagramSocket socket = new DatagramSocket()) {
             socket.connect(InetAddress.getByName("8.8.8.8"), 80);
-            return socket.getLocalAddress().getHostAddress();
-        } catch (Exception e) {
-            try {
-                return InetAddress.getLocalHost().getHostAddress();
-            } catch (Exception e2) {
-                return "127.0.0.1";
+            InetAddress local = socket.getLocalAddress();
+            if (local instanceof Inet4Address && !local.isLoopbackAddress()) {
+                return local.getHostAddress();
             }
+        } catch (Exception ignored) {
+            // fall through
         }
+        throw new IllegalStateException("no non-loopback IPv4 address for BACnet bind");
+    }
+
+    private static String firstNonLoopbackIPv4(boolean siteLocalOnly) {
+        try {
+            for (NetworkInterface nif : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!nif.isUp() || nif.isLoopback()) {
+                    continue;
+                }
+                for (InterfaceAddress ia : nif.getInterfaceAddresses()) {
+                    InetAddress addr = ia.getAddress();
+                    if (!(addr instanceof Inet4Address) || addr.isLoopbackAddress()) {
+                        continue;
+                    }
+                    if (siteLocalOnly && !addr.isSiteLocalAddress()) {
+                        continue;
+                    }
+                    return addr.getHostAddress();
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+        return null;
+    }
+
+    private static String subnetMaskFor(String bindIP) {
+        try {
+            InetAddress bind = InetAddress.getByName(bindIP);
+            for (NetworkInterface nif : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                for (InterfaceAddress ia : nif.getInterfaceAddresses()) {
+                    if (bind.equals(ia.getAddress()) && ia.getNetworkPrefixLength() > 0) {
+                        return prefixToMask(ia.getNetworkPrefixLength());
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+        // Docker bridge default.
+        return "255.255.0.0";
+    }
+
+    private static String prefixToMask(int prefix) {
+        int mask = prefix == 0 ? 0 : 0xffffffff << (32 - prefix);
+        return String.format("%d.%d.%d.%d",
+                (mask >>> 24) & 0xff, (mask >>> 16) & 0xff, (mask >>> 8) & 0xff, mask & 0xff);
+    }
+
+    private static int prefixLength(String dottedMask) {
+        String[] parts = dottedMask.split("\\.");
+        int mask = 0;
+        for (String p : parts) {
+            mask = (mask << 8) | Integer.parseInt(p);
+        }
+        return Integer.bitCount(mask);
     }
 
     private static int parseInt(String v, int def) {
