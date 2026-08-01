@@ -131,7 +131,7 @@ def install_horizon2_handlers(app: Application, fixture: dict[str, Any]) -> None
 
     app.do_ReinitializeDeviceRequest = do_ReinitializeDeviceRequest  # type: ignore[method-assign]
 
-    # Stock BACpypes3 0.0.98 raises NotImplementedError for WPM; implement via write_property.
+    # Stock BACpypes3 raises NotImplementedError for WPM; implement via write_property.
     async def do_WritePropertyMultipleRequest(apdu: WritePropertyMultipleRequest) -> None:
         for spec in apdu.listOfWriteAccessSpecs or []:
             obj = app.get_object_id(spec.objectIdentifier)
@@ -172,7 +172,8 @@ def install_horizon2_handlers(app: Application, fixture: dict[str, Any]) -> None
         if dest is None:
             return
         emitted["done"] = True
-        # TimeStamp.as_sequenceNumber(n) is buggy in 0.0.98 when n is not None.
+        # TimeStamp.as_sequenceNumber(n) is still buggy in 0.0.106 when n is not
+        # None (UnboundLocalError: `now` only assigned in the None branch).
         note = UnconfirmedEventNotificationRequest(
             processIdentifier=1,
             initiatingDeviceIdentifier=("device", instance),
@@ -280,7 +281,7 @@ def build_app(
                 )
             )
         elif otype in ("trend-log", "notification-class"):
-            # BACpypes3 0.0.98 has no server ReadRange; skip TL. NC optional.
+            # BACpypes3 has no server ReadRange; skip TL. NC optional.
             print(f"skipping unsupported object type {otype!r}", file=sys.stderr)
         else:
             print(f"skipping unsupported object type {otype!r}", file=sys.stderr)

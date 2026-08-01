@@ -9,7 +9,7 @@ ARG DEBIAN_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca
 
 FROM debian:bookworm-slim@${DEBIAN_DIGEST} AS runtime
 
-ARG BACPYPES3_VERSION=0.0.98
+ARG BACPYPES3_VERSION=0.0.106
 ARG ADAPTER_VERSION=dev
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
