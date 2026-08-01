@@ -113,6 +113,62 @@
     {
       "id": "service-malformed-read-property-empty",
       "path": "fixtures/codec/service-malformed-read-property-empty.json"
+    },
+    {
+      "id": "service-write-property-multiple-av",
+      "path": "fixtures/codec/service-write-property-multiple-av.json"
+    },
+    {
+      "id": "service-write-property-multiple-error",
+      "path": "fixtures/codec/service-write-property-multiple-error.json"
+    },
+    {
+      "id": "service-who-has-name",
+      "path": "fixtures/codec/service-who-has-name.json"
+    },
+    {
+      "id": "service-who-has-object",
+      "path": "fixtures/codec/service-who-has-object.json"
+    },
+    {
+      "id": "service-i-have",
+      "path": "fixtures/codec/service-i-have.json"
+    },
+    {
+      "id": "service-read-range-by-position",
+      "path": "fixtures/codec/service-read-range-by-position.json"
+    },
+    {
+      "id": "service-read-range-ack-empty",
+      "path": "fixtures/codec/service-read-range-ack-empty.json"
+    },
+    {
+      "id": "service-malformed-who-has-empty",
+      "path": "fixtures/codec/service-malformed-who-has-empty.json"
+    },
+    {
+      "id": "service-event-notification-seq",
+      "path": "fixtures/codec/service-event-notification-seq.json"
+    },
+    {
+      "id": "service-acknowledge-alarm",
+      "path": "fixtures/codec/service-acknowledge-alarm.json"
+    },
+    {
+      "id": "service-get-event-information",
+      "path": "fixtures/codec/service-get-event-information.json"
+    },
+    {
+      "id": "service-get-event-information-ack",
+      "path": "fixtures/codec/service-get-event-information-ack.json"
+    },
+    {
+      "id": "service-device-communication-control-enable",
+      "path": "fixtures/codec/service-device-communication-control-enable.json"
+    },
+    {
+      "id": "service-reinitialize-device-warmstart",
+      "path": "fixtures/codec/service-reinitialize-device-warmstart.json"
     }
   ]
 }

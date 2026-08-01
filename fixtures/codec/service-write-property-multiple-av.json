@@ -1,0 +1,36 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": ["15.10"]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-write-property-multiple-av",
+  "description": "WritePropertyMultiple one AV present-value Real at priority 8",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "0c008000011e09552e44422900002f39081f",
+  "tags": ["service", "write-property-multiple", "horizon-2", "gate-3"],
+  "operation": "decode_write_property_multiple",
+  "expected": {
+    "spec_count": 1,
+    "object": {"type": 2, "instance": 1},
+    "property": 85,
+    "priority": 8
+  }
+}

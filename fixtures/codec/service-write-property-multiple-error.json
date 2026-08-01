@@ -1,0 +1,36 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "server-to-client",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": ["15.10"]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-write-property-multiple-error",
+  "description": "WritePropertyMultiple-Error with firstFailedWriteAttempt AV:1 present-value",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "0e090219200f1e0c0080000119551f",
+  "tags": ["service", "write-property-multiple", "error", "horizon-2", "gate-3"],
+  "operation": "decode_write_property_multiple_error",
+  "expected": {
+    "error_class": 2,
+    "error_code": 32,
+    "object": {"type": 2, "instance": 1},
+    "property": 85
+  }
+}

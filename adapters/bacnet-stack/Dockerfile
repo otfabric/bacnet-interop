@@ -56,14 +56,15 @@ COPY --from=bacnet-stack-build /src/adapter/device_server /usr/local/bin/device_
 COPY adapters/bacnet-stack/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY adapters/bacnet-stack/run_server.py /usr/local/bin/run_server.py
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
+COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
 
 RUN chmod 755 /usr/local/bin/entrypoint.sh /usr/local/bin/device_server /usr/local/bin/run_server.py
 
 ARG ADAPTER_VERSION=dev
 ARG BACNET_STACK_VERSION=bacnet-stack-1.3.8
 ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
-    FIXTURE=device-baseline-v1 \
-    DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v1.json \
+    FIXTURE=device-baseline-v2 \
+    DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v2.json \
     BACNET_IP_PORT=47808 \
     BACNET_STACK_VERSION=${BACNET_STACK_VERSION}
 

@@ -1,0 +1,33 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": ["16.9"]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-who-has-object",
+  "description": "Who-Has by objectIdentifier AV:1",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "2c00800001",
+  "tags": ["service", "who-has", "horizon-2", "gate-3"],
+  "operation": "decode_who_has",
+  "expected": {
+    "object": {"type": 2, "instance": 1}
+  }
+}

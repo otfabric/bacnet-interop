@@ -1,0 +1,35 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "server-to-client",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": ["16.9"]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-i-have",
+  "description": "I-Have device 1234 object AV:1 name AV-1",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "c4020004d2c40080000175050041562d31",
+  "tags": ["service", "i-have", "horizon-2", "gate-3"],
+  "operation": "decode_i_have",
+  "expected": {
+    "device": {"type": 8, "instance": 1234},
+    "object": {"type": 2, "instance": 1},
+    "name": "AV-1"
+  }
+}

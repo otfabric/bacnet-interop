@@ -21,6 +21,8 @@ BACNET_DEFINES += -DBACNET_TIME_MASTER
 BACNET_DEFINES += -DBACNET_PROPERTY_LISTS=1
 BACNET_DEFINES += -DBACNET_PROPERTY_ARRAY_LISTS=1
 BACNET_DEFINES += -DBACNET_PROTOCOL_REVISION=24
+# Single Trend Log (instance 0) for device-baseline-v2 ReadRange evidence.
+BACNET_DEFINES += -DMAX_TREND_LOGS=1
 
 CSTANDARD = -std=gnu89
 WARNINGS = -Wall -Wextra -Wno-sign-conversion -Wno-conversion -Wno-sign-compare

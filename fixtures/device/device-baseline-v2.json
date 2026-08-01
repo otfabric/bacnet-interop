@@ -1,0 +1,44 @@
+{
+  "fixture": "device-baseline-v2",
+  "description": "Horizon 2 live-adapter device model: v1 objects plus Trend Log for ReadRange. Notification Class is optional peer-side scaffolding for EventNotification tests.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice"
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5,
+      "description": "Interop AV-1 baseline present-value used for ReadProperty, WriteProperty, COV, WPM, and segmented RPM stress."
+    },
+    {
+      "type": "binary-value",
+      "instance": 1,
+      "object_name": "BV-1",
+      "present_value": "inactive"
+    },
+    {
+      "type": "trend-log",
+      "instance": 0,
+      "object_name": "TL-0",
+      "description": "Pre-seeded log-buffer for ReadRange byPosition interop (bacnet-stack / BACnet4J)."
+    }
+  ],
+  "notes": [
+    "Supersedes device-baseline-v1 for new adapter images; v1 remains frozen for historical digests.",
+    "bacnet-stack: TrendLog via MAX_TREND_LOGS=1 + handler_read_range; ReinitializeDevice registered with empty password; EventNotification emit optional via BACNET_EMIT_EVENT.",
+    "BACpypes3: same AV/BV; no server ReadRange (NotImplementedError); ReinitializeDevice SimpleACK; can emit UnconfirmedEventNotification.",
+    "BACnet4J: TrendLogObject with seeded buffer; ReinitializeDevice no-op warmstart handler."
+  ],
+  "alignment": {
+    "bacnet-stack": "full-object-graph",
+    "bacpypes3": "identity-av-bv-events-reinit",
+    "bacnet4j": "full-object-graph"
+  }
+}

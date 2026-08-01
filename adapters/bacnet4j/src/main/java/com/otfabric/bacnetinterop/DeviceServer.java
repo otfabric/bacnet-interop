@@ -16,34 +16,59 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.serotonin.bacnet4j.LocalDevice;
+import com.serotonin.bacnet4j.event.DeviceEventAdapter;
+import com.serotonin.bacnet4j.event.ReinitializeDeviceHandler;
 import com.serotonin.bacnet4j.npdu.ip.IpNetwork;
 import com.serotonin.bacnet4j.npdu.ip.IpNetworkBuilder;
 import com.serotonin.bacnet4j.obj.AnalogValueObject;
 import com.serotonin.bacnet4j.obj.BinaryValueObject;
 import com.serotonin.bacnet4j.obj.DeviceObject;
+import com.serotonin.bacnet4j.obj.TrendLogObject;
+import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
+import com.serotonin.bacnet4j.service.Service;
+import com.serotonin.bacnet4j.service.confirmed.ReadPropertyRequest;
+import com.serotonin.bacnet4j.service.confirmed.ReinitializeDeviceRequest.ReinitializedStateOfDevice;
+import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedEventNotificationRequest;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
+import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.type.constructed.DateTime;
+import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
+import com.serotonin.bacnet4j.type.constructed.LogRecord;
+import com.serotonin.bacnet4j.type.constructed.PropertyStates;
+import com.serotonin.bacnet4j.type.constructed.StatusFlags;
+import com.serotonin.bacnet4j.type.constructed.TimeStamp;
+import com.serotonin.bacnet4j.type.notificationParameters.ChangeOfStateNotif;
+import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters;
 import com.serotonin.bacnet4j.type.enumerated.BinaryPV;
 import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
+import com.serotonin.bacnet4j.type.enumerated.EventState;
+import com.serotonin.bacnet4j.type.enumerated.EventType;
+import com.serotonin.bacnet4j.type.enumerated.NotifyType;
+import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
+import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
+import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
  * Fixture-driven BACnet/IP device server for bacnet-interop.
  *
- * Loads device-baseline-v1 JSON, binds UDP, emits a single JSON Lines ready
+ * Loads device-baseline-v2 JSON, binds UDP, emits a single JSON Lines ready
  * event on stdout, then serves until SIGTERM/SIGINT. Diagnostics go to stderr.
  */
 public final class DeviceServer {
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final String FIXTURE_DEFAULT = "device-baseline-v1";
-    private static final String FIXTURE_PATH_DEFAULT = "/fixtures/device/device-baseline-v1.json";
+    private static final String FIXTURE_DEFAULT = "device-baseline-v2";
+    private static final String FIXTURE_PATH_DEFAULT = "/fixtures/device/device-baseline-v2.json";
     private static final int PORT_DEFAULT = 47808;
 
     private DeviceServer() {}
@@ -97,6 +122,13 @@ public final class DeviceServer {
 
         DefaultTransport transport = new DefaultTransport(network);
         LocalDevice localDevice = new LocalDevice(instance, transport);
+        // Default handler rejects warmstart with notConfigured; install a no-op.
+        localDevice.setReinitializeDeviceHandler(new ReinitializeDeviceHandler() {
+            @Override
+            public void handle(LocalDevice ld, Address from, ReinitializedStateOfDevice state) {
+                System.err.println("bacnet4j ReinitializeDevice state=" + state + " from=" + from);
+            }
+        });
 
         DeviceObject deviceObject = localDevice.getDeviceObject();
         deviceObject.writePropertyInternal(PropertyIdentifier.objectName, new CharacterString(deviceName));
@@ -144,11 +176,51 @@ public final class DeviceServer {
                         bv.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
                     }
                 }
+                case "trend-log" -> {
+                    LinkedListLogBuffer<LogRecord> buffer = new LinkedListLogBuffer<>();
+                    DateTime now = new DateTime(System.currentTimeMillis());
+                    StatusFlags flags = new StatusFlags(false, false, false, false);
+                    // Seed a few records so ReadRange byPosition has content without waiting on polls.
+                    for (int i = 0; i < 4; i++) {
+                        buffer.add(new LogRecord(now, true, new Real(20.0f + i), flags));
+                    }
+                    DeviceObjectPropertyReference monitored = new DeviceObjectPropertyReference(
+                            instance,
+                            new ObjectIdentifier(ObjectType.analogValue, 1),
+                            PropertyIdentifier.presentValue);
+                    // enable=false: buffer is static seed data for interop ReadRange.
+                    TrendLogObject tl = new TrendLogObject(
+                            localDevice, oinst, oname, buffer,
+                            false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
+                            monitored, 0, false, 100);
+                    if (!description.isEmpty()) {
+                        tl.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+                    }
+                    System.err.println("bacnet4j trend-log:" + oinst + " seededRecords=" + buffer.size());
+                }
                 default -> System.err.println("skipping unsupported object type '" + type + "'");
             }
         }
 
         localDevice.initialize();
+
+        // Register after initialize so internal TrendLog/COV setup does not trigger emit.
+        if (truthy(env.get("BACNET_EMIT_EVENT"))) {
+            AtomicBoolean emitted = new AtomicBoolean(false);
+            localDevice.getEventHandler().addListener(new DeviceEventAdapter() {
+                @Override
+                public void requestReceived(Address from, Service service) {
+                    if (!(service instanceof ReadPropertyRequest)) {
+                        return;
+                    }
+                    if (!emitted.compareAndSet(false, true)) {
+                        return;
+                    }
+                    emitUnconfirmedEvent(localDevice, instance, from);
+                }
+            });
+            System.err.println("bacnet4j BACNET_EMIT_EVENT=1 (emit once after first ReadProperty)");
+        }
 
         ObjectNode ready = JSON.createObjectNode();
         ready.put("event", "ready");
@@ -178,6 +250,34 @@ public final class DeviceServer {
         out.write(JSON.writeValueAsString(ready));
         out.write('\n');
         out.flush();
+    }
+
+    /** Emit one UnconfirmedEventNotification to the given BACnet address. */
+    private static void emitUnconfirmedEvent(LocalDevice localDevice, int deviceInstance, Address to) {
+        try {
+            NotificationParameters params = new NotificationParameters(
+                    new ChangeOfStateNotif(
+                            new PropertyStates(EventState.offnormal),
+                            new StatusFlags(false, false, false, false)));
+            UnconfirmedEventNotificationRequest note = new UnconfirmedEventNotificationRequest(
+                    new UnsignedInteger(1),
+                    new ObjectIdentifier(ObjectType.device, deviceInstance),
+                    new ObjectIdentifier(ObjectType.analogValue, 1),
+                    new TimeStamp(new UnsignedInteger(1)),
+                    new UnsignedInteger(1),
+                    new UnsignedInteger(100),
+                    EventType.changeOfState,
+                    new CharacterString("interop-event"),
+                    NotifyType.alarm,
+                    Boolean.FALSE,
+                    EventState.normal,
+                    EventState.offnormal,
+                    params);
+            localDevice.send(to, note);
+            System.err.println("bacnet4j emitted UnconfirmedEventNotification to " + to);
+        } catch (Exception e) {
+            System.err.println("bacnet4j event emit failed: " + e);
+        }
     }
 
     private static BinaryPV parseBinaryPV(JsonNode node) {

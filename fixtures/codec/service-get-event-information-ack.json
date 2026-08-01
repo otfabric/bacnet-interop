@@ -1,0 +1,36 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "server-to-client",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": ["13.13"]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-get-event-information-ack",
+  "description": "GetEventInformation-ACK one AV summary, moreEvents=false",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "0e0c0080000119012a05e03e3f49005a05e06e6f0f1900",
+  "tags": ["service", "get-event-information", "horizon-2", "gate-3"],
+  "operation": "decode_get_event_information_ack",
+  "expected": {
+    "summary_count": 1,
+    "object": {"type": 2, "instance": 1},
+    "event_state": 1,
+    "more_events": false
+  }
+}

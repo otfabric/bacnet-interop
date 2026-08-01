@@ -202,39 +202,39 @@ if image_exists "$BACNET_STACK_IMAGE"; then
     else
         fail "run_server.py MISSING in ${BACNET_STACK_IMAGE}"
     fi
-    check_fixture_file "$BACNET_STACK_IMAGE" /fixtures/device/device-baseline-v1.json
+    check_fixture_file "$BACNET_STACK_IMAGE" /fixtures/device/device-baseline-v2.json
     ready=$(start_server "$BACNET_STACK_IMAGE" 47881)
-    check_ready_event "bacnet-stack device server" "$ready" "bacnet-stack" "device-baseline-v1"
+    check_ready_event "bacnet-stack device server" "$ready" "bacnet-stack" "device-baseline-v2"
 fi
 
 if image_exists "$BACPYPES3_IMAGE"; then
     info ""
     info "=== BACpypes3 ==="
-    check_fixture_file "$BACPYPES3_IMAGE" /fixtures/device/device-baseline-v1.json
+    check_fixture_file "$BACPYPES3_IMAGE" /fixtures/device/device-baseline-v2.json
     if docker run --rm --entrypoint sh "$BACPYPES3_IMAGE" -c "test -f /usr/local/bin/device_server.py" >/dev/null 2>&1; then
         pass "device_server.py in ${BACPYPES3_IMAGE}"
     else
         fail "device_server.py MISSING in ${BACPYPES3_IMAGE}"
     fi
     ready=$(start_server "$BACPYPES3_IMAGE" 47882)
-    check_ready_event "bacpypes3 device server" "$ready" "bacpypes3" "device-baseline-v1"
+    check_ready_event "bacpypes3 device server" "$ready" "bacpypes3" "device-baseline-v2"
     ready=$(start_server "$BACPYPES3_IMAGE" 47883 -e BACNET_BBMD=1)
-    check_ready_event "bacpypes3 BBMD device server" "$ready" "bacpypes3" "device-baseline-v1"
+    check_ready_event "bacpypes3 BBMD device server" "$ready" "bacpypes3" "device-baseline-v2"
 fi
 
 if image_exists "$BACNET4J_IMAGE"; then
     info ""
     info "=== BACnet4J ==="
-    check_fixture_file "$BACNET4J_IMAGE" /fixtures/device/device-baseline-v1.json
+    check_fixture_file "$BACNET4J_IMAGE" /fixtures/device/device-baseline-v2.json
     if docker run --rm --entrypoint sh "$BACNET4J_IMAGE" -c "test -f /usr/local/lib/device_server.jar" >/dev/null 2>&1; then
         pass "device_server.jar in ${BACNET4J_IMAGE}"
     else
         fail "device_server.jar MISSING in ${BACNET4J_IMAGE}"
     fi
     ready=$(start_server "$BACNET4J_IMAGE" 47884)
-    check_ready_event "bacnet4j device server" "$ready" "bacnet4j" "device-baseline-v1"
+    check_ready_event "bacnet4j device server" "$ready" "bacnet4j" "device-baseline-v2"
     ready=$(start_server "$BACNET4J_IMAGE" 47885 -e BACNET_BBMD=1)
-    check_ready_event "bacnet4j BBMD device server" "$ready" "bacnet4j" "device-baseline-v1"
+    check_ready_event "bacnet4j BBMD device server" "$ready" "bacnet4j" "device-baseline-v2"
 fi
 
 if image_exists "$BIP_ROUTER_IMAGE"; then
