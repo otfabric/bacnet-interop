@@ -2,9 +2,9 @@
  * @file device_server.c
  * @brief Fixture-driven BACnet/IP device server for bacnet-interop.
  *
- * Builds against pinned bacnet-stack and exposes only the objects declared in
- * device-baseline-v1 (device + analog-value + binary-value). Unlike upstream
- * bacserv, this adapter does not create the demo object zoo.
+ * Builds against pinned bacnet-stack and exposes the objects declared in
+ * device-baseline-v2 (device + AV + BV + TrendLog). Unlike upstream bacserv,
+ * this adapter does not create the demo object zoo.
  *
  * SPDX-License-Identifier: MIT
  */
@@ -23,6 +23,7 @@
 #include "bacnet/basic/object/bv.h"
 #include "bacnet/basic/object/device.h"
 #include "bacnet/basic/object/netport.h"
+#include "bacnet/basic/object/trendlog.h"
 #include "bacnet/basic/services.h"
 #include "bacnet/basic/sys/mstimer.h"
 #include "bacnet/basic/tsm/tsm.h"
@@ -40,7 +41,7 @@ static struct mstimer BACnet_Address_Timer;
 static struct mstimer BACnet_Object_Timer;
 static volatile sig_atomic_t Running = 1;
 
-/* Only Device, Network Port, AV, and BV — terminator required by Device_Init. */
+/* Device, Network Port, AV, BV, TrendLog — terminator required by Device_Init. */
 static object_functions_t Interop_Object_Table[] = {
     { OBJECT_DEVICE, NULL, Device_Count, Device_Index_To_Instance,
         Device_Valid_Object_Instance_Number, Device_Object_Name,
@@ -68,6 +69,11 @@ static object_functions_t Interop_Object_Table[] = {
         Binary_Value_Encode_Value_List, Binary_Value_Change_Of_Value,
         Binary_Value_Change_Of_Value_Clear, NULL, NULL, NULL,
         Binary_Value_Create, Binary_Value_Delete, NULL },
+    { OBJECT_TRENDLOG, Trend_Log_Init, Trend_Log_Count,
+        Trend_Log_Index_To_Instance, Trend_Log_Valid_Instance,
+        Trend_Log_Object_Name, Trend_Log_Read_Property,
+        Trend_Log_Write_Property, Trend_Log_Property_Lists, TrendLogGetRRInfo,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
     { MAX_BACNET_OBJECT_TYPE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 };
@@ -100,6 +106,17 @@ static void Init_Service_Handlers(void)
         SERVICE_UNCONFIRMED_COV_NOTIFICATION, handler_ucov_notification);
     apdu_set_confirmed_handler(SERVICE_CONFIRMED_DEVICE_COMMUNICATION_CONTROL,
         handler_device_communication_control);
+    apdu_set_confirmed_handler(
+        SERVICE_CONFIRMED_READ_RANGE, handler_read_range);
+    /* Stock Device_Reinitialize only sets a flag; it does not exit the process. */
+    apdu_set_confirmed_handler(
+        SERVICE_CONFIRMED_REINITIALIZE_DEVICE, handler_reinitialize_device);
+#if defined(INTRINSIC_REPORTING)
+    apdu_set_confirmed_handler(
+        SERVICE_CONFIRMED_ACKNOWLEDGE_ALARM, handler_alarm_ack);
+    apdu_set_confirmed_handler(
+        SERVICE_CONFIRMED_GET_EVENT_INFORMATION, handler_get_event_information);
+#endif
 
     mstimer_set(&BACnet_Task_Timer, 1000UL);
     mstimer_set(&BACnet_TSM_Timer, 50UL);
@@ -209,6 +226,9 @@ int main(int argc, char *argv[])
     Init_Service_Handlers();
     /* Device_Init resets the object-name; set it after handlers are installed. */
     Device_Object_Name_ANSI_Init(device_name);
+    /* Default stack passwords are "filister"; clear so no-password DCC/Reinit works. */
+    Device_Reinitialize_Password_Set("");
+    handler_dcc_password_set(NULL);
 
     if (have_av) {
         if (Analog_Value_Create(av_instance) != av_instance) {
@@ -249,6 +269,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "  binary-value:%u %s = %s\n", (unsigned)bv_instance,
             bv_name, bv_value == BINARY_ACTIVE ? "active" : "inactive");
     }
+    fprintf(stderr, "  trend-log count=%u (MAX_TREND_LOGS)\n",
+        (unsigned)Trend_Log_Count());
 
     Send_I_Am(&Handler_Transmit_Buffer[0]);
 
@@ -265,6 +287,7 @@ int main(int argc, char *argv[])
             datalink_maintenance_timer(elapsed_seconds);
             dlenv_maintenance_timer(elapsed_seconds);
             handler_cov_timer_seconds(elapsed_seconds);
+            trend_log_timer((uint16_t)elapsed_seconds);
         }
         if (mstimer_expired(&BACnet_TSM_Timer)) {
             mstimer_reset(&BACnet_TSM_Timer);

@@ -2,9 +2,16 @@
 # SPDX-License-Identifier: MIT
 """BACpypes3 device server for bacnet-interop.
 
-Loads device-baseline-v1 JSON, binds BACnet/IP, emits a single JSON Lines ready
+Loads device-baseline-v2 JSON, binds BACnet/IP, emits a single JSON Lines ready
 event on stdout once the application is live, then serves until SIGTERM/SIGINT.
 Diagnostics go to stderr.
+
+Horizon 2 additions:
+- ReinitializeDevice → SimpleACK (no process restart)
+- Optional UnconfirmedEventNotification emit after the first ReadProperty when
+  BACNET_EMIT_EVENT=1 (destination = request source; no fixed IPs in fixture)
+- Trend Log objects in the fixture are skipped (BACpypes3 ReadRange server is
+  NotImplementedError)
 """
 
 from __future__ import annotations
@@ -19,15 +26,25 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
+from bacpypes3.apdu import (
+    ReadPropertyRequest,
+    ReinitializeDeviceRequest,
+    SimpleAckPDU,
+    UnconfirmedEventNotificationRequest,
+    WritePropertyMultipleRequest,
+)
 from bacpypes3.app import Application
 from bacpypes3.argparse import SimpleArgumentParser
-from bacpypes3.basetypes import Segmentation
+from bacpypes3.basetypes import EventState, EventType, NotifyType, Segmentation, TimeStamp
+from bacpypes3.constructeddata import Array
+from bacpypes3.errors import ExecutionError
 from bacpypes3.local.analog import AnalogValueObjectCmd
 from bacpypes3.local.binary import BinaryValueObjectCmd
+from bacpypes3.primitivedata import Unsigned
 
 
-FIXTURE_DEFAULT = "device-baseline-v1"
-FIXTURE_PATH_DEFAULT = "/fixtures/device/device-baseline-v1.json"
+FIXTURE_DEFAULT = "device-baseline-v2"
+FIXTURE_PATH_DEFAULT = "/fixtures/device/device-baseline-v2.json"
 PORT_DEFAULT = 47808
 
 
@@ -93,6 +110,92 @@ def emit_ready(
     }
     sys.stdout.write(json.dumps(line, separators=(",", ":")) + "\n")
     sys.stdout.flush()
+
+
+def truthy(v: Optional[str]) -> bool:
+    if v is None:
+        return False
+    return v.strip().lower() in ("1", "true", "yes")
+
+
+def install_horizon2_handlers(app: Application, fixture: dict[str, Any]) -> None:
+    """Install ReinitializeDevice, WPM, and optional EventNotification emit hooks."""
+    instance = int(fixture["device_instance"])
+    emit_event = truthy(os.environ.get("BACNET_EMIT_EVENT"))
+    emitted = {"done": False}
+
+    async def do_ReinitializeDeviceRequest(apdu: ReinitializeDeviceRequest) -> None:
+        state = getattr(apdu, "reinitializedStateOfDevice", None)
+        print(f"bacpypes3 ReinitializeDevice state={state!r}", file=sys.stderr, flush=True)
+        await app.response(SimpleAckPDU(context=apdu))
+
+    app.do_ReinitializeDeviceRequest = do_ReinitializeDeviceRequest  # type: ignore[method-assign]
+
+    # Stock BACpypes3 0.0.98 raises NotImplementedError for WPM; implement via write_property.
+    async def do_WritePropertyMultipleRequest(apdu: WritePropertyMultipleRequest) -> None:
+        for spec in apdu.listOfWriteAccessSpecs or []:
+            obj = app.get_object_id(spec.objectIdentifier)
+            if not obj:
+                raise ExecutionError(errorClass="object", errorCode="unknownObject")
+            for pw in spec.listOfProperties or []:
+                property_type = obj.get_property_type(pw.propertyIdentifier)
+                array_index = pw.propertyArrayIndex
+                priority = pw.priority
+                cast_type = property_type
+                if issubclass(property_type, Array):
+                    if array_index is None:
+                        pass
+                    elif array_index == 0:
+                        cast_type = Unsigned
+                    else:
+                        cast_type = property_type._subtype
+                property_value = pw.value.cast_out(
+                    cast_type, null=(priority is not None)
+                )
+                await obj.write_property(
+                    pw.propertyIdentifier, property_value, array_index, priority
+                )
+        await app.response(SimpleAckPDU(context=apdu))
+
+    app.do_WritePropertyMultipleRequest = do_WritePropertyMultipleRequest  # type: ignore[method-assign]
+
+    if not emit_event:
+        return
+
+    orig_rp = app.do_ReadPropertyRequest
+
+    async def do_ReadPropertyRequest(apdu: ReadPropertyRequest) -> None:
+        await orig_rp(apdu)
+        if emitted["done"]:
+            return
+        dest = getattr(apdu, "pduSource", None)
+        if dest is None:
+            return
+        emitted["done"] = True
+        # TimeStamp.as_sequenceNumber(n) is buggy in 0.0.98 when n is not None.
+        note = UnconfirmedEventNotificationRequest(
+            processIdentifier=1,
+            initiatingDeviceIdentifier=("device", instance),
+            eventObjectIdentifier=("analog-value", 1),
+            timeStamp=TimeStamp(sequenceNumber=1),
+            notificationClass=1,
+            priority=100,
+            eventType=EventType("changeOfState"),
+            messageText="interop-event",
+            notifyType=NotifyType("alarm"),
+            ackRequired=False,
+            fromState=EventState("normal"),
+            toState=EventState("offnormal"),
+        )
+        note.pduDestination = dest
+        try:
+            await app.request(note)
+            print(f"bacpypes3 emitted UnconfirmedEventNotification to {dest!r}", file=sys.stderr, flush=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"bacpypes3 event emit failed: {exc}", file=sys.stderr, flush=True)
+
+    app.do_ReadPropertyRequest = do_ReadPropertyRequest  # type: ignore[method-assign]
+    print("bacpypes3 BACNET_EMIT_EVENT=1 (emit once after first ReadProperty)", file=sys.stderr, flush=True)
 
 
 def build_app(
@@ -176,8 +279,13 @@ def build_app(
                     description=str(obj.get("description", f"{fixture.get('fixture', 'device')} binary value")),
                 )
             )
+        elif otype in ("trend-log", "notification-class"):
+            # BACpypes3 0.0.98 has no server ReadRange; skip TL. NC optional.
+            print(f"skipping unsupported object type {otype!r}", file=sys.stderr)
         else:
             print(f"skipping unsupported object type {otype!r}", file=sys.stderr)
+
+    install_horizon2_handlers(app, fixture)
     return app
 
 

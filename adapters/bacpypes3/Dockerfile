@@ -24,7 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV PATH="/opt/venv/bin:${PATH}" \
     ADAPTER_VERSION=${ADAPTER_VERSION} \
-    FIXTURE=device-baseline-v1 \
+    FIXTURE=device-baseline-v2 \
+    DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v2.json \
     BACNET_IP_PORT=47808 \
     DEVICE_INSTANCE=1234 \
     DEVICE_NAME=InteropDevice \
@@ -38,6 +39,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
 
 COPY adapters/bacpypes3/device_server.py /usr/local/bin/device_server.py
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
+COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
 
 RUN chmod 755 /usr/local/bin/device_server.py
 

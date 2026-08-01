@@ -35,13 +35,14 @@ RUN addgroup --system --gid 10001 adapter \
 
 ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
     BACNET4J_VERSION=${BACNET4J_VERSION} \
-    FIXTURE=device-baseline-v1 \
-    DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v1.json \
+    FIXTURE=device-baseline-v2 \
+    DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v2.json \
     BACNET_IP_PORT=47808 \
     JAVA_TOOL_OPTIONS="-Dorg.slf4j.simpleLogger.defaultLogLevel=warn"
 
 COPY --from=build /tmp/device_server.jar /usr/local/lib/device_server.jar
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
+COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
 
 USER adapter
 EXPOSE 47808/udp

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/otfabric/bacnet-interop/fixtures/schema/device.schema.json",
   "title": "bacnet-interop live device fixture",
-  "description": "Object graph advertised by Horizon 1 peer adapters (device-baseline-v1).",
+  "description": "Object graph advertised by Horizon peer adapters (device-baseline-v1/v2).",
   "type": "object",
   "additionalProperties": false,
   "required": ["fixture", "device_instance", "device_name", "port", "objects"],
@@ -63,7 +63,17 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["device", "analog-value", "binary-value", "analog-input", "analog-output", "binary-input", "binary-output"]
+          "enum": [
+            "device",
+            "analog-value",
+            "binary-value",
+            "analog-input",
+            "analog-output",
+            "binary-input",
+            "binary-output",
+            "trend-log",
+            "notification-class"
+          ]
         },
         "instance": {
           "type": "integer",
