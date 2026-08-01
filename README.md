@@ -130,6 +130,18 @@ make build              # Build bacnet-stack, bacpypes3, bacnet4j, and bip-route
 make smoke              # Start each image, assert event=ready, stop
 ```
 
+## Upstream candidate probe
+
+Weekly (and `workflow_dispatch`) [Upstream candidates](.github/workflows/candidate.yml) builds each peer adapter against the newest upstream without changing release pins:
+
+| Job | Resolves |
+|---|---|
+| `bacnet-stack-latest-tag` | newest `bacnet-stack-*` tag on [bacnet-stack/bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
+| `bacpypes3-latest` | latest [bacpypes3](https://pypi.org/project/bacpypes3/) on PyPI |
+| `bacnet4j-latest` | Maven `<release>` from the RadixIoT ias-release repo |
+
+Jobs use `continue-on-error` so a broken tip does not fail the workflow run. Pin bumps remain a deliberate release decision.
+
 ## Consuming from go-bacnet
 
 Interop tests live under `go-bacnet` with `//go:build interop`. Typical lifecycle:
