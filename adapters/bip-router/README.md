@@ -39,10 +39,14 @@ docker network connect bacnet-net-b bip-router
 docker start -a bip-router
 ```
 
-`entrypoint.sh` waits for `eth0`/`eth1` IPv4 addresses, then binds UDP/47808 on
-both. Network numbers default to `1,2` (`BACNET_NETWORKS`).
+`entrypoint.sh` binds UDP/47808 on both addresses. Prefer explicit
+`BACNET_ADDR_NET1` / `BACNET_ADDR_NET2` (used by `go-bacnet` interop and smoke);
+falling back to eth0/eth1 is unsafe because Docker iface order after
+`create`+`connect` is not stable. Network numbers default to `1,2`
+(`BACNET_NETWORKS`).
 
-Environment: `ADAPTER_VERSION`, `BACNET_IP_PORT`, `BACNET_NETWORKS`.
+Environment: `ADAPTER_VERSION`, `BACNET_IP_PORT`, `BACNET_NETWORKS`,
+`BACNET_ADDR_NET1`, `BACNET_ADDR_NET2`.
 
 ## Readiness
 

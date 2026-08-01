@@ -2,7 +2,7 @@
 
 Containerized [bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) peer for [`bacnet-interop`](../..).
 
-**Status:** fixture-driven device-server image. Pin: `bacnet-stack-1.3.8` (`BACNET_STACK_SHA` in Dockerfile).
+**Status:** fixture-driven device-server image. Pin: `bacnet-stack-1.6.0` (`BACNET_STACK_SHA` in Dockerfile).
 
 ## Role
 
@@ -37,7 +37,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 Stdout is a single JSON Lines ready event after the BACnet/IP UDP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.3.8"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 `device_server` diagnostics go to stderr. See [`PLAN.md`](../../PLAN.md).

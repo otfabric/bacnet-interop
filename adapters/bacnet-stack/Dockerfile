@@ -16,9 +16,9 @@ ARG DEBIAN_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca
 FROM debian:bookworm-slim@${DEBIAN_DIGEST} AS bacnet-stack-build
 
 ARG BACNET_STACK_REPO=https://github.com/bacnet-stack/bacnet-stack.git
-# Tag bacnet-stack-1.3.8
-ARG BACNET_STACK_SHA=3e0370eee156ead7a7ceccd0f28dedd381ab5cae
-ARG BACNET_STACK_VERSION=bacnet-stack-1.3.8
+# Tag bacnet-stack-1.6.0 (latest official release tag)
+ARG BACNET_STACK_SHA=9bc3cfa07aab98852de432fa24079f4b4b6b7eed
+ARG BACNET_STACK_VERSION=bacnet-stack-1.6.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
@@ -61,7 +61,7 @@ COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2
 RUN chmod 755 /usr/local/bin/entrypoint.sh /usr/local/bin/device_server /usr/local/bin/run_server.py
 
 ARG ADAPTER_VERSION=dev
-ARG BACNET_STACK_VERSION=bacnet-stack-1.3.8
+ARG BACNET_STACK_VERSION=bacnet-stack-1.6.0
 ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
     FIXTURE=device-baseline-v2 \
     DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v2.json \

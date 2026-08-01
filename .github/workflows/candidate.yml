@@ -25,27 +25,28 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Resolve latest bacnet-stack tag
+      - name: Resolve latest bacnet-stack release tag
         id: tip
         run: |
           set -euo pipefail
+          # Official release tags only: bacnet-stack-X.Y.Z (no GitHub Releases API;
+          # ignore master tip / pre-release / non-semver tags).
           tag="$(
-            git ls-remote --tags --refs https://github.com/bacnet-stack/bacnet-stack.git 'bacnet-stack-*' \
+            git ls-remote --tags --refs https://github.com/bacnet-stack/bacnet-stack.git \
               | awk '{print $2}' \
               | sed 's|refs/tags/||' \
+              | grep -E '^bacnet-stack-[0-9]+\.[0-9]+\.[0-9]+$' \
               | sort -V \
               | tail -1
           )"
           test -n "$tag"
           sha="$(git ls-remote --tags --refs https://github.com/bacnet-stack/bacnet-stack.git "refs/tags/${tag}" | awk '{print $1}')"
           test -n "$sha"
-          tip_sha="$(git ls-remote https://github.com/bacnet-stack/bacnet-stack.git HEAD | awk '{print $1}')"
           {
             echo "tag=${tag}"
             echo "sha=${sha}"
-            echo "tip_sha=${tip_sha}"
           } >> "$GITHUB_OUTPUT"
-          echo "candidate bacnet-stack tag=${tag} sha=${sha} (master tip=${tip_sha})"
+          echo "candidate bacnet-stack tag=${tag} sha=${sha}"
 
       - name: Read release pin
         id: pin
@@ -75,7 +76,6 @@ jobs:
           {
             echo "bacnet-stack_candidate_tag=${{ steps.tip.outputs.tag }}"
             echo "bacnet-stack_candidate_sha=${{ steps.tip.outputs.sha }}"
-            echo "bacnet-stack_master_tip=${{ steps.tip.outputs.tip_sha }}"
             echo "release_pin_sha=${{ steps.pin.outputs.sha }}"
             echo "release_pin_version=${{ steps.pin.outputs.version }}"
             echo "NOTE: Dockerfile release pins were not modified"
@@ -215,8 +215,10 @@ jobs:
           pin_b4j="$(sed -n 's/^ARG BACNET4J_VERSION=//p' adapters/bacnet4j/Dockerfile | head -1)"
 
           cand_stack="$(
-            git ls-remote --tags --refs https://github.com/bacnet-stack/bacnet-stack.git 'bacnet-stack-*' \
-              | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1
+            git ls-remote --tags --refs https://github.com/bacnet-stack/bacnet-stack.git \
+              | awk '{print $2}' | sed 's|refs/tags/||' \
+              | grep -E '^bacnet-stack-[0-9]+\.[0-9]+\.[0-9]+$' \
+              | sort -V | tail -1
           )"
           cand_bacp="$(python3 - <<'PY'
           import json, urllib.request
