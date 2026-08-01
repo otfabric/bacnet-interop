@@ -103,7 +103,7 @@ Licensing note: peer stacks retain their upstream licenses inside adapter images
 Each server-mode adapter emits a single JSON Lines readiness event on stdout before accepting BACnet/IP traffic:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.3.8"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 - Stdout is JSON Lines only (ready events; optional future probe results).
@@ -132,15 +132,20 @@ make smoke              # Start each image, assert event=ready, stop
 
 ## Upstream candidate probe
 
-Weekly (and `workflow_dispatch`) [Upstream candidates](.github/workflows/candidate.yml) builds each peer adapter against the newest upstream without changing release pins:
+Weekly (and `workflow_dispatch`) [Upstream candidates](.github/workflows/candidate.yml)
+resolves each peer pin vs latest upstream, builds a candidate image, and writes a
+**Decision table** Job Summary (same pattern as `snap7-interop` / `mms-interop`).
+Release pins are never mutated.
 
-| Job | Resolves |
+| Job | Resolves / builds |
 |---|---|
-| `bacnet-stack-latest-tag` | newest `bacnet-stack-*` tag on [bacnet-stack/bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
-| `bacpypes3-latest` | latest [bacpypes3](https://pypi.org/project/bacpypes3/) on PyPI |
-| `bacnet4j-latest` | Maven `<release>` from the RadixIoT ias-release repo |
+| `bacnet-stack` | newest `bacnet-stack-X.Y.Z` tag on [bacnet-stack/bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
+| `bacpypes3` | latest [bacpypes3](https://pypi.org/project/bacpypes3/) on PyPI |
+| `bacnet4j` | Maven `<release>` from the RadixIoT ias-release repo |
+| `Decision table` | pin vs latest + candidate build outcome |
 
-Jobs use `continue-on-error` so a broken tip does not fail the workflow run. Pin bumps remain a deliberate release decision.
+Build steps use `continue-on-error` so a broken upstream does not fail the run.
+Pin bumps remain a deliberate release decision.
 
 ## Consuming from go-bacnet
 
