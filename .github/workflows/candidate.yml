@@ -1,0 +1,254 @@
+name: Upstream candidates
+run-name: "Candidate upstream probe by @${{ github.actor }}"
+
+# Exercises newer upstream peer stacks without mutating Dockerfile / requirements pins.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PLATFORM: linux/amd64
+
+jobs:
+  candidate-bacnet-stack:
+    name: bacnet-stack-latest-tag
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Resolve latest bacnet-stack tag
+        id: tip
+        run: |
+          set -euo pipefail
+          tag="$(
+            git ls-remote --tags --refs https://github.com/bacnet-stack/bacnet-stack.git 'bacnet-stack-*' \
+              | awk '{print $2}' \
+              | sed 's|refs/tags/||' \
+              | sort -V \
+              | tail -1
+          )"
+          test -n "$tag"
+          sha="$(git ls-remote --tags --refs https://github.com/bacnet-stack/bacnet-stack.git "refs/tags/${tag}" | awk '{print $1}')"
+          test -n "$sha"
+          tip_sha="$(git ls-remote https://github.com/bacnet-stack/bacnet-stack.git HEAD | awk '{print $1}')"
+          {
+            echo "tag=${tag}"
+            echo "sha=${sha}"
+            echo "tip_sha=${tip_sha}"
+          } >> "$GITHUB_OUTPUT"
+          echo "candidate bacnet-stack tag=${tag} sha=${sha} (master tip=${tip_sha})"
+
+      - name: Read release pin
+        id: pin
+        run: |
+          set -euo pipefail
+          sha="$(sed -n 's/^ARG BACNET_STACK_SHA=//p' adapters/bacnet-stack/Dockerfile | head -1)"
+          ver="$(sed -n 's/^ARG BACNET_STACK_VERSION=//p' adapters/bacnet-stack/Dockerfile | head -1)"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "version=${ver}" >> "$GITHUB_OUTPUT"
+
+      - name: Build bacnet-stack image with candidate pin
+        run: |
+          set -euo pipefail
+          docker buildx build --platform="${PLATFORM}" --load \
+            -f adapters/bacnet-stack/Dockerfile \
+            --build-arg "BACNET_STACK_SHA=${{ steps.tip.outputs.sha }}" \
+            --build-arg "BACNET_STACK_VERSION=${{ steps.tip.outputs.tag }}" \
+            --build-arg ADAPTER_VERSION=candidate \
+            -t bacnet-interop-bacnet-stack:candidate \
+            .
+
+      - name: Record candidate result
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p dist/candidate
+          {
+            echo "bacnet-stack_candidate_tag=${{ steps.tip.outputs.tag }}"
+            echo "bacnet-stack_candidate_sha=${{ steps.tip.outputs.sha }}"
+            echo "bacnet-stack_master_tip=${{ steps.tip.outputs.tip_sha }}"
+            echo "release_pin_sha=${{ steps.pin.outputs.sha }}"
+            echo "release_pin_version=${{ steps.pin.outputs.version }}"
+            echo "NOTE: Dockerfile release pins were not modified"
+          } | tee dist/candidate/bacnet-stack.txt
+
+  candidate-bacpypes3:
+    name: bacpypes3-latest
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Resolve latest bacpypes3 on PyPI
+        id: pypi
+        run: |
+          set -euo pipefail
+          ver="$(python3 - <<'PY'
+          import json, urllib.request
+          data = json.load(urllib.request.urlopen("https://pypi.org/pypi/bacpypes3/json"))
+          print(data["info"]["version"])
+          PY
+          )"
+          echo "version=${ver}" >> "$GITHUB_OUTPUT"
+          echo "candidate bacpypes3==${ver}"
+
+      - name: Read release pin
+        id: pin
+        run: |
+          set -euo pipefail
+          ver="$(sed -n 's/^bacpypes3==//p' adapters/bacpypes3/requirements.txt | head -1)"
+          echo "version=${ver}" >> "$GITHUB_OUTPUT"
+
+      - name: Build bacpypes3 image with candidate pin
+        run: |
+          set -euo pipefail
+          cp adapters/bacpypes3/requirements.txt /tmp/requirements.release
+          echo "bacpypes3==${{ steps.pypi.outputs.version }}" > adapters/bacpypes3/requirements.txt
+          docker buildx build --platform="${PLATFORM}" --load \
+            -f adapters/bacpypes3/Dockerfile \
+            --build-arg "BACPYPES3_VERSION=${{ steps.pypi.outputs.version }}" \
+            --build-arg ADAPTER_VERSION=candidate \
+            -t bacnet-interop-bacpypes3:candidate \
+            .
+          mv /tmp/requirements.release adapters/bacpypes3/requirements.txt
+
+      - name: Record candidate result
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p dist/candidate
+          {
+            echo "bacpypes3_candidate=${{ steps.pypi.outputs.version }}"
+            echo "release_pin=${{ steps.pin.outputs.version }}"
+            echo "NOTE: requirements.txt / Dockerfile release pins were not modified"
+          } | tee dist/candidate/bacpypes3.txt
+
+  candidate-bacnet4j:
+    name: bacnet4j-latest
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Resolve latest BACnet4J on Maven
+        id: maven
+        run: |
+          set -euo pipefail
+          ver="$(python3 - <<'PY'
+          import urllib.request
+          import xml.etree.ElementTree as ET
+
+          url = (
+              "https://maven.mangoautomation.net/repository/ias-release/"
+              "com/infiniteautomation/bacnet4j/maven-metadata.xml"
+          )
+          root = ET.fromstring(urllib.request.urlopen(url, timeout=60).read())
+          release = root.findtext("./versioning/release")
+          if not release:
+              raise SystemExit("maven-metadata.xml missing versioning/release")
+          print(release)
+          PY
+          )"
+          echo "version=${ver}" >> "$GITHUB_OUTPUT"
+          echo "candidate bacnet4j==${ver}"
+
+      - name: Read release pin
+        id: pin
+        run: |
+          set -euo pipefail
+          ver="$(sed -n 's/^ARG BACNET4J_VERSION=//p' adapters/bacnet4j/Dockerfile | head -1)"
+          echo "version=${ver}" >> "$GITHUB_OUTPUT"
+
+      - name: Build bacnet4j image with candidate pin
+        run: |
+          set -euo pipefail
+          docker buildx build --platform="${PLATFORM}" --load \
+            -f adapters/bacnet4j/Dockerfile \
+            --build-arg "BACNET4J_VERSION=${{ steps.maven.outputs.version }}" \
+            --build-arg ADAPTER_VERSION=candidate \
+            -t bacnet-interop-bacnet4j:candidate \
+            .
+
+      - name: Record candidate result
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p dist/candidate
+          {
+            echo "bacnet4j_candidate=${{ steps.maven.outputs.version }}"
+            echo "release_pin=${{ steps.pin.outputs.version }}"
+            echo "NOTE: Dockerfile / pom.xml release pins were not modified"
+          } | tee dist/candidate/bacnet4j.txt
+
+  summarize:
+    name: Summarize candidates
+    runs-on: ubuntu-latest
+    needs: [candidate-bacnet-stack, candidate-bacpypes3, candidate-bacnet4j]
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Re-run resolution only for the summary table (builds already exercised above).
+      - name: Compare pins to candidates
+        run: |
+          set -euo pipefail
+          pin_stack="$(sed -n 's/^ARG BACNET_STACK_VERSION=//p' adapters/bacnet-stack/Dockerfile | head -1)"
+          pin_bacp="$(sed -n 's/^bacpypes3==//p' adapters/bacpypes3/requirements.txt | head -1)"
+          pin_b4j="$(sed -n 's/^ARG BACNET4J_VERSION=//p' adapters/bacnet4j/Dockerfile | head -1)"
+
+          cand_stack="$(
+            git ls-remote --tags --refs https://github.com/bacnet-stack/bacnet-stack.git 'bacnet-stack-*' \
+              | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1
+          )"
+          cand_bacp="$(python3 - <<'PY'
+          import json, urllib.request
+          print(json.load(urllib.request.urlopen("https://pypi.org/pypi/bacpypes3/json"))["info"]["version"])
+          PY
+          )"
+          cand_b4j="$(python3 - <<'PY'
+          import urllib.request
+          import xml.etree.ElementTree as ET
+          url = (
+              "https://maven.mangoautomation.net/repository/ias-release/"
+              "com/infiniteautomation/bacnet4j/maven-metadata.xml"
+          )
+          print(ET.fromstring(urllib.request.urlopen(url, timeout=60).read()).findtext("./versioning/release"))
+          PY
+          )"
+
+          {
+            echo "## Upstream candidate probe"
+            echo ""
+            echo "| Upstream | Release pin | Candidate | Drift |"
+            echo "|---|---|---|---|"
+            for row in \
+              "bacnet-stack|${pin_stack}|${cand_stack}" \
+              "bacpypes3|${pin_bacp}|${cand_bacp}" \
+              "bacnet4j|${pin_b4j}|${cand_b4j}"
+            do
+              IFS='|' read -r name pin cand <<<"$row"
+              if [ "$pin" = "$cand" ]; then drift=no; else drift=yes; fi
+              echo "| ${name} | \`${pin}\` | \`${cand}\` | ${drift} |"
+            done
+            echo ""
+            echo "Build jobs are \`continue-on-error\`; check job logs for compile/install failures."
+            echo "Release pins in Dockerfiles / requirements.txt were not modified."
+          } | tee "$GITHUB_STEP_SUMMARY"
