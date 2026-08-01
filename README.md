@@ -4,6 +4,8 @@ Interoperability **infrastructure** for [`go-bacnet`](https://github.com/otfabri
 
 This repository owns adapter images, fixture corpora, and provenance metadata. It does **not** own assertions about the Go library. Interoperability scenarios, pass/fail decisions, and compatibility claims live in [`go-bacnet/interop`](https://github.com/otfabric/go-bacnet/tree/main/interop) and consume the infrastructure published here.
 
+**Ownership direction is one-way:** `go-bacnet` depends on `bacnet-interop`. This repository must never check out, build, import, or CI-test against `go-bacnet`.
+
 ```text
                bacnet-interop
           containers + fixtures + provenance
@@ -150,7 +152,7 @@ make interop
 
 - Make
 - `python3` for fixture validation
-- Docker (for `make build` / `make smoke` and consumer interop)
+- Docker (for `make build` / `make smoke`)
 
 ## License
 

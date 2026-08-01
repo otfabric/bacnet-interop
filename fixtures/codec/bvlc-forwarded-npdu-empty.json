@@ -22,7 +22,7 @@
   "id": "bvlc-forwarded-npdu-empty",
   "description": "BVLC Forwarded-NPDU with origin 10.0.0.5:47808 and empty NPDU",
   "expect": {
-    "semantic_decode_equal": false,
+    "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
@@ -33,5 +33,11 @@
     "horizon-1",
     "gate-3"
   ],
-  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+  "operation": "decode_bvlc",
+  "expected": {
+    "function": 4,
+    "origin_ip": "10.0.0.5",
+    "origin_port": 47808,
+    "payload_len": 2
+  }
 }

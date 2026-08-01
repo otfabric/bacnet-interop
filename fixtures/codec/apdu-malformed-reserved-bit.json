@@ -11,28 +11,25 @@
   },
   "standard": {
     "base": "ANSI/ASHRAE 135-2024",
-    "protocol_revision": 31
+    "protocol_revision": 31,
+    "clauses": ["20.1.2"]
   },
   "license": {
-    "status": "malformed-constructed"
+    "status": "malformed-constructed",
+    "notes": "Confirmed-Request reserved bit 0 set"
   },
-  "id": "tag-malformed-truncated-context",
-  "description": "Context tag claims 4 value octets but only 1 remains",
+  "id": "apdu-malformed-reserved-bit",
+  "description": "Confirmed-Request with reserved low bit set",
   "expect": {
-    "semantic_decode_equal": true,
+    "semantic_decode_equal": false,
     "deterministic_reencode_equal": false,
     "original_bytes_equal": false
   },
-  "input_hex": "0c02",
-  "tags": [
-    "tags",
-    "malformed",
-    "horizon-1",
-    "gate-3"
-  ],
-  "operation": "decode_tag",
+  "input_hex": "0105010c",
+  "tags": ["apdu", "malformed", "horizon-1", "gate-3"],
+  "operation": "decode_read_property",
   "expected_error": {
     "category": "malformed",
-    "layer": "tag"
+    "layer": "apdu"
   }
 }

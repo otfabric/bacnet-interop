@@ -19,7 +19,7 @@
   "id": "apdu-reject",
   "description": "Reject PDU invoke=2 reason=invalid-tag(2)",
   "expect": {
-    "semantic_decode_equal": false,
+    "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
@@ -30,5 +30,9 @@
     "horizon-1",
     "gate-3"
   ],
-  "notes": "semantic_decode_equal deferred until operation/expected is authored."
+  "operation": "decode_reject",
+  "expected": {
+    "invoke_id": 2,
+    "reason": 2
+  }
 }
