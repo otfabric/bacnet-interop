@@ -52,7 +52,7 @@ Reject undocumented vendor dumps.
 
 | Deliverable | Status |
 |---|---|
-| bacnet-stack fixture-driven `device_server` | done (`bacnet-stack-1.3.8`) |
+| bacnet-stack fixture-driven `device_server` | done (`bacnet-stack-1.6.0`) |
 | BACpypes3 `device_server.py` | done (`bacpypes3==0.0.98`) |
 | BACnet4J `DeviceServer.java` | done (`bacnet4j==6.1.0`) |
 | BIP↔BIP topology router (`bip-router`) | done (interop fixture) |
@@ -98,7 +98,7 @@ Fixed-sequence JSON Lines **client probe** adapters remain future work.
 Freeze the server ready event:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.3.8"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 Required fields:
