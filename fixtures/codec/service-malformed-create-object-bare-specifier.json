@@ -1,0 +1,41 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "notes": "Pre-v0.2.3 go-bacnet form: bare objectIdentifier [1] without objectSpecifier [0] wrapper",
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "21"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-malformed-create-object-bare-specifier",
+  "description": "Malformed CreateObject bare CHOICE (missing objectSpecifier [0] wrapper)",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "1c00800065",
+  "tags": [
+    "service",
+    "create-object",
+    "malformed"
+  ],
+  "operation": "decode_create_object",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
+  }
+}

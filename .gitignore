@@ -33,6 +33,13 @@ tmp/
 *.tmp
 *.log
 *.o
+*.a
+*.so
+*.dylib
+
+# Java / Maven (never commit adapter build output or downloaded deps)
+adapters/**/target/
+*.class
 
 # Coverage / reports (future smoke)
 coverage/

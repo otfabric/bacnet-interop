@@ -20,13 +20,13 @@
     "status": "independently-generated"
   },
   "id": "service-atomic-write-file-ack",
-  "description": "AtomicWriteFile stream ACK start position",
+  "description": "AtomicWriteFile stream ACK: context [0] Signed (not constructed SEQUENCE)",
   "expect": {
     "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "0e31050f",
+  "input_hex": "0905",
   "tags": [
     "service",
     "file"

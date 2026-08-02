@@ -9,10 +9,16 @@ Containerized [bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) peer 
 Primary **executable** C oracle for Horizon 1 / current H2 peer surface:
 
 - Custom `device_server` linked against pinned bacnet-stack (not stock `bacserv`)
-- Object graph loaded from `device-baseline-v2.json` (device + AV-1 + BV-1 + TrendLog)
+- Object graph loaded from fixture JSON (device + AV/BV + optional File + NC + TrendLog)
 - Who-Is / I-Am, Who-Has / I-Have, ReadProperty, RPM, WriteProperty, WPM,
   SubscribeCOV, ReadRange byPosition, DeviceCommunicationControl enable,
   ReinitializeDevice warmstart
+- AtomicReadFile / AtomicWriteFile (`device-baseline-v4`; posix relative paths)
+- CreateObject / DeleteObject (`device-baseline-v5`; AV/BV creatable/deletable)
+- AddListElement / RemoveListElement on Notification Class `Recipient_List`
+  (NC instances 0..MAX after `Notification_Class_Init`; used with v3 NC-1)
+- GetAlarmSummary / GetEventInformation / AcknowledgeAlarm handlers registered
+  when `INTRINSIC_REPORTING` is enabled
 
 `go-bacnet` must never link against bacnet-stack. The peer runs only as a separate image under its upstream license; distribution must preserve that license and corresponding source obligations.
 
@@ -20,7 +26,7 @@ Primary **executable** C oracle for Horizon 1 / current H2 peer surface:
 
 | Path | Purpose |
 |---|---|
-| `device_server.c` | Slim BACnet/IP server: Device + Network Port + AV + BV + TrendLog |
+| `device_server.c` | Slim BACnet/IP server: Device + Network Port + AV + BV + File + NC + TrendLog |
 | `Makefile` | Builds `device_server` against a bacnet-stack source tree |
 | `run_server.py` | Loads fixture JSON, starts `device_server`, emits `event=ready` after UDP bind |
 | `entrypoint.sh` | `exec python3 run_server.py` |
@@ -56,12 +62,20 @@ Environment overrides: `BACNET_IP_PORT`, `DEVICE_FIXTURE_FILE`, `FIXTURE`, `ADAP
 
 ## Fixture notes
 
-`/fixtures/device/device-baseline-v2.json` is the runtime source of truth
-(`device-baseline-v1` remains frozen for historical digests). This adapter
-constructs the objects listed there (alignment: `full-object-graph`).
-Segmentation of ComplexACK is still limited by bacnet-stack TSM behaviour
-(oversized responses Abort with segmentation-not-supported). Reject for
-unrecognized confirmed services is supported and asserted by `go-bacnet/interop`.
+Images ship `device-baseline-v1`–`v8`. Default runtime fixture is v2
+(`device-baseline-v1` remains frozen for historical digests).
+
+- **v4 File:** `run_server.py` materializes stream/record payloads under a
+  temp cwd and passes relative paths (bacfile-posix rejects absolute paths).
+- **v5 lifecycle:** multiple AV instances (including AV-100); Create/Delete
+  handlers registered. AV `Object_Name` is not writable via CreateObject
+  initial values on this stack — tests create bare then read Object_Name.
+- **v3 NC list:** Notification Class objects are always present after init
+  (instances 0 and 1 with default `MAX_NOTIFICATION_CLASSES=2`); Add/Remove
+  ListElement target property `Recipient_List` (102).
+- Segmentation of ComplexACK is still limited by bacnet-stack TSM behaviour
+  (oversized responses Abort with segmentation-not-supported). Reject for
+  unrecognized confirmed services is supported and asserted by `go-bacnet/interop`.
 
 Routed RP uses this image as the remote device behind [`bip-router`](../bip-router/README.md). BBMD/foreign-device peer mode is not implemented here (BACpypes3 / BACnet4J).
 

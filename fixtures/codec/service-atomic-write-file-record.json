@@ -1,0 +1,46 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "17"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-atomic-write-file-record",
+  "description": "AtomicWriteFile record access request (app ObjectIdentifier + CHOICE 1)",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "c4028000021e31002102616161621f",
+  "tags": [
+    "service",
+    "file"
+  ],
+  "operation": "decode_atomic_write_file",
+  "expected": {
+    "file": {
+      "type": 10,
+      "instance": 2
+    },
+    "access": "record",
+    "records": [
+      "a",
+      "b"
+    ]
+  }
+}

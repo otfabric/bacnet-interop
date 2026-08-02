@@ -44,9 +44,9 @@
     "BACnet4J is the primary executable peer for file services; bacnet-stack secondary where available."
   ],
   "alignment": {
-    "bacnet-stack": "partial-pending",
+    "bacnet-stack": "live-native",
     "bacpypes3": "unsupported",
-    "bacnet4j": "objects-ready-wire-blocked-B8",
-    "worldiety": "adapter-shim-pending"
+    "bacnet4j": "live-native",
+    "worldiety": "unsupported"
   }
 }

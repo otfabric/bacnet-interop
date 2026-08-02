@@ -39,6 +39,10 @@ Aligned with the [`go-bacnet`](https://github.com/otfabric/go-bacnet) Horizon 1 
 | ReadRange byPosition (TrendLog; bacnet-stack + BACnet4J) | Vendor hardware claims without evidence |
 | Confirmed-request / segmentation stress peers | Multi-BBMD failover |
 | EventNotification emit (BACpypes3 / BACnet4J via `BACNET_EMIT_EVENT`) | |
+| AtomicRead/WriteFile (BACnet4J + bacnet-stack; v4) | BACpypes3 / Worldiety File servers |
+| CreateObject / DeleteObject (BACnet4J + bacnet-stack; v5) | |
+| Add/RemoveListElement NC Recipient_List (BACnet4J + bacnet-stack) | |
+| GetAlarmSummary (BACnet4J; v3) | COV-multiple on BACnet4J 6.1.0 |
 | DeviceCommunicationControl enable (bacnet-stack) | |
 | ReinitializeDevice warmstart | |
 | Routed network peer (IP↔remote via `bip-router`) | |

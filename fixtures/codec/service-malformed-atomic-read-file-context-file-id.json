@@ -1,0 +1,40 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "17"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-malformed-atomic-read-file-context-file-id",
+  "description": "Malformed AtomicReadFile: pre-v0.2.3 context-tagged fileIdentifier + CHOICE tag 1",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "0c028000011e310021101f",
+  "tags": [
+    "service",
+    "file",
+    "malformed"
+  ],
+  "operation": "decode_atomic_read_file",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
+  }
+}

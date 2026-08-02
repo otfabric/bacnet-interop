@@ -16,7 +16,13 @@ Primary **Java** peer oracle for fixture-driven interop:
 - Optional `BACNET_EMIT_EVENT=1` UnconfirmedEventNotification emit (**adapter-shim**)
 - Optional peer-as-BBMD (`BACNET_BBMD=1`) and small MaxAPDU for segmentation stress
 - Rejects segmented confirmed-request receive (registered gap vs BACpypes3)
-- AtomicReadFile live path vs go-bacnet currently blocked (BLOCKERS B8)
+- AtomicReadFile/WriteFile live (**live-multi-peer** with bacnet-stack; go-bacnet
+  `v0.2.3` request + ACK wire)
+- CreateObject/DeleteObject for `device-baseline-v5` via fixture `object_lifecycle`
+  (registers AV/BV creators; marks `precreated_deletable`)
+- AddListElement / RemoveListElement on NC-1 `recipientList`
+- GetAlarmSummary after AV intrinsic Out_Of_Range (v3); COV-multiple still
+  upstream `NotImplementedException`
 
 `go-bacnet` must never link against BACnet4J. The peer runs only as a separate
 image under its upstream license; distribution must preserve that license.
@@ -84,6 +90,8 @@ This adapter constructs commandable COV-capable AV-1, commandable BV-1, and a
 seeded TrendLogObject for ReadRange byPosition. For v3 it also creates AnalogInput,
 NotificationClass, EventEnrollment (after `initialize()`), and enables AV
 intrinsic reporting. For v4 it seeds File stream/record content under `/tmp`.
+For v5 it honors `object_lifecycle`: creatable_types (AV/BV CreateObject
+factories), precreated_deletable (e.g. AV-100), and protected core objects.
 (alignment: `full-object-graph`).
 
 ## Capability tracking

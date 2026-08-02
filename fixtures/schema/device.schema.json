@@ -36,6 +36,52 @@
       "type": "array",
       "items": { "type": "string" }
     },
+    "object_lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "CreateObject/DeleteObject policy for adapters that honor device-baseline-v5.",
+      "properties": {
+        "creatable_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "analog-value",
+              "binary-value",
+              "analog-input",
+              "binary-input",
+              "file"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "precreated_deletable": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/objectRef" }
+        },
+        "protected_objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/objectRef" }
+        },
+        "allocated_instance_range": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum", "maximum"],
+          "properties": {
+            "minimum": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194302
+            },
+            "maximum": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194302
+            }
+          }
+        }
+      }
+    },
     "alignment": {
       "type": "object",
       "additionalProperties": false,
@@ -60,6 +106,37 @@
     }
   },
   "$defs": {
+    "objectRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "instance"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "device",
+            "analog-value",
+            "binary-value",
+            "analog-input",
+            "analog-output",
+            "binary-input",
+            "binary-output",
+            "trend-log",
+            "notification-class",
+            "event-enrollment",
+            "file",
+            "audit-log",
+            "life-safety-point",
+            "life-safety-zone"
+          ]
+        },
+        "instance": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194302
+        }
+      }
+    },
     "object": {
       "type": "object",
       "additionalProperties": false,

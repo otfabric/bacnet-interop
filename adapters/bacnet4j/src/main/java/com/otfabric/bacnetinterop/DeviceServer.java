@@ -11,6 +11,7 @@ import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,12 +29,14 @@ import com.serotonin.bacnet4j.npdu.ip.IpNetwork;
 import com.serotonin.bacnet4j.npdu.ip.IpNetworkBuilder;
 import com.serotonin.bacnet4j.obj.AnalogInputObject;
 import com.serotonin.bacnet4j.obj.AnalogValueObject;
+import com.serotonin.bacnet4j.obj.BACnetObject;
 import com.serotonin.bacnet4j.obj.BinaryValueObject;
 import com.serotonin.bacnet4j.obj.DeviceObject;
 import com.serotonin.bacnet4j.obj.EventEnrollmentObject;
 import com.serotonin.bacnet4j.obj.FileObject;
 import com.serotonin.bacnet4j.obj.NotificationClassObject;
 import com.serotonin.bacnet4j.obj.TrendLogObject;
+import com.serotonin.bacnet4j.service.confirmed.CreateObjectRequest;
 import com.serotonin.bacnet4j.obj.fileAccess.CrlfDelimitedFileAccess;
 import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
@@ -307,6 +310,8 @@ public final class DeviceServer {
             }
         }
 
+        configureObjectLifecycle(localDevice, fixture);
+
         // Diagnostic sinks for messaging / time / group services (device-baseline-v6+).
         localDevice.getEventHandler().addListener(new DeviceEventAdapter() {
             @Override
@@ -359,6 +364,93 @@ public final class DeviceServer {
             stop.countDown();
         }, "bacnet4j-shutdown"));
         stop.await();
+    }
+
+    /**
+     * Fixture-driven CreateObject/DeleteObject support (device-baseline-v5).
+     *
+     * BACnet4J only ships CreateObject creators for a few object types. Register
+     * AnalogValue/BinaryValue via the private creators map, and mark precreated
+     * deletable objects from {@code object_lifecycle}.
+     */
+    @SuppressWarnings("unchecked")
+    private static void configureObjectLifecycle(LocalDevice localDevice, JsonNode fixture) {
+        JsonNode life = fixture.path("object_lifecycle");
+        List<String> creatable = new ArrayList<>();
+        if (life.path("creatable_types").isArray()) {
+            for (JsonNode t : life.withArray("creatable_types")) {
+                creatable.add(t.asText("").trim().toLowerCase());
+            }
+        }
+        if (creatable.isEmpty() && fixture.path("fixture").asText("").contains("v5")) {
+            creatable.add("analog-value");
+            creatable.add("binary-value");
+        }
+        try {
+            Field creatorsField = CreateObjectRequest.class.getDeclaredField("creators");
+            creatorsField.setAccessible(true);
+            Map<ObjectType, CreateObjectRequest.ObjectCreator> creators =
+                    (Map<ObjectType, CreateObjectRequest.ObjectCreator>) creatorsField.get(null);
+            if (creatable.contains("analog-value")) {
+                creators.put(ObjectType.analogValue, (d, inst) -> {
+                    AnalogValueObject av = new AnalogValueObject(
+                            d, inst, "AV-" + inst, 0.0f, EngineeringUnits.noUnits, false);
+                    av.supportCommandable(0.0f);
+                    av.supportCovReporting(0.1f);
+                    return av;
+                });
+                System.err.println("bacnet4j CreateObject creator registered: analog-value");
+            }
+            if (creatable.contains("binary-value")) {
+                creators.put(ObjectType.binaryValue, (d, inst) -> {
+                    BinaryValueObject bv = new BinaryValueObject(
+                            d, inst, "BV-" + inst, BinaryPV.inactive, false);
+                    bv.supportCommandable(BinaryPV.inactive);
+                    bv.supportCovReporting();
+                    return bv;
+                });
+                System.err.println("bacnet4j CreateObject creator registered: binary-value");
+            }
+        } catch (Exception ex) {
+            System.err.println("bacnet4j CreateObject creator registration failed: " + ex);
+        }
+
+        if (life.path("precreated_deletable").isArray()) {
+            for (JsonNode ref : life.withArray("precreated_deletable")) {
+                ObjectType ot = objectTypeFromFixture(ref.path("type").asText(""));
+                int inst = ref.path("instance").asInt(-1);
+                if (ot == null || inst < 0) {
+                    continue;
+                }
+                BACnetObject obj = localDevice.getObject(new ObjectIdentifier(ot, inst));
+                if (obj != null) {
+                    obj.setDeletable(true);
+                    System.err.println("bacnet4j marked deletable: " + ot + ":" + inst);
+                } else {
+                    System.err.println("bacnet4j precreated_deletable missing: " + ot + ":" + inst);
+                }
+            }
+        } else {
+            // Fallback for older v5 fixtures: AV instance >= 100.
+            for (BACnetObject obj : localDevice.getLocalObjects()) {
+                if (obj.getId().getObjectType().equals(ObjectType.analogValue)
+                        && obj.getId().getInstanceNumber() >= 100) {
+                    obj.setDeletable(true);
+                    System.err.println("bacnet4j marked deletable (fallback): " + obj.getId());
+                }
+            }
+        }
+    }
+
+    private static ObjectType objectTypeFromFixture(String type) {
+        return switch (type.trim().toLowerCase()) {
+            case "analog-value" -> ObjectType.analogValue;
+            case "binary-value" -> ObjectType.binaryValue;
+            case "device" -> ObjectType.device;
+            case "analog-input" -> ObjectType.analogInput;
+            case "file" -> ObjectType.file;
+            default -> null;
+        };
     }
 
     private static void createFileObject(LocalDevice localDevice, JsonNode obj, int oinst, String oname,

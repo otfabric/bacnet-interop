@@ -51,12 +51,12 @@
   ],
   "notes": [
     "Supersedes device-baseline-v2 for event/COV completeness work; v2 remains the Worldiety/v0.5.0 baseline.",
-    "Deterministic control: AV-1 Present_Value = 90 → Out_Of_Range → EventNotification (adapters that implement v3).",
-    "COV: multiple subscriptions against AV-1 / AI-1; adapters should support SubscribeCOV and COVProperty where native.",
-    "Peer alignment starts partial until BACnet4J/BACpypes3/Worldiety implement the v3 object graph."
+    "Deterministic control: AV-1 Present_Value = 90 → Out_Of_Range → EventNotification / GetAlarmSummary (BACnet4J).",
+    "NC-1 Recipient_List: AddListElement / RemoveListElement live on BACnet4J + bacnet-stack (stock NC table).",
+    "COV-multiple still blocked on BACnet4J 6.1.0; BACpypes3/Worldiety v3 graph remains partial."
   ],
   "alignment": {
-    "bacnet-stack": "partial-pending",
+    "bacnet-stack": "partial-local",
     "bacpypes3": "partial-pending",
     "bacnet4j": "partial-local",
     "worldiety": "partial-pending"
