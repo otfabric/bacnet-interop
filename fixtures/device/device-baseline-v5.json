@@ -31,15 +31,30 @@
       "description": "Deterministic deletable test object; CreateObject may allocate AV:101+."
     }
   ],
+  "object_lifecycle": {
+    "creatable_types": ["analog-value", "binary-value"],
+    "precreated_deletable": [
+      {"type": "analog-value", "instance": 100}
+    ],
+    "protected_objects": [
+      {"type": "device", "instance": 1234},
+      {"type": "analog-value", "instance": 1},
+      {"type": "binary-value", "instance": 1}
+    ],
+    "allocated_instance_range": {
+      "minimum": 200,
+      "maximum": 299
+    }
+  },
   "notes": [
-    "Creatable types: analog-value with required Object_Name initial property.",
+    "Creatable types: analog-value / binary-value with Object_Name initial property.",
     "Duplicate element / unknown object / inconsistent type / missing required initial property error paths.",
-    "Object-ID allocation: prefer next free AV instance starting at 101."
+    "Object-ID allocation: BACnet4J getNextInstanceObjectNumber; tests prefer explicit AV:101+."
   ],
   "alignment": {
-    "bacnet-stack": "partial-pending",
-    "bacpypes3": "partial-pending",
-    "bacnet4j": "partial-pending",
-    "worldiety": "partial-pending"
+    "bacnet-stack": "live-native",
+    "bacpypes3": "unsupported",
+    "bacnet4j": "live-native",
+    "worldiety": "unsupported"
   }
 }

@@ -4,7 +4,7 @@
     "version": "6.1.0",
     "image_digest": "none"
   },
-  "notes": "CreateObjectRequest.write by objectIdentifier AV-101 without initial values (objectSpecifier [0] CHOICE only)",
+  "notes": "CreateObjectRequest.write AV-101 with Object_Name initial value",
   "capture": {
     "direction": "client-to-server",
     "transport": "bacnet-ip-udp",
@@ -21,14 +21,14 @@
   "license": {
     "status": "independently-generated"
   },
-  "id": "service-create-object",
-  "description": "CreateObject by object identifier AV-101 (Clause 21 objectSpecifier [0])",
+  "id": "service-create-object-with-initial-values",
+  "description": "CreateObject AV-101 with listOfInitialValues [1] Object_Name",
   "expect": {
     "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "0e1c008000650f",
+  "input_hex": "0e1c008000650f1e094d2e750f0041562d435245415445442d3130312f1f",
   "tags": [
     "service",
     "create-object"
@@ -38,6 +38,8 @@
     "object": {
       "type": 2,
       "instance": 101
-    }
+    },
+    "initial_value_count": 1,
+    "object_name": "AV-CREATED-101"
   }
 }

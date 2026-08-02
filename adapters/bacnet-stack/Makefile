@@ -92,8 +92,14 @@ OBJS = $(SRC:.c=.o)
 
 all: $(TARGET)
 
+# Build libbacnet with the same datalink/defines as this adapter so
+# bacfile-posix + AtomicRead/WriteFile + Create/Delete handlers link in.
 lib:
-	$(MAKE) -C $(BACNET_STACK_ROOT)/apps lib
+	$(MAKE) -C $(BACNET_STACK_ROOT)/apps/lib \
+		BACDL=bip \
+		BACDL_DEFINE="$(BACDL_DEFINE)" \
+		BBMD_DEFINE="$(BBMD_DEFINE)" \
+		BACNET_DEFINES="$(BACNET_DEFINES)"
 
 $(TARGET): lib $(OBJS)
 	$(CC) $(PFLAGS) $(OBJS) $(LFLAGS) -o $@

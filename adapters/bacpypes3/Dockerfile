@@ -42,6 +42,12 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
 COPY adapters/bacpypes3/device_server.py /usr/local/bin/device_server.py
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
 COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
+COPY fixtures/device/device-baseline-v3.json /fixtures/device/device-baseline-v3.json
+COPY fixtures/device/device-baseline-v4.json /fixtures/device/device-baseline-v4.json
+COPY fixtures/device/device-baseline-v5.json /fixtures/device/device-baseline-v5.json
+COPY fixtures/device/device-baseline-v6.json /fixtures/device/device-baseline-v6.json
+COPY fixtures/device/device-baseline-v7.json /fixtures/device/device-baseline-v7.json
+COPY fixtures/device/device-baseline-v8.json /fixtures/device/device-baseline-v8.json
 
 RUN chmod 755 /usr/local/bin/device_server.py
 

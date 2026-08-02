@@ -231,6 +231,10 @@
       "path": "fixtures/codec/service-atomic-write-file-ack.json"
     },
     {
+      "id": "service-malformed-atomic-write-file-ack-constructed",
+      "path": "fixtures/codec/service-malformed-atomic-write-file-ack-constructed.json"
+    },
+    {
       "id": "service-atomic-read-file-record",
       "path": "fixtures/codec/service-atomic-read-file-record.json"
     },
@@ -247,8 +251,16 @@
       "path": "fixtures/codec/service-create-object.json"
     },
     {
+      "id": "service-create-object-with-initial-values",
+      "path": "fixtures/codec/service-create-object-with-initial-values.json"
+    },
+    {
       "id": "service-create-object-ack",
       "path": "fixtures/codec/service-create-object-ack.json"
+    },
+    {
+      "id": "service-malformed-create-object-bare-specifier",
+      "path": "fixtures/codec/service-malformed-create-object-bare-specifier.json"
     },
     {
       "id": "service-delete-object",
@@ -305,6 +317,14 @@
     {
       "id": "service-malformed-vt-open",
       "path": "fixtures/codec/service-malformed-vt-open.json"
+    },
+    {
+      "id": "service-atomic-write-file-record",
+      "path": "fixtures/codec/service-atomic-write-file-record.json"
+    },
+    {
+      "id": "service-malformed-atomic-read-file-context-file-id",
+      "path": "fixtures/codec/service-malformed-atomic-read-file-context-file-id.json"
     }
   ]
 }

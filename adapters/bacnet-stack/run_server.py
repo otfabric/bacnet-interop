@@ -4,11 +4,13 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -28,7 +30,52 @@ def load_fixture(path: Path) -> dict[str, Any]:
     return data
 
 
-def server_args(fixture: dict[str, Any]) -> list[str]:
+def materialize_files(fixture: dict[str, Any], work: Path) -> list[list[str]]:
+    """Write fixture File payloads under work/; return CLI args with relative paths.
+
+    bacnet-stack bacfile-posix rejects absolute paths when
+    BACNET_FILE_PATH_RESTRICTED=1 (default). device_server must run with cwd=work.
+    """
+    args: list[list[str]] = []
+    work.mkdir(parents=True, exist_ok=True)
+    for obj in fixture.get("objects") or []:
+        if not isinstance(obj, dict) or obj.get("type") != "file":
+            continue
+        inst = int(obj.get("instance", 0))
+        name = str(obj.get("object_name", f"FILE-{inst}"))
+        access = str(obj.get("access_method", "stream")).strip().lower()
+        rel = f"file-{inst}.bin"
+        path = work / rel
+        if access == "record":
+            records = obj.get("records") or []
+            # CRLF-delimited records for bacfile-posix fgets record access.
+            text = "".join(f"{r}\r\n" for r in records)
+            path.write_bytes(text.encode("utf-8"))
+        else:
+            b64 = obj.get("stream_data_base64")
+            if not b64:
+                raise ValueError(f"file:{inst} missing stream_data_base64")
+            path.write_bytes(base64.b64decode(b64))
+        args.append(
+            [
+                "--file-instance",
+                str(inst),
+                "--file-name",
+                name,
+                "--file-path",
+                rel,
+                "--file-access",
+                "record" if access == "record" else "stream",
+            ]
+        )
+        print(
+            f"bacnet-stack materialized file:{inst} {name} -> {rel} (cwd={work}) access={access}",
+            file=sys.stderr,
+        )
+    return args
+
+
+def server_args(fixture: dict[str, Any], work: Path) -> list[str]:
     args = [
         "--instance",
         str(int(fixture["device_instance"])),
@@ -66,6 +113,8 @@ def server_args(fixture: dict[str, Any]) -> list[str]:
                 "--bv-value",
                 str(pv),
             ]
+    for group in materialize_files(fixture, work):
+        args += group
     if not saw_av:
         args.append("--no-av")
     if not saw_bv:
@@ -110,9 +159,16 @@ def main() -> int:
         return 1
 
     fixture_id = str(fixture.get("fixture", fixture_fallback))
-    args = server_args(fixture)
+    work = Path(tempfile.mkdtemp(prefix="bacnet-interop-files-"))
+    try:
+        args = server_args(fixture, work)
+    except Exception as exc:  # noqa: BLE001
+        print(f"bacnet-stack fixture materialize failed: {exc}", file=sys.stderr)
+        return 1
+
     proc = subprocess.Popen(
         ["device_server", *args],
+        cwd=str(work),
         stdout=sys.stderr,
         stderr=sys.stderr,
     )

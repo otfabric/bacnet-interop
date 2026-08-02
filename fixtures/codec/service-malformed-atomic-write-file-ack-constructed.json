@@ -4,6 +4,7 @@
     "version": "n/a",
     "image_digest": "none"
   },
+  "notes": "Pre-fix go-bacnet form: constructed [0] SEQUENCE instead of context-primitive Signed",
   "capture": {
     "direction": "client-to-server",
     "transport": "bacnet-ip-udp",
@@ -19,21 +20,22 @@
   "license": {
     "status": "independently-generated"
   },
-  "id": "service-atomic-write-file-ack",
-  "description": "AtomicWriteFile stream ACK: context [0] Signed (not constructed SEQUENCE)",
+  "id": "service-malformed-atomic-write-file-ack-constructed",
+  "description": "Malformed AtomicWriteFile ACK constructed CHOICE (must be context Signed)",
   "expect": {
-    "semantic_decode_equal": true,
-    "deterministic_reencode_equal": true,
-    "original_bytes_equal": true
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
   },
-  "input_hex": "0905",
+  "input_hex": "0e31050f",
   "tags": [
     "service",
-    "file"
+    "file",
+    "malformed"
   ],
   "operation": "decode_atomic_write_file_ack",
-  "expected": {
-    "access": "stream",
-    "start_position": 5
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
   }
 }
