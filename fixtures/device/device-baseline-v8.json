@@ -28,9 +28,9 @@
     "Codec-only support is acceptable where no peer can execute a service."
   ],
   "alignment": {
-    "bacnet-stack": "partial-pending",
+    "bacnet-stack": "partial",
     "bacpypes3": "unsupported",
-    "bacnet4j": "partial-pending",
+    "bacnet4j": "partial",
     "worldiety": "unsupported"
   }
 }

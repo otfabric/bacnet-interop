@@ -22,6 +22,13 @@ adapters:
       write_property_multiple: native
       read_range_by_position: native
       cov: native
+      get_alarm_summary: native
+      get_enrollment_summary: unsupported
+      cov_multiple: unsupported
+      messaging_time_sync: native
+      messaging_text: unsupported
+      messaging_private_transfer: native  # unconfirmed only
+      messaging_write_group: native
       event_notification_emit: unsupported
       device_communication_control: native
       reinitialize_device_warmstart: native
@@ -42,6 +49,13 @@ adapters:
       write_property_multiple: adapter-shim  # do_WritePropertyMultipleRequest → write_property
       read_range_by_position: unsupported  # upstream NotImplementedError; TrendLog skipped
       cov: native
+      get_alarm_summary: unsupported
+      get_enrollment_summary: unsupported  # APDU types only; no do_GetEnrollmentSummary
+      cov_multiple: unsupported
+      messaging_time_sync: native  # adapter do_* sinks + operation JSONL
+      messaging_text: native
+      messaging_private_transfer: native
+      messaging_write_group: native
       event_notification_emit: adapter-shim  # BACNET_EMIT_EVENT=1 after first ReadProperty
       device_communication_control: unsupported
       reinitialize_device_warmstart: adapter-shim  # SimpleACK; no process restart
@@ -62,6 +76,13 @@ adapters:
       write_property_multiple: native
       read_range_by_position: native  # TrendLogObject seeded buffer
       cov: native
+      get_alarm_summary: native
+      get_enrollment_summary: native
+      cov_multiple: unsupported  # NotImplementedException
+      messaging_time_sync: native
+      messaging_text: native
+      messaging_private_transfer: native
+      messaging_write_group: unsupported  # WriteGroupRequest.handle NotImplementedException
       event_notification_emit: adapter-shim  # BACNET_EMIT_EVENT=1 after first ReadProperty
       device_communication_control: unsupported
       reinitialize_device_warmstart: adapter-shim  # handler SimpleACK; no process restart
@@ -92,6 +113,13 @@ adapters:
       write_property_multiple: adapter-shim
       read_range_by_position: adapter-shim  # seeded Log_Buffer
       cov: unsupported
+      get_alarm_summary: unsupported
+      get_enrollment_summary: unsupported
+      cov_multiple: unsupported
+      messaging_time_sync: unsupported
+      messaging_text: unsupported
+      messaging_private_transfer: unsupported
+      messaging_write_group: unsupported
       event_notification_emit: unsupported
       device_communication_control: unsupported
       reinitialize_device_warmstart: unsupported

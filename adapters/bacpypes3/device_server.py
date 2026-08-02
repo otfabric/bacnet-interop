@@ -27,10 +27,17 @@ from pathlib import Path
 from typing import Any, Optional
 
 from bacpypes3.apdu import (
+    ConfirmedPrivateTransferRequest,
+    ConfirmedTextMessageRequest,
     ReadPropertyRequest,
     ReinitializeDeviceRequest,
     SimpleAckPDU,
+    TimeSynchronizationRequest,
     UnconfirmedEventNotificationRequest,
+    UnconfirmedPrivateTransferRequest,
+    UnconfirmedTextMessageRequest,
+    UTCTimeSynchronizationRequest,
+    WriteGroupRequest,
     WritePropertyMultipleRequest,
 )
 from bacpypes3.app import Application
@@ -112,6 +119,18 @@ def emit_ready(
     sys.stdout.flush()
 
 
+def emit_operation(operation: str, result: str = "accepted") -> None:
+    """Adapter diagnostic JSON Lines event (not cross-stack semantics)."""
+    line = {
+        "event": "operation",
+        "adapter": "bacpypes3",
+        "operation": operation,
+        "result": result,
+    }
+    sys.stdout.write(json.dumps(line, separators=(",", ":")) + "\n")
+    sys.stdout.flush()
+
+
 def truthy(v: Optional[str]) -> bool:
     if v is None:
         return False
@@ -119,7 +138,7 @@ def truthy(v: Optional[str]) -> bool:
 
 
 def install_horizon2_handlers(app: Application, fixture: dict[str, Any]) -> None:
-    """Install ReinitializeDevice, WPM, and optional EventNotification emit hooks."""
+    """Install ReinitializeDevice, WPM, messaging sinks, and optional EventNotification emit hooks."""
     instance = int(fixture["device_instance"])
     emit_event = truthy(os.environ.get("BACNET_EMIT_EVENT"))
     emitted = {"done": False}
@@ -130,6 +149,40 @@ def install_horizon2_handlers(app: Application, fixture: dict[str, Any]) -> None
         await app.response(SimpleAckPDU(context=apdu))
 
     app.do_ReinitializeDeviceRequest = do_ReinitializeDeviceRequest  # type: ignore[method-assign]
+
+    # Messaging / time / group sinks for device-baseline-v6 (B7d). Stock BACpypes3
+    # has APDU codecs but no application do_* handlers — without these, confirmed
+    # services Reject and unconfirmed services are silently dropped.
+    async def do_TimeSynchronizationRequest(apdu: TimeSynchronizationRequest) -> None:
+        emit_operation("time-synchronization")
+
+    async def do_UTCTimeSynchronizationRequest(apdu: UTCTimeSynchronizationRequest) -> None:
+        emit_operation("utc-time-synchronization")
+
+    async def do_UnconfirmedTextMessageRequest(apdu: UnconfirmedTextMessageRequest) -> None:
+        emit_operation("unconfirmed-text-message")
+
+    async def do_ConfirmedTextMessageRequest(apdu: ConfirmedTextMessageRequest) -> None:
+        emit_operation("confirmed-text-message")
+        await app.response(SimpleAckPDU(context=apdu))
+
+    async def do_UnconfirmedPrivateTransferRequest(apdu: UnconfirmedPrivateTransferRequest) -> None:
+        emit_operation("unconfirmed-private-transfer")
+
+    async def do_ConfirmedPrivateTransferRequest(apdu: ConfirmedPrivateTransferRequest) -> None:
+        emit_operation("confirmed-private-transfer")
+        await app.response(SimpleAckPDU(context=apdu))
+
+    async def do_WriteGroupRequest(apdu: WriteGroupRequest) -> None:
+        emit_operation("write-group")
+
+    app.do_TimeSynchronizationRequest = do_TimeSynchronizationRequest  # type: ignore[method-assign]
+    app.do_UTCTimeSynchronizationRequest = do_UTCTimeSynchronizationRequest  # type: ignore[method-assign]
+    app.do_UnconfirmedTextMessageRequest = do_UnconfirmedTextMessageRequest  # type: ignore[method-assign]
+    app.do_ConfirmedTextMessageRequest = do_ConfirmedTextMessageRequest  # type: ignore[method-assign]
+    app.do_UnconfirmedPrivateTransferRequest = do_UnconfirmedPrivateTransferRequest  # type: ignore[method-assign]
+    app.do_ConfirmedPrivateTransferRequest = do_ConfirmedPrivateTransferRequest  # type: ignore[method-assign]
+    app.do_WriteGroupRequest = do_WriteGroupRequest  # type: ignore[method-assign]
 
     # Stock BACpypes3 raises NotImplementedError for WPM; implement via write_property.
     async def do_WritePropertyMultipleRequest(apdu: WritePropertyMultipleRequest) -> None:

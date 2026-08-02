@@ -42,7 +42,8 @@ Aligned with the [`go-bacnet`](https://github.com/otfabric/go-bacnet) Horizon 1 
 | AtomicRead/WriteFile (BACnet4J + bacnet-stack; v4) | BACpypes3 / Worldiety File servers |
 | CreateObject / DeleteObject (BACnet4J + bacnet-stack; v5) | |
 | Add/RemoveListElement NC Recipient_List (BACnet4J + bacnet-stack) | |
-| GetAlarmSummary (BACnet4J; v3) | COV-multiple on BACnet4J 6.1.0 |
+| GetAlarmSummary (BACnet4J + bacnet-stack; v3) | COV-multiple (all peers; family codec-only) |
+| GetEnrollmentSummary (BACnet4J; v3) | GetEnrollmentSummary on stack / BACpypes3 / Worldiety |
 | DeviceCommunicationControl enable (bacnet-stack) | |
 | ReinitializeDevice warmstart | |
 | Routed network peer (IP↔remote via `bip-router`) | |
@@ -57,7 +58,11 @@ Do not claim vendor or BTL interoperability from this repository alone. Evidence
 bacnet-interop/
 ├── README.md
 ├── PLAN.md
+├── BLOCKERS.md                 # Open execution work (split IDs)
+├── EVIDENCE.md                 # Labels, unsupported-upstream, deviations
 ├── COVERAGE.md                 # Adapter capability matrix
+├── docs/
+│   └── NETWORK_PEER_SURFACE.md # Native router/BBMD inventory
 ├── Makefile
 ├── LICENSE
 ├── scripts/
@@ -159,6 +164,7 @@ never mutated.
 | `bacnet-stack` | newest `bacnet-stack-X.Y.Z` tag on [bacnet-stack/bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
 | `bacpypes3` | latest [bacpypes3](https://pypi.org/project/bacpypes3/) on PyPI |
 | `bacnet4j` | Maven `<release>` from the RadixIoT ias-release repo |
+| `worldiety` | upstream HEAD on [worldiety/bacnet](https://github.com/worldiety/bacnet) (no release tags) |
 | `Decision table` | pin vs latest + build / ready / Who-Is outcomes |
 
 Build and smoke steps use `continue-on-error` so a broken upstream does not fail

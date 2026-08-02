@@ -16,30 +16,43 @@
 #include <string.h>
 
 #include "bacnet/apdu.h"
+#include "bacnet/bacapp.h"
 #include "bacnet/bacdef.h"
 #include "bacnet/bacdcode.h"
+#include "bacnet/wp.h"
 #include "bacnet/basic/binding/address.h"
 #include "bacnet/basic/object/av.h"
 #include "bacnet/basic/object/bacfile.h"
 #include "bacnet/basic/object/bv.h"
 #include "bacnet/basic/object/device.h"
+#include "bacnet/basic/object/lsp.h"
+#include "bacnet/basic/object/lsz.h"
 #include "bacnet/basic/object/nc.h"
 #include "bacnet/basic/object/netport.h"
 #include "bacnet/basic/object/trendlog.h"
 #include "bacnet/basic/services.h"
+#include "bacnet/basic/service/h_lso.h"
+#include "bacnet/basic/service/h_ts.h"
+#include "bacnet/basic/service/h_upt.h"
+#include "bacnet/basic/service/h_write_group.h"
 #include "bacnet/basic/sys/mstimer.h"
 #include "bacnet/basic/tsm/tsm.h"
+#include "bacnet/datetime.h"
 #include "bacnet/datalink/datalink.h"
 #include "bacnet/datalink/dlenv.h"
 #include "bacnet/dcc.h"
 #include "bacnet/iam.h"
 #include "bacnet/npdu.h"
 #include "bacnet/version.h"
+#include "bacnet/whoami.h"
+#include "bacnet/youare.h"
 #include "bacfile-posix.h"
 
 #define MAX_FIXTURE_AVS 16
 #define MAX_FIXTURE_BVS 8
 #define MAX_FIXTURE_FILES 8
+#define MAX_FIXTURE_LSPS 8
+#define MAX_FIXTURE_LSZS 8
 
 static uint8_t Rx_Buf[MAX_MPDU];
 static struct mstimer BACnet_Task_Timer;
@@ -68,7 +81,12 @@ typedef struct {
     bool stream_access;
 } fixture_file_t;
 
-/* Device, Network Port, AV, BV, File, TrendLog — terminator required by Device_Init.
+typedef struct {
+    uint32_t instance;
+    const char *name;
+} fixture_named_object_t;
+
+/* Device, Network Port, AV, BV, File, TrendLog, LSP, LSZ — terminator required by Device_Init.
  * Field order matches object_functions_t through Object_Writable_Property_List. */
 static object_functions_t Interop_Object_Table[] = {
     { OBJECT_DEVICE, NULL, Device_Count, Device_Index_To_Instance,
@@ -88,8 +106,13 @@ static object_functions_t Interop_Object_Table[] = {
         Analog_Value_Object_Name, Analog_Value_Read_Property,
         Analog_Value_Write_Property, Analog_Value_Property_Lists, NULL, NULL,
         Analog_Value_Encode_Value_List, Analog_Value_Change_Of_Value,
-        Analog_Value_Change_Of_Value_Clear, NULL, NULL, NULL,
-        Analog_Value_Create, Analog_Value_Delete, NULL, NULL },
+        Analog_Value_Change_Of_Value_Clear,
+#if defined(INTRINSIC_REPORTING)
+        Analog_Value_Intrinsic_Reporting,
+#else
+        NULL,
+#endif
+        NULL, NULL, Analog_Value_Create, Analog_Value_Delete, NULL, NULL },
     { OBJECT_BINARY_VALUE, Binary_Value_Init, Binary_Value_Count,
         Binary_Value_Index_To_Instance, Binary_Value_Valid_Instance,
         Binary_Value_Object_Name, Binary_Value_Read_Property,
@@ -119,6 +142,18 @@ static object_functions_t Interop_Object_Table[] = {
         Trend_Log_Object_Name, Trend_Log_Read_Property,
         Trend_Log_Write_Property, Trend_Log_Property_Lists, TrendLogGetRRInfo,
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+    { OBJECT_LIFE_SAFETY_POINT, Life_Safety_Point_Init, Life_Safety_Point_Count,
+        Life_Safety_Point_Index_To_Instance, Life_Safety_Point_Valid_Instance,
+        Life_Safety_Point_Object_Name, Life_Safety_Point_Read_Property,
+        Life_Safety_Point_Write_Property, Life_Safety_Point_Property_Lists,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, Life_Safety_Point_Create,
+        Life_Safety_Point_Delete, NULL, Life_Safety_Point_Writable_Property_List },
+    { OBJECT_LIFE_SAFETY_ZONE, Life_Safety_Zone_Init, Life_Safety_Zone_Count,
+        Life_Safety_Zone_Index_To_Instance, Life_Safety_Zone_Valid_Instance,
+        Life_Safety_Zone_Object_Name, Life_Safety_Zone_Read_Property,
+        Life_Safety_Zone_Write_Property, Life_Safety_Zone_Property_Lists, NULL,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, Life_Safety_Zone_Create,
+        Life_Safety_Zone_Delete, NULL, Life_Safety_Zone_Writable_Property_List },
     { MAX_BACNET_OBJECT_TYPE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 };
@@ -127,6 +162,181 @@ static void on_signal(int signo)
 {
     (void)signo;
     Running = 0;
+}
+
+#if defined(INTRINSIC_REPORTING)
+/* bacnet-stack 1.6.0 declares Analog_Value_*_Set helpers but does not
+ * implement them; configure intrinsic reporting through WriteProperty. */
+static bool av_wp(
+    uint32_t instance, BACNET_PROPERTY_ID prop, uint8_t *apdu, int apdu_len)
+{
+    BACNET_WRITE_PROPERTY_DATA wp = { 0 };
+
+    if (apdu_len < 0 || apdu_len > (int)sizeof(wp.application_data)) {
+        return false;
+    }
+    wp.object_type = OBJECT_ANALOG_VALUE;
+    wp.object_instance = instance;
+    wp.object_property = prop;
+    wp.array_index = BACNET_ARRAY_ALL;
+    memcpy(wp.application_data, apdu, (size_t)apdu_len);
+    wp.application_data_len = apdu_len;
+    return Analog_Value_Write_Property(&wp);
+}
+
+static bool av_wp_real(uint32_t instance, BACNET_PROPERTY_ID prop, float value)
+{
+    uint8_t apdu[16];
+    int len = encode_application_real(&apdu[0], value);
+
+    return len > 0 && av_wp(instance, prop, apdu, len);
+}
+
+static bool av_wp_unsigned(
+    uint32_t instance, BACNET_PROPERTY_ID prop, uint32_t value)
+{
+    uint8_t apdu[16];
+    int len = encode_application_unsigned(&apdu[0], value);
+
+    return len > 0 && av_wp(instance, prop, apdu, len);
+}
+
+static bool av_wp_enum(
+    uint32_t instance, BACNET_PROPERTY_ID prop, uint32_t value)
+{
+    uint8_t apdu[16];
+    int len = encode_application_enumerated(&apdu[0], value);
+
+    return len > 0 && av_wp(instance, prop, apdu, len);
+}
+
+static bool av_wp_bitstring(
+    uint32_t instance, BACNET_PROPERTY_ID prop, uint8_t bits, uint8_t bits_used)
+{
+    BACNET_BIT_STRING bs;
+    uint8_t apdu[16];
+    int len;
+    unsigned i;
+
+    bitstring_init(&bs);
+    for (i = 0; i < bits_used; i++) {
+        bitstring_set_bit(&bs, (uint8_t)i, (bits & (1u << i)) != 0);
+    }
+    len = encode_application_bitstring(&apdu[0], &bs);
+    return len > 0 && av_wp(instance, prop, apdu, len);
+}
+
+static bool configure_av_intrinsic_reporting(uint32_t instance)
+{
+    /* Match device-baseline-v3 / BACnet4J: PV>80 → Out_Of_Range alarm. */
+    if (!av_wp_real(instance, PROP_HIGH_LIMIT, 80.0f)) {
+        return false;
+    }
+    if (!av_wp_real(instance, PROP_LOW_LIMIT, 0.0f)) {
+        return false;
+    }
+    if (!av_wp_real(instance, PROP_DEADBAND, 0.0f)) {
+        return false;
+    }
+    if (!av_wp_unsigned(instance, PROP_TIME_DELAY, 0)) {
+        return false;
+    }
+    if (!av_wp_unsigned(instance, PROP_NOTIFICATION_CLASS, 1)) {
+        return false;
+    }
+    if (!av_wp_bitstring(instance, PROP_LIMIT_ENABLE,
+            (uint8_t)(EVENT_LOW_LIMIT_ENABLE | EVENT_HIGH_LIMIT_ENABLE), 2)) {
+        return false;
+    }
+    if (!av_wp_bitstring(instance, PROP_EVENT_ENABLE,
+            (uint8_t)(EVENT_ENABLE_TO_OFFNORMAL | EVENT_ENABLE_TO_FAULT |
+                EVENT_ENABLE_TO_NORMAL),
+            3)) {
+        return false;
+    }
+    if (!av_wp_enum(instance, PROP_NOTIFY_TYPE, NOTIFY_ALARM)) {
+        return false;
+    }
+    if (!Analog_Value_Event_Detection_Enable_Set(instance, true)) {
+        return false;
+    }
+    return true;
+}
+#endif
+
+/* Adapter diagnostic JSON Lines on stdout (forwarded by run_server.py). */
+static void emit_operation(const char *operation)
+{
+    printf("{\"event\":\"operation\",\"adapter\":\"bacnet-stack\","
+           "\"operation\":\"%s\",\"result\":\"accepted\"}\n",
+        operation);
+    fflush(stdout);
+}
+
+static void interop_timesync_callback(
+    BACNET_DATE *bdate, BACNET_TIME *btime, bool utc)
+{
+    (void)bdate;
+    (void)btime;
+    emit_operation(utc ? "utc-time-synchronization" : "time-synchronization");
+}
+
+static void interop_unconfirmed_private_transfer(
+    uint8_t *service_request, uint16_t service_len, BACNET_ADDRESS *src)
+{
+    handler_unconfirmed_private_transfer(service_request, service_len, src);
+    emit_operation("unconfirmed-private-transfer");
+}
+
+static void interop_write_group(
+    uint8_t *service_request, uint16_t service_len, BACNET_ADDRESS *src)
+{
+    handler_write_group(service_request, service_len, src);
+    emit_operation("write-group");
+}
+
+static void interop_who_am_i(
+    uint8_t *service_request, uint16_t service_len, BACNET_ADDRESS *src)
+{
+    uint16_t vendor_id = 0;
+    BACNET_CHARACTER_STRING model_name = { 0 };
+    BACNET_CHARACTER_STRING serial_number = { 0 };
+    int len;
+
+    (void)src;
+    len = who_am_i_request_decode(
+        service_request, service_len, &vendor_id, &model_name, &serial_number);
+    if (len > 0) {
+        emit_operation("who-am-i");
+    }
+}
+
+static void interop_you_are(
+    uint8_t *service_request, uint16_t service_len, BACNET_ADDRESS *src)
+{
+    uint32_t device_id = 0;
+    uint16_t vendor_id = 0;
+    BACNET_CHARACTER_STRING model_name = { 0 };
+    BACNET_CHARACTER_STRING serial_number = { 0 };
+    BACNET_OCTET_STRING mac_address = { 0 };
+    int len;
+
+    (void)src;
+    len = you_are_request_decode(service_request, service_len, &device_id,
+        &vendor_id, &model_name, &serial_number, &mac_address);
+    if (len > 0) {
+        emit_operation("you-are");
+    }
+}
+
+static void interop_lso(
+    uint8_t *service_request,
+    uint16_t service_len,
+    BACNET_ADDRESS *src,
+    BACNET_CONFIRMED_SERVICE_DATA *service_data)
+{
+    handler_lso(service_request, service_len, src, service_data);
+    emit_operation("life-safety-operation");
 }
 
 static void Init_Service_Handlers(void)
@@ -177,6 +387,25 @@ static void Init_Service_Handlers(void)
         SERVICE_CONFIRMED_GET_ALARM_SUMMARY, handler_get_alarm_summary);
 #endif
 
+    /* Messaging / time / group (device-baseline-v6). TextMessage and
+     * ConfirmedPrivateTransfer are unsupported-upstream at bacnet-stack 1.6.0. */
+    apdu_set_unconfirmed_handler(
+        SERVICE_UNCONFIRMED_TIME_SYNCHRONIZATION, handler_timesync);
+    apdu_set_unconfirmed_handler(
+        SERVICE_UNCONFIRMED_UTC_TIME_SYNCHRONIZATION, handler_timesync_utc);
+    handler_timesync_init();
+    handler_timesync_set_callback_set(interop_timesync_callback);
+    apdu_set_unconfirmed_handler(SERVICE_UNCONFIRMED_PRIVATE_TRANSFER,
+        interop_unconfirmed_private_transfer);
+    apdu_set_unconfirmed_handler(
+        SERVICE_UNCONFIRMED_WRITE_GROUP, interop_write_group);
+
+    /* Identity + life safety (device-baseline-v7 / v8). */
+    apdu_set_unconfirmed_handler(SERVICE_UNCONFIRMED_WHO_AM_I, interop_who_am_i);
+    apdu_set_unconfirmed_handler(SERVICE_UNCONFIRMED_YOU_ARE, interop_you_are);
+    apdu_set_confirmed_handler(
+        SERVICE_CONFIRMED_LIFE_SAFETY_OPERATION, interop_lso);
+
     mstimer_set(&BACnet_Task_Timer, 1000UL);
     mstimer_set(&BACnet_TSM_Timer, 50UL);
     mstimer_set(&BACnet_Address_Timer, 60UL * 1000UL);
@@ -190,7 +419,9 @@ static void usage(const char *prog)
         "[--av-instance N --av-name NAME --av-value F --av-description TEXT]... "
         "[--bv-instance N --bv-name NAME --bv-value inactive|active]... "
         "[--file-instance N --file-name NAME --file-path PATH "
-        "--file-access stream|record]...\n",
+        "--file-access stream|record]... "
+        "[--lsp-instance N --lsp-name NAME]... "
+        "[--lsz-instance N --lsz-name NAME]...\n",
         prog);
 }
 
@@ -205,9 +436,13 @@ int main(int argc, char *argv[])
     fixture_av_t avs[MAX_FIXTURE_AVS];
     fixture_bv_t bvs[MAX_FIXTURE_BVS];
     fixture_file_t files[MAX_FIXTURE_FILES];
+    fixture_named_object_t lsps[MAX_FIXTURE_LSPS];
+    fixture_named_object_t lszs[MAX_FIXTURE_LSZS];
     int av_count = 0;
     int bv_count = 0;
     int file_count = 0;
+    int lsp_count = 0;
+    int lsz_count = 0;
     bool default_av = true;
     bool default_bv = true;
     int i;
@@ -215,6 +450,8 @@ int main(int argc, char *argv[])
     memset(avs, 0, sizeof(avs));
     memset(bvs, 0, sizeof(bvs));
     memset(files, 0, sizeof(files));
+    memset(lsps, 0, sizeof(lsps));
+    memset(lszs, 0, sizeof(lszs));
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0) {
@@ -358,6 +595,46 @@ int main(int argc, char *argv[])
                 !(strcmp(argv[i], "record") == 0);
             continue;
         }
+        if (strcmp(argv[i], "--lsp-instance") == 0 && i + 1 < argc) {
+            if (lsp_count >= MAX_FIXTURE_LSPS) {
+                fprintf(stderr, "too many --lsp-instance\n");
+                return 2;
+            }
+            lsps[lsp_count].instance = (uint32_t)strtoul(argv[++i], NULL, 0);
+            if (lsps[lsp_count].name == NULL) {
+                lsps[lsp_count].name = "LSP";
+            }
+            lsp_count++;
+            continue;
+        }
+        if (strcmp(argv[i], "--lsp-name") == 0 && i + 1 < argc) {
+            if (lsp_count == 0) {
+                fprintf(stderr, "--lsp-name before --lsp-instance\n");
+                return 2;
+            }
+            lsps[lsp_count - 1].name = argv[++i];
+            continue;
+        }
+        if (strcmp(argv[i], "--lsz-instance") == 0 && i + 1 < argc) {
+            if (lsz_count >= MAX_FIXTURE_LSZS) {
+                fprintf(stderr, "too many --lsz-instance\n");
+                return 2;
+            }
+            lszs[lsz_count].instance = (uint32_t)strtoul(argv[++i], NULL, 0);
+            if (lszs[lsz_count].name == NULL) {
+                lszs[lsz_count].name = "LSZ";
+            }
+            lsz_count++;
+            continue;
+        }
+        if (strcmp(argv[i], "--lsz-name") == 0 && i + 1 < argc) {
+            if (lsz_count == 0) {
+                fprintf(stderr, "--lsz-name before --lsz-instance\n");
+                return 2;
+            }
+            lszs[lsz_count - 1].name = argv[++i];
+            continue;
+        }
         fprintf(stderr, "unknown argument: %s\n", argv[i]);
         usage(argv[0]);
         return 2;
@@ -406,6 +683,17 @@ int main(int argc, char *argv[])
         }
         Analog_Value_Present_Value_Set(avs[i].instance, avs[i].value, 0);
         Analog_Value_COV_Increment_Set(avs[i].instance, 0.1f);
+#if defined(INTRINSIC_REPORTING)
+        if (!configure_av_intrinsic_reporting(avs[i].instance)) {
+            fprintf(stderr,
+                "Analog_Value intrinsicReporting configure failed for %u\n",
+                (unsigned)avs[i].instance);
+            return 1;
+        }
+        fprintf(stderr,
+            "  analog-value:%u intrinsicReporting highLimit=80 nc=1\n",
+            (unsigned)avs[i].instance);
+#endif
     }
     for (i = 0; i < bv_count; i++) {
         if (Binary_Value_Create(bvs[i].instance) != bvs[i].instance) {
@@ -437,6 +725,26 @@ int main(int argc, char *argv[])
             (unsigned)files[i].instance, files[i].name, files[i].pathname,
             files[i].stream_access ? "stream" : "record");
     }
+    for (i = 0; i < lsp_count; i++) {
+        if (Life_Safety_Point_Create(lsps[i].instance) != lsps[i].instance) {
+            fprintf(stderr, "Life_Safety_Point_Create(%u) failed\n",
+                (unsigned)lsps[i].instance);
+            return 1;
+        }
+        Life_Safety_Point_Name_Set(lsps[i].instance, lsps[i].name);
+        fprintf(stderr, "  life-safety-point:%u %s\n",
+            (unsigned)lsps[i].instance, lsps[i].name);
+    }
+    for (i = 0; i < lsz_count; i++) {
+        if (Life_Safety_Zone_Create(lszs[i].instance) != lszs[i].instance) {
+            fprintf(stderr, "Life_Safety_Zone_Create(%u) failed\n",
+                (unsigned)lszs[i].instance);
+            return 1;
+        }
+        Life_Safety_Zone_Name_Set(lszs[i].instance, lszs[i].name);
+        fprintf(stderr, "  life-safety-zone:%u %s\n",
+            (unsigned)lszs[i].instance, lszs[i].name);
+    }
 
     dlenv_init();
     atexit(datalink_cleanup);
@@ -460,7 +768,12 @@ int main(int argc, char *argv[])
     fprintf(stderr, "  trend-log count=%u (MAX_TREND_LOGS)\n",
         (unsigned)Trend_Log_Count());
     fprintf(stderr,
-        "  services: AtomicRead/WriteFile, CreateObject, DeleteObject\n");
+        "  services: AtomicRead/WriteFile, CreateObject, DeleteObject"
+#if defined(INTRINSIC_REPORTING)
+        ", GetAlarmSummary"
+#endif
+        ", Who-Am-I, You-Are, LifeSafetyOperation"
+        "\n");
 
     Send_I_Am(&Handler_Transmit_Buffer[0]);
 
@@ -478,6 +791,10 @@ int main(int argc, char *argv[])
             dlenv_maintenance_timer(elapsed_seconds);
             handler_cov_timer_seconds(elapsed_seconds);
             trend_log_timer((uint16_t)elapsed_seconds);
+#if defined(INTRINSIC_REPORTING)
+            /* Run AV/AI intrinsic Out_Of_Range evaluation (not done by Device_Timer). */
+            Device_local_reporting();
+#endif
         }
         if (mstimer_expired(&BACnet_TSM_Timer)) {
             mstimer_reset(&BACnet_TSM_Timer);

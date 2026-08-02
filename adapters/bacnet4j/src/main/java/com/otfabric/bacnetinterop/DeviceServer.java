@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
+import com.serotonin.bacnet4j.event.PrivateTransferHandler;
 import com.serotonin.bacnet4j.event.ReinitializeDeviceHandler;
 import com.serotonin.bacnet4j.npdu.ip.IpNetwork;
 import com.serotonin.bacnet4j.npdu.ip.IpNetworkBuilder;
@@ -34,11 +35,13 @@ import com.serotonin.bacnet4j.obj.BinaryValueObject;
 import com.serotonin.bacnet4j.obj.DeviceObject;
 import com.serotonin.bacnet4j.obj.EventEnrollmentObject;
 import com.serotonin.bacnet4j.obj.FileObject;
+import com.serotonin.bacnet4j.obj.LifeSafetyPointObject;
+import com.serotonin.bacnet4j.obj.LifeSafetyZoneObject;
 import com.serotonin.bacnet4j.obj.NotificationClassObject;
 import com.serotonin.bacnet4j.obj.TrendLogObject;
 import com.serotonin.bacnet4j.service.confirmed.CreateObjectRequest;
 import com.serotonin.bacnet4j.obj.fileAccess.CrlfDelimitedFileAccess;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileAccess;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
 import com.serotonin.bacnet4j.service.Service;
 import com.serotonin.bacnet4j.service.confirmed.ReadPropertyRequest;
@@ -48,10 +51,12 @@ import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
+import com.serotonin.bacnet4j.type.constructed.DeviceObjectReference;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
 import com.serotonin.bacnet4j.type.constructed.LimitEnable;
 import com.serotonin.bacnet4j.type.constructed.LogRecord;
 import com.serotonin.bacnet4j.type.constructed.PropertyStates;
+import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.TimeStamp;
 import com.serotonin.bacnet4j.type.eventParameter.EventParameter;
@@ -62,10 +67,16 @@ import com.serotonin.bacnet4j.type.enumerated.BinaryPV;
 import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
 import com.serotonin.bacnet4j.type.enumerated.EventType;
+import com.serotonin.bacnet4j.type.enumerated.LifeSafetyMode;
+import com.serotonin.bacnet4j.type.enumerated.LifeSafetyOperation;
+import com.serotonin.bacnet4j.type.enumerated.LifeSafetyState;
 import com.serotonin.bacnet4j.type.enumerated.NotifyType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
+import com.serotonin.bacnet4j.type.enumerated.SilencedState;
+import com.serotonin.bacnet4j.type.Encodable;
+import com.serotonin.bacnet4j.type.EncodedValue;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
@@ -272,8 +283,42 @@ public final class DeviceServer {
                         System.err.println("skipping file:" + oinst + " " + ex);
                     }
                 }
-                case "audit-log", "life-safety-point", "life-safety-zone" ->
-                        System.err.println("skipping unsupported object type '" + type + "' (v5+ pending)");
+                case "life-safety-point" -> {
+                    try {
+                        LifeSafetyPointObject lsp = new LifeSafetyPointObject(
+                                localDevice, oinst, oname,
+                                LifeSafetyState.quiet, LifeSafetyMode.on, false,
+                                new SequenceOf<>(LifeSafetyMode.on, LifeSafetyMode.off, LifeSafetyMode.enabled),
+                                LifeSafetyOperation.none, SilencedState.unsilenced);
+                        if (!description.isEmpty()) {
+                            lsp.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+                        }
+                        System.err.println("bacnet4j life-safety-point:" + oinst);
+                    } catch (Exception ex) {
+                        System.err.println("skipping life-safety-point: " + ex);
+                    }
+                }
+                case "life-safety-zone" -> {
+                    try {
+                        SequenceOf<DeviceObjectReference> members = new SequenceOf<>();
+                        // Prefer LSP-1 as zone member when present in the same fixture.
+                        members.add(new DeviceObjectReference(null,
+                                new ObjectIdentifier(ObjectType.lifeSafetyPoint, 1)));
+                        LifeSafetyZoneObject lsz = new LifeSafetyZoneObject(
+                                localDevice, oinst, oname,
+                                LifeSafetyState.quiet, LifeSafetyMode.on, false,
+                                new SequenceOf<>(LifeSafetyMode.on, LifeSafetyMode.off, LifeSafetyMode.enabled),
+                                LifeSafetyOperation.none, SilencedState.unsilenced, members);
+                        if (!description.isEmpty()) {
+                            lsz.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+                        }
+                        System.err.println("bacnet4j life-safety-zone:" + oinst);
+                    } catch (Exception ex) {
+                        System.err.println("skipping life-safety-zone: " + ex);
+                    }
+                }
+                case "audit-log" ->
+                        System.err.println("skipping unsupported object type 'audit-log' (unsupported-upstream)");
                 default -> System.err.println("skipping unsupported object type '" + type + "'");
             }
         }
@@ -312,14 +357,21 @@ public final class DeviceServer {
 
         configureObjectLifecycle(localDevice, fixture);
 
+        // Accept ConfirmedPrivateTransfer for interop VendorID=1 / serviceNumber=1.
+        localDevice.addPrivateTransferHandler(1, 1, new PrivateTransferHandler() {
+            @Override
+            public Encodable handle(LocalDevice ld, Address from, UnsignedInteger vendorId,
+                    UnsignedInteger serviceNumber, EncodedValue serviceParameters, boolean confirmed) {
+                return null; // empty resultBlock → ConfirmedPrivateTransferACK
+            }
+        });
+
         // Diagnostic sinks for messaging / time / group services (device-baseline-v6+).
         localDevice.getEventHandler().addListener(new DeviceEventAdapter() {
             @Override
             public void requestReceived(Address from, Service service) {
-                String op = service.getClass().getSimpleName();
-                if (op.contains("PrivateTransfer") || op.contains("TextMessage")
-                        || op.contains("TimeSynchronization") || op.contains("UTCTimeSynchronization")
-                        || op.contains("WriteGroup") || op.contains("WhoAmI") || op.contains("YouAre")) {
+                String op = messagingOperationName(service.getClass().getSimpleName());
+                if (op != null) {
                     emitOperation("bacnet4j", op, "accepted");
                 }
             }
@@ -484,11 +536,36 @@ public final class DeviceServer {
         try (FileOutputStream out = new FileOutputStream(disk)) {
             out.write(data);
         }
-        FileObject fo = new FileObject(localDevice, oinst, oname, new StreamAccess(disk));
+        FileObject fo = new FileObject(localDevice, oinst, oname, newStreamFileAccess(disk));
         if (!description.isEmpty()) {
             fo.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
         }
         System.err.println("bacnet4j file:" + oinst + " stream bytes=" + data.length);
+    }
+
+    /**
+     * BACnet4J 6.x: concrete {@code StreamAccess(File)}.
+     * BACnet4J 7+: {@code StreamAccess} is abstract; use {@code FileStreamAccess(File)}.
+     * Resolve at runtime so the adapter compiles against either pin.
+     */
+    private static FileAccess newStreamFileAccess(File disk) throws Exception {
+        for (String className : new String[] {
+            "com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess",
+            "com.serotonin.bacnet4j.obj.fileAccess.StreamAccess",
+        }) {
+            try {
+                Class<?> cls = Class.forName(className);
+                if (java.lang.reflect.Modifier.isAbstract(cls.getModifiers())) {
+                    continue;
+                }
+                Object access = cls.getConstructor(File.class).newInstance(disk);
+                return (FileAccess) access;
+            } catch (ClassNotFoundException ignored) {
+                // try next candidate
+            }
+        }
+        throw new IllegalStateException(
+                "no concrete stream FileAccess implementation for " + disk);
     }
 
     private static void emitReady(ObjectNode ready) throws Exception {
@@ -496,6 +573,25 @@ public final class DeviceServer {
         out.write(JSON.writeValueAsString(ready));
         out.write('\n');
         out.flush();
+    }
+
+    /**
+     * Map BACnet4J service simple names to kebab-case operation ids used in
+     * device-baseline-v6 notes and go-bacnet awaitOperation assertions.
+     */
+    private static String messagingOperationName(String simpleName) {
+        return switch (simpleName) {
+            case "TimeSynchronizationRequest" -> "time-synchronization";
+            case "UTCTimeSynchronizationRequest" -> "utc-time-synchronization";
+            case "UnconfirmedTextMessageRequest" -> "unconfirmed-text-message";
+            case "ConfirmedTextMessageRequest" -> "confirmed-text-message";
+            case "UnconfirmedPrivateTransferRequest" -> "unconfirmed-private-transfer";
+            case "ConfirmedPrivateTransferRequest" -> "confirmed-private-transfer";
+            case "WriteGroupRequest" -> "write-group";
+            case "WhoAmIRequest" -> "who-am-i";
+            case "YouAreRequest" -> "you-are";
+            default -> null;
+        };
     }
 
     /** Adapter diagnostic JSON Lines event (not cross-stack semantics). */

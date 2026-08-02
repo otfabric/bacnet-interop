@@ -12,6 +12,8 @@ Primary **readable** Python semantic oracle for Horizon 1 / current H2 peer surf
 - BACnet/IP device server aligned with `device-baseline-v2` (device + AV-1 + BV-1; TrendLog skipped)
 - Who-Has / I-Have, WPM (**adapter-shim**), ReinitializeDevice warmstart SimpleACK
 - Optional UnconfirmedEventNotification emit via `BACNET_EMIT_EVENT=1` (**adapter-shim**)
+- Messaging / time / WriteGroup `do_*` sinks for `device-baseline-v6` emit
+  `{"event":"operation",...}` JSONL (**adapter diagnostic**)
 - Discovery and property access for dual-peer evidence alongside bacnet-stack
 
 Neither peer is linked into MIT-licensed `go-bacnet`.

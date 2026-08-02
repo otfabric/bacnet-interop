@@ -26,7 +26,7 @@
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "09011e74006f70731f29013c05400001",
+  "input_hex": "09011c006f707329013c05400001",
   "tags": [
     "service",
     "life-safety"

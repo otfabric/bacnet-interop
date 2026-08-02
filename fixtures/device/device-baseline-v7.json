@@ -28,9 +28,9 @@
     "Who-Am-I / You-Are / AuthRequest where peer support allows."
   ],
   "alignment": {
-    "bacnet-stack": "unsupported",
+    "bacnet-stack": "partial",
     "bacpypes3": "unsupported",
-    "bacnet4j": "partial-pending",
+    "bacnet4j": "unsupported",
     "worldiety": "unsupported"
   }
 }
