@@ -16,7 +16,7 @@
 #   SMOKE_ONLY=bacnet-stack BACNET_STACK_IMAGE=…:candidate ./scripts/smoke-test.sh
 #
 # Env:
-#   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,bip-router
+#   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,worldiety,bip-router
 #                  (empty = all present images; missing peers fail unless filtered)
 #   SMOKE_WHOIS    1 (default) run directed Who-Is→I-Am probe on default-mode peers
 #                  0 skip protocol probe
@@ -30,6 +30,7 @@ WHOIS_PROBE="${SCRIPT_DIR}/whois-probe.py"
 BACNET_STACK_IMAGE="${BACNET_STACK_IMAGE:-bacnet-interop-bacnet-stack:local}"
 BACPYPES3_IMAGE="${BACPYPES3_IMAGE:-bacnet-interop-bacpypes3:local}"
 BACNET4J_IMAGE="${BACNET4J_IMAGE:-bacnet-interop-bacnet4j:local}"
+WORLDIETY_IMAGE="${WORLDIETY_IMAGE:-bacnet-interop-worldiety:local}"
 BIP_ROUTER_IMAGE="${BIP_ROUTER_IMAGE:-bacnet-interop-bip-router:local}"
 SMOKE_ONLY="${SMOKE_ONLY:-}"
 SMOKE_WHOIS="${SMOKE_WHOIS:-1}"
@@ -323,6 +324,13 @@ if want_adapter bacnet4j; then
         fail "image missing: ${BACNET4J_IMAGE}"
     fi
 fi
+if want_adapter worldiety; then
+    if image_exists "$WORLDIETY_IMAGE"; then
+        pass "image present: ${WORLDIETY_IMAGE}"
+    else
+        fail "image missing: ${WORLDIETY_IMAGE}"
+    fi
+fi
 if want_adapter bip-router; then
     if image_exists "$BIP_ROUTER_IMAGE"; then
         pass "image present: ${BIP_ROUTER_IMAGE}"
@@ -385,6 +393,17 @@ if want_adapter bacnet4j && image_exists "$BACNET4J_IMAGE"; then
     run_start_server ready whois "$BACNET4J_IMAGE" 47885 -e BACNET_BBMD=1
     check_ready_event "bacnet4j BBMD device server" "$ready" "bacnet4j" "device-baseline-v2"
     check_whois "bacnet4j BBMD device server" "$whois"
+fi
+
+if want_adapter worldiety && image_exists "$WORLDIETY_IMAGE"; then
+    info ""
+    info "=== Worldiety ==="
+    check_fixture_file "$WORLDIETY_IMAGE" /fixtures/device/device-baseline-v2.json
+    check_binary "$WORLDIETY_IMAGE" device_server
+    ready=""; whois=""
+    run_start_server ready whois "$WORLDIETY_IMAGE" 47886
+    check_ready_event "worldiety device server" "$ready" "worldiety" "device-baseline-v2"
+    check_whois "worldiety device server" "$whois"
 fi
 
 if want_adapter bip-router && image_exists "$BIP_ROUTER_IMAGE"; then

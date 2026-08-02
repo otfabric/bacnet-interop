@@ -1,0 +1,40 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "12"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-write-group",
+  "description": "WriteGroup with one change-list element",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "090119082e21012f",
+  "tags": [
+    "service",
+    "write-group"
+  ],
+  "operation": "decode_write_group",
+  "expected": {
+    "group_number": 1,
+    "write_priority": 8,
+    "change_list_count": 1
+  }
+}

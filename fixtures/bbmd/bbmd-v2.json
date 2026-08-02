@@ -1,0 +1,25 @@
+{
+  "fixture": "bbmd-v2",
+  "description": "Deterministic BBMD management fixtures for BACnet/IP foreign device and BDT/FDT operations.",
+  "role": "bbmd",
+  "port": 47808,
+  "capabilities": [
+    "register-foreign-device",
+    "read-bdt",
+    "write-bdt",
+    "read-fdt",
+    "delete-fdt-entry",
+    "distribute-broadcast-to-network",
+    "multiple-bbmd-failover",
+    "expiry-and-renewal"
+  ],
+  "notes": [
+    "bbmd-v1 remains env-mode (BACNET_BBMD=1) on BACpypes3/BACnet4J.",
+    "bbmd-v2 targets Worldiety BBMD mode with deterministic BDT/FDT state (BLOCKERS B5)."
+  ],
+  "alignment": {
+    "worldiety": "pending",
+    "bacpypes3": "bbmd-v1-env",
+    "bacnet4j": "bbmd-v1-env"
+  }
+}

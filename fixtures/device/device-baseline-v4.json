@@ -1,0 +1,52 @@
+{
+  "fixture": "device-baseline-v4",
+  "description": "Atomic file services: stream and record File objects with deterministic content.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice"
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5
+    },
+    {
+      "type": "binary-value",
+      "instance": 1,
+      "object_name": "BV-1",
+      "present_value": "inactive"
+    },
+    {
+      "type": "file",
+      "instance": 1,
+      "object_name": "FILE-STREAM-1",
+      "description": "Stream access file.",
+      "access_method": "stream",
+      "stream_data_base64": "aGVsbG8td29ybGQtc3RyZWFtLWZpbGUtZGF0YQ=="
+    },
+    {
+      "type": "file",
+      "instance": 2,
+      "object_name": "FILE-RECORD-2",
+      "description": "Record access file.",
+      "access_method": "record",
+      "records": ["record-0001", "record-0002", "record-0003"]
+    }
+  ],
+  "notes": [
+    "Drive AtomicReadFile/AtomicWriteFile stream and record; invalid start, access denied, EOF, segmented transfers.",
+    "BACnet4J is the primary executable peer for file services; bacnet-stack secondary where available."
+  ],
+  "alignment": {
+    "bacnet-stack": "partial-pending",
+    "bacpypes3": "unsupported",
+    "bacnet4j": "objects-ready-wire-blocked-B8",
+    "worldiety": "adapter-shim-pending"
+  }
+}

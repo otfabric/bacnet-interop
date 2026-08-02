@@ -26,10 +26,16 @@ import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.event.ReinitializeDeviceHandler;
 import com.serotonin.bacnet4j.npdu.ip.IpNetwork;
 import com.serotonin.bacnet4j.npdu.ip.IpNetworkBuilder;
+import com.serotonin.bacnet4j.obj.AnalogInputObject;
 import com.serotonin.bacnet4j.obj.AnalogValueObject;
 import com.serotonin.bacnet4j.obj.BinaryValueObject;
 import com.serotonin.bacnet4j.obj.DeviceObject;
+import com.serotonin.bacnet4j.obj.EventEnrollmentObject;
+import com.serotonin.bacnet4j.obj.FileObject;
+import com.serotonin.bacnet4j.obj.NotificationClassObject;
 import com.serotonin.bacnet4j.obj.TrendLogObject;
+import com.serotonin.bacnet4j.obj.fileAccess.CrlfDelimitedFileAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
 import com.serotonin.bacnet4j.service.Service;
 import com.serotonin.bacnet4j.service.confirmed.ReadPropertyRequest;
@@ -39,10 +45,14 @@ import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
+import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
+import com.serotonin.bacnet4j.type.constructed.LimitEnable;
 import com.serotonin.bacnet4j.type.constructed.LogRecord;
 import com.serotonin.bacnet4j.type.constructed.PropertyStates;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.TimeStamp;
+import com.serotonin.bacnet4j.type.eventParameter.EventParameter;
+import com.serotonin.bacnet4j.type.eventParameter.OutOfRange;
 import com.serotonin.bacnet4j.type.notificationParameters.ChangeOfStateNotif;
 import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters;
 import com.serotonin.bacnet4j.type.enumerated.BinaryPV;
@@ -58,6 +68,10 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.Base64;
 
 /**
  * Fixture-driven BACnet/IP device server for bacnet-interop.
@@ -145,6 +159,9 @@ public final class DeviceServer {
             deviceObject.writePropertyInternal(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
         }
 
+        // EventEnrollment requires LocalDevice.timer from initialize(); create after.
+        List<JsonNode> deferredEventEnrollments = new ArrayList<>();
+
         for (JsonNode obj : fixture.withArray("objects")) {
             if (!obj.isObject()) {
                 continue;
@@ -165,6 +182,25 @@ public final class DeviceServer {
                     av.supportCovReporting(0.1f);
                     if (!description.isEmpty()) {
                         av.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+                    }
+                    // v3: highLimit=80 so Present_Value=90 triggers Out_Of_Range (timeDelay=0).
+                    if (fixtureId.contains("v3") || description.toLowerCase().contains("out_of_range")
+                            || description.toLowerCase().contains("out-of-range")) {
+                        try {
+                            // timeDelay, notificationClass, high/low/deadband,
+                            // faultHigh/faultLow, limitEnable, eventEnable, notifyType, timeDelayNormal
+                            av.supportIntrinsicReporting(
+                                    0, 1,
+                                    80.0f, 0.0f, 0.0f,
+                                    1000.0f, -1000.0f,
+                                    new LimitEnable(true, true),
+                                    new EventTransitionBits(true, true, true),
+                                    NotifyType.alarm,
+                                    0);
+                            System.err.println("bacnet4j analog-value:" + oinst + " intrinsicReporting highLimit=80");
+                        } catch (Exception ex) {
+                            System.err.println("bacnet4j analog-value intrinsicReporting failed: " + ex);
+                        }
                     }
                 }
                 case "binary-value" -> {
@@ -198,11 +234,91 @@ public final class DeviceServer {
                     }
                     System.err.println("bacnet4j trend-log:" + oinst + " seededRecords=" + buffer.size());
                 }
+                case "analog-input" -> {
+                    float pv = (float) obj.path("present_value").asDouble(0.0);
+                    try {
+                        AnalogInputObject ai = new AnalogInputObject(
+                                localDevice, oinst, oname, pv, EngineeringUnits.noUnits, false);
+                        ai.supportCovReporting(0.1f);
+                        if (!description.isEmpty()) {
+                            ai.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+                        }
+                        System.err.println("bacnet4j analog-input:" + oinst);
+                    } catch (Exception ex) {
+                        System.err.println("skipping analog-input: " + ex);
+                    }
+                }
+                case "notification-class" -> {
+                    try {
+                        NotificationClassObject nc = new NotificationClassObject(
+                                localDevice, oinst, oname, 100, 100, 100,
+                                new EventTransitionBits(true, true, true));
+                        if (!description.isEmpty()) {
+                            nc.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+                        }
+                        System.err.println("bacnet4j notification-class:" + oinst);
+                    } catch (Exception ex) {
+                        System.err.println("skipping notification-class: " + ex);
+                    }
+                }
+                case "event-enrollment" -> deferredEventEnrollments.add(obj);
+                case "file" -> {
+                    try {
+                        createFileObject(localDevice, obj, oinst, oname, description);
+                    } catch (Exception ex) {
+                        System.err.println("skipping file:" + oinst + " " + ex);
+                    }
+                }
+                case "audit-log", "life-safety-point", "life-safety-zone" ->
+                        System.err.println("skipping unsupported object type '" + type + "' (v5+ pending)");
                 default -> System.err.println("skipping unsupported object type '" + type + "'");
             }
         }
 
         localDevice.initialize();
+
+        for (JsonNode obj : deferredEventEnrollments) {
+            int oinst = obj.path("instance").asInt(0);
+            String oname = obj.path("object_name").asText("event-enrollment");
+            String description = obj.path("description").asText("");
+            try {
+                DeviceObjectPropertyReference monitored = new DeviceObjectPropertyReference(
+                        instance,
+                        new ObjectIdentifier(ObjectType.analogValue, 1),
+                        PropertyIdentifier.presentValue);
+                EventParameter ep = new EventParameter(new OutOfRange(
+                        new UnsignedInteger(0),
+                        new Real(0.0f),
+                        new Real(80.0f),
+                        new Real(0.0f)));
+                EventEnrollmentObject ee = new EventEnrollmentObject(
+                        localDevice, oinst, oname, monitored, NotifyType.alarm, ep,
+                        new EventTransitionBits(true, true, true),
+                        1, // notificationClass
+                        1000, // pollDelayMillis
+                        new UnsignedInteger(0),
+                        null);
+                if (!description.isEmpty()) {
+                    ee.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+                }
+                System.err.println("bacnet4j event-enrollment:" + oinst + " monitors AV-1 OutOfRange");
+            } catch (Exception ex) {
+                System.err.println("skipping event-enrollment: " + ex);
+            }
+        }
+
+        // Diagnostic sinks for messaging / time / group services (device-baseline-v6+).
+        localDevice.getEventHandler().addListener(new DeviceEventAdapter() {
+            @Override
+            public void requestReceived(Address from, Service service) {
+                String op = service.getClass().getSimpleName();
+                if (op.contains("PrivateTransfer") || op.contains("TextMessage")
+                        || op.contains("TimeSynchronization") || op.contains("UTCTimeSynchronization")
+                        || op.contains("WriteGroup") || op.contains("WhoAmI") || op.contains("YouAre")) {
+                    emitOperation("bacnet4j", op, "accepted");
+                }
+            }
+        });
 
         // Register after initialize so internal TrendLog/COV setup does not trigger emit.
         if (truthy(env.get("BACNET_EMIT_EVENT"))) {
@@ -245,11 +361,66 @@ public final class DeviceServer {
         stop.await();
     }
 
+    private static void createFileObject(LocalDevice localDevice, JsonNode obj, int oinst, String oname,
+            String description) throws Exception {
+        String access = obj.path("access_method").asText("stream").trim().toLowerCase();
+        Path dir = Path.of(System.getProperty("java.io.tmpdir"), "bacnet-interop-files");
+        Files.createDirectories(dir);
+        File disk = dir.resolve("file-" + oinst + ".dat").toFile();
+        if ("record".equals(access)) {
+            StringBuilder sb = new StringBuilder();
+            if (obj.path("records").isArray()) {
+                for (JsonNode rec : obj.withArray("records")) {
+                    sb.append(rec.asText("")).append('\n');
+                }
+            }
+            try (FileOutputStream out = new FileOutputStream(disk)) {
+                out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+            }
+            FileObject fo = new FileObject(localDevice, oinst, oname, new CrlfDelimitedFileAccess(disk));
+            if (!description.isEmpty()) {
+                fo.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+            }
+            System.err.println("bacnet4j file:" + oinst + " record records=" + obj.path("records").size());
+            return;
+        }
+        byte[] data = new byte[0];
+        String b64 = obj.path("stream_data_base64").asText("");
+        if (!b64.isEmpty()) {
+            data = Base64.getDecoder().decode(b64);
+        }
+        try (FileOutputStream out = new FileOutputStream(disk)) {
+            out.write(data);
+        }
+        FileObject fo = new FileObject(localDevice, oinst, oname, new StreamAccess(disk));
+        if (!description.isEmpty()) {
+            fo.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
+        }
+        System.err.println("bacnet4j file:" + oinst + " stream bytes=" + data.length);
+    }
+
     private static void emitReady(ObjectNode ready) throws Exception {
         BufferedWriter out = new BufferedWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8));
         out.write(JSON.writeValueAsString(ready));
         out.write('\n');
         out.flush();
+    }
+
+    /** Adapter diagnostic JSON Lines event (not cross-stack semantics). */
+    private static void emitOperation(String adapter, String operation, String result) {
+        try {
+            ObjectNode ev = JSON.createObjectNode();
+            ev.put("event", "operation");
+            ev.put("adapter", adapter);
+            ev.put("operation", operation);
+            ev.put("result", result);
+            BufferedWriter out = new BufferedWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8));
+            out.write(JSON.writeValueAsString(ev));
+            out.write('\n');
+            out.flush();
+        } catch (Exception e) {
+            System.err.println("bacnet4j operation event failed: " + e);
+        }
     }
 
     /** Emit one UnconfirmedEventNotification to the given BACnet address. */

@@ -1,0 +1,38 @@
+{
+  "fixture": "device-baseline-v6",
+  "description": "Messaging and synchronization sinks for private transfer, text, time sync, and write group.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice",
+      "description": "Expose last accepted messaging/time/group operation via adapter diagnostic JSON events (not cross-stack semantics)."
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5
+    },
+    {
+      "type": "binary-value",
+      "instance": 1,
+      "object_name": "BV-1",
+      "present_value": "inactive"
+    }
+  ],
+  "notes": [
+    "Adapter diagnostic example: {\"event\":\"operation\",\"adapter\":\"…\",\"operation\":\"time-synchronization\",\"result\":\"accepted\"}.",
+    "These events are adapter diagnostics, not normalized cross-stack semantics.",
+    "BACnet4J exposes confirmed/unconfirmed private transfer, text, time sync, and WriteGroup in service registries."
+  ],
+  "alignment": {
+    "bacnet-stack": "partial-pending",
+    "bacpypes3": "partial-pending",
+    "bacnet4j": "partial-local",
+    "worldiety": "partial-pending"
+  }
+}

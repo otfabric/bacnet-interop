@@ -1,0 +1,29 @@
+{
+  "fixture": "topology-v2",
+  "description": "Independent Worldiety router fixture for NPDU network-layer client tests.",
+  "role": "router",
+  "local_network": 1,
+  "remote_networks": [2],
+  "port": 47808,
+  "capabilities": [
+    "who-is-router-to-network",
+    "i-am-router-to-network",
+    "routed-discovery",
+    "routed-read-property",
+    "routed-read-property-multiple",
+    "routed-write-property",
+    "reject-message-to-network",
+    "router-busy-to-network",
+    "router-available-to-network",
+    "hop-count-exhaustion",
+    "unknown-dnet"
+  ],
+  "notes": [
+    "Fixture-driven server/topology behavior only; no client comparison framework.",
+    "Blocked until Worldiety router mode is implemented (see BLOCKERS B5)."
+  ],
+  "alignment": {
+    "worldiety": "pending",
+    "bip-router": "topology-router-v1-only"
+  }
+}

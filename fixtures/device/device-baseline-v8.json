@@ -1,0 +1,36 @@
+{
+  "fixture": "device-baseline-v8",
+  "description": "Life safety and legacy VT session fixtures.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice"
+    },
+    {
+      "type": "life-safety-point",
+      "instance": 1,
+      "object_name": "LSP-1",
+      "description": "LifeSafetyOperation target."
+    },
+    {
+      "type": "life-safety-zone",
+      "instance": 1,
+      "object_name": "LSZ-1",
+      "description": "Life safety zone for enrollment/operation scenarios."
+    }
+  ],
+  "notes": [
+    "VT-Open / VT-Close / VT-Data session fixture is adapter-owned state (session id allocation), not a persistent object.",
+    "Codec-only support is acceptable where no peer can execute a service."
+  ],
+  "alignment": {
+    "bacnet-stack": "partial-pending",
+    "bacpypes3": "unsupported",
+    "bacnet4j": "partial-pending",
+    "worldiety": "unsupported"
+  }
+}

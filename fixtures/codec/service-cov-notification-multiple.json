@@ -1,0 +1,40 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "12"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-cov-notification-multiple",
+  "description": "COVNotificationMultiple for AV-1 present-value real",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "09011c020004d2293c4e0c008000011e09552e4441ac00002f1f4f",
+  "tags": [
+    "service",
+    "cov-multiple"
+  ],
+  "operation": "decode_cov_notification_multiple",
+  "expected": {
+    "subscriber_process_identifier": 1,
+    "time_remaining": 60,
+    "object_count": 1
+  }
+}

@@ -71,6 +71,7 @@ bacnet-interop/
     ├── bacnet-stack/           # Fixture-driven C device-server image
     ├── bacpypes3/              # BACpypes3 device-server image (+ optional BBMD)
     ├── bacnet4j/               # BACnet4J device-server image (+ optional BBMD)
+    ├── worldiety/              # Worldiety Go peer (fixture-driven; no go-bacnet import)
     └── bip-router/             # Dual-homed BIP↔BIP topology router
 ```
 
@@ -98,9 +99,11 @@ BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest> 
 | **bacnet-stack** | Primary executable C oracle (fixture-driven `device_server`) | [bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
 | **BACpypes3** | Primary readable Python semantic oracle (optional peer-as-BBMD) | [BACpypes3](https://github.com/JoelBender/BACpypes3) |
 | **BACnet4J** | Primary readable Java semantic oracle (optional peer-as-BBMD) | [BACnet4J](https://github.com/RadixIoT/BACnet4J) |
+| **Worldiety** | Pure-Go peer oracle (native segmentation; fixture payload shims) | [worldiety/bacnet](https://github.com/worldiety/bacnet) @ `3cb2aa80…` |
 | **bip-router** | Dual-homed BIP↔BIP topology aid for routed scenarios | Interop fixture only — not a product router |
 
-Additional peers (bacnet-js, …) may be added later without changing ownership rules.
+Additional peers may be added later without changing ownership rules. Worldiety
+is a **server peer only** until `go-bacnet` has a server for the reverse direction.
 
 Licensing note: peer stacks retain their upstream licenses inside adapter images. `bacnet-interop` original code and independently generated fixtures are MIT (OT Fabric). Captured or vendor-restricted material must declare `license.status` in fixture metadata and must not be redistributed beyond that classification.
 
@@ -114,7 +117,7 @@ Each server-mode adapter emits a single JSON Lines readiness event on stdout bef
 
 - Stdout is JSON Lines only (ready events; optional future probe results).
 - Diagnostics go to stderr.
-- `adapter` is one of `bacnet-stack`, `bacpypes3`, `bacnet4j`, or `bip-router`.
+- `adapter` is one of `bacnet-stack`, `bacpypes3`, `bacnet4j`, `worldiety`, or `bip-router`.
 - Consumers wait for `event=ready`, exercise `go-bacnet`, then stop the container.
 - No pre-running compose stack is required for automated interop.
 - `bip-router` uses fixture `topology-router-v1` and may include `networks` / `addresses`.
@@ -132,7 +135,7 @@ Fixtures are provenance-tracked corpus entries: hex input and/or semantic sideca
 ```bash
 make help               # List targets
 make validate-fixtures  # Schema / manifest checks (no Docker)
-make build              # Build bacnet-stack, bacpypes3, bacnet4j, and bip-router images
+make build              # Build stack, bacpypes3, bacnet4j, worldiety, bip-router
 make smoke              # Start each image, assert ready + Who-Is, stop
 ```
 

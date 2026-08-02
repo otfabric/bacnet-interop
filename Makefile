@@ -1,4 +1,4 @@
-.PHONY: help validate-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-bip-router smoke ci
+.PHONY: help validate-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-bip-router smoke ci
 
 SCHEMA              := fixtures/schema/fixture.schema.json
 MANIFEST            := fixtures/manifest.json
@@ -9,6 +9,7 @@ ADAPTER_VERSION     ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo
 BACNET_STACK_IMAGE  ?= bacnet-interop-bacnet-stack:local
 BACPYPES3_IMAGE     ?= bacnet-interop-bacpypes3:local
 BACNET4J_IMAGE      ?= bacnet-interop-bacnet4j:local
+WORLDIETY_IMAGE     ?= bacnet-interop-worldiety:local
 BIP_ROUTER_IMAGE    ?= bacnet-interop-bip-router:local
 REGISTRY            ?= ghcr.io/otfabric
 
@@ -36,7 +37,7 @@ validate-fixtures: ## Validate manifest + fixture metadata against JSON Schema
 # Adapter images (Docker when Dockerfile exists; stub otherwise)
 # ---------------------------------------------------------------------------
 
-build: build-bacnet-stack build-bacpypes3 build-bacnet4j build-bip-router ## Build all adapter images
+build: build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-bip-router ## Build all adapter images
 
 build-bacnet-stack: ## Build bacnet-stack adapter image
 	@if [ -f adapters/bacnet-stack/Dockerfile ]; then \
@@ -71,6 +72,17 @@ build-bacnet4j: ## Build BACnet4J adapter image
 	  echo "adapter images TBD: bacnet4j (see adapters/bacnet4j/README.md)"; \
 	fi
 
+build-worldiety: ## Build Worldiety adapter image
+	@if [ -f adapters/worldiety/Dockerfile ]; then \
+	  echo "Building Worldiety adapter image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."; \
+	  docker buildx build --platform=$(PLATFORM) --load \
+	    --build-arg ADAPTER_VERSION=$(ADAPTER_VERSION) \
+	    -f adapters/worldiety/Dockerfile \
+	    -t $(WORLDIETY_IMAGE) .; \
+	else \
+	  echo "adapter images TBD: worldiety (see adapters/worldiety/README.md)"; \
+	fi
+
 build-bip-router: ## Build BIP↔BIP topology router image
 	@if [ -f adapters/bip-router/Dockerfile ]; then \
 	  echo "Building bip-router image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."; \
@@ -87,7 +99,7 @@ build-bip-router: ## Build BIP↔BIP topology router image
 # ---------------------------------------------------------------------------
 
 smoke: ## Smoke-test adapter ready events
-	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) ./scripts/smoke-test.sh
+	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) ./scripts/smoke-test.sh
 
 # ---------------------------------------------------------------------------
 # Local CI mirror

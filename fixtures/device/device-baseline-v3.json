@@ -1,0 +1,64 @@
+{
+  "fixture": "device-baseline-v3",
+  "description": "Alarms and COV completeness: v2 objects plus Analog Input, Notification Class, and Event Enrollment with deterministic Out_Of_Range trigger via AV-1 Present_Value write.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice"
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5,
+      "description": "Write Present_Value=90 to trigger Out_Of_Range EventNotification (deterministic test control)."
+    },
+    {
+      "type": "binary-value",
+      "instance": 1,
+      "object_name": "BV-1",
+      "present_value": "inactive"
+    },
+    {
+      "type": "analog-input",
+      "instance": 1,
+      "object_name": "AI-1",
+      "present_value": 18.0,
+      "description": "Event-generating AI for enrollment/alarm summaries."
+    },
+    {
+      "type": "notification-class",
+      "instance": 1,
+      "object_name": "NC-1",
+      "description": "Notification Class for EventEnrollment / EventNotification destinations."
+    },
+    {
+      "type": "event-enrollment",
+      "instance": 1,
+      "object_name": "EE-1",
+      "description": "Monitors AV-1 Present_Value Out_Of_Range; notification class NC-1."
+    },
+    {
+      "type": "trend-log",
+      "instance": 1,
+      "object_name": "TL-1",
+      "description": "Trend Log retained from v2 lineage (instance 1 for v3)."
+    }
+  ],
+  "notes": [
+    "Supersedes device-baseline-v2 for event/COV completeness work; v2 remains the Worldiety/v0.5.0 baseline.",
+    "Deterministic control: AV-1 Present_Value = 90 → Out_Of_Range → EventNotification (adapters that implement v3).",
+    "COV: multiple subscriptions against AV-1 / AI-1; adapters should support SubscribeCOV and COVProperty where native.",
+    "Peer alignment starts partial until BACnet4J/BACpypes3/Worldiety implement the v3 object graph."
+  ],
+  "alignment": {
+    "bacnet-stack": "partial-pending",
+    "bacpypes3": "partial-pending",
+    "bacnet4j": "partial-local",
+    "worldiety": "partial-pending"
+  }
+}

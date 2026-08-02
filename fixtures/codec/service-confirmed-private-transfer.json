@@ -1,0 +1,39 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "12"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-confirmed-private-transfer",
+  "description": "ConfirmedPrivateTransfer vendor 999 service 1",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "0a03e71901",
+  "tags": [
+    "service",
+    "private-transfer"
+  ],
+  "operation": "decode_private_transfer",
+  "expected": {
+    "vendor_id": 999,
+    "service_number": 1
+  }
+}

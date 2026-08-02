@@ -280,8 +280,22 @@ def build_app(
                     description=str(obj.get("description", f"{fixture.get('fixture', 'device')} binary value")),
                 )
             )
-        elif otype in ("trend-log", "notification-class"):
-            # BACpypes3 has no server ReadRange; skip TL. NC optional.
+        elif otype == "analog-input":
+            try:
+                from bacpypes3.local.analog import AnalogInputObject
+            except Exception:
+                print("skipping analog-input (AnalogInputObject unavailable)", file=sys.stderr)
+            else:
+                app.add_object(
+                    AnalogInputObject(
+                        objectIdentifier=("analog-input", oinst),
+                        objectName=oname,
+                        presentValue=float(obj.get("present_value", 0.0)),
+                        description=str(obj.get("description", f"{fixture.get('fixture', 'device')} analog input")),
+                    )
+                )
+        elif otype in ("trend-log", "notification-class", "event-enrollment", "file", "audit-log", "life-safety-point", "life-safety-zone"):
+            # Partial v3+: skip types without a stable local object implementation.
             print(f"skipping unsupported object type {otype!r}", file=sys.stderr)
         else:
             print(f"skipping unsupported object type {otype!r}", file=sys.stderr)
