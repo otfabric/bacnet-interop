@@ -6,7 +6,7 @@ Containerized [BACpypes3](https://github.com/JoelBender/BACpypes3) peer for [`ba
 
 ## Role
 
-Primary **readable** Python semantic oracle for Horizon 1 / current H2 peer surface:
+Primary **readable** Python semantic oracle for BACnet/IP interop:
 
 - Independently implemented BACnet application layer for semantic cross-checks
 - BACnet/IP device server aligned with `device-baseline-v2` (device + AV-1 + BV-1; TrendLog skipped)
@@ -39,7 +39,7 @@ ghcr.io/otfabric/bacnet-interop-bacpypes3@sha256:<digest>
 Same stdout contract as the bacnet-stack adapter:
 
 ```json
-{"event":"ready","adapter":"bacpypes3","version":"0.4.1","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"0.0.106"}
+{"event":"ready","adapter":"bacpypes3","version":"0.8.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"0.0.106"}
 ```
 
 Consumers can swap peers by image name without changing wait logic. See [`PLAN.md`](../../PLAN.md).
@@ -77,8 +77,8 @@ Environment overrides:
 TrendLog is skipped (no server ReadRange). Stock BACpypes3 raises
 `NotImplementedError` for WPM — the adapter installs a **shim** that loops
 `write_property`. Upstream gaps (Reject, ReadRange, etc.) are recorded in
-[`COVERAGE.md`](../../COVERAGE.md).
+[`PEER_SUPPORT.md`](../../PEER_SUPPORT.md).
 
 ## Capability tracking
 
-Update [`COVERAGE.md`](../../COVERAGE.md) and [`inventory.yaml`](../inventory.yaml) when additional modes become smoke-tested.
+Update [`PEER_SUPPORT.md`](../../PEER_SUPPORT.md) and [`inventory.yaml`](../inventory.yaml) when additional modes become smoke-tested.

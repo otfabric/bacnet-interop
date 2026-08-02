@@ -3,7 +3,7 @@
 # Assertions live in go-bacnet/interop; this file documents peer pins and evidence types.
 
 schema_version: "1"
-adapter_version: "0.5.0"
+adapter_version: "0.8.0"
 fixture: device-baseline-v2
 fixture_frozen: device-baseline-v1
 
@@ -33,7 +33,7 @@ adapters:
       device_communication_control: native
       reinitialize_device_warmstart: native
       segmented_confirmed_request_receive: unsupported
-      peer_as_bbmd: unsupported
+      peer_as_bbmd: native  # BBMD_ENABLED in device_server; BDT self-seed + Accept-FD
 
   - id: bacpypes3
     image: ghcr.io/otfabric/bacnet-interop-bacpypes3

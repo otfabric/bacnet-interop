@@ -6,7 +6,7 @@ Containerized [bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) peer 
 
 ## Role
 
-Primary **executable** C oracle for Horizon 1 / current H2 peer surface:
+Primary **executable** C device oracle for BACnet/IP interop:
 
 - Custom `device_server` linked against pinned bacnet-stack (not stock `bacserv`)
 - Object graph loaded from fixture JSON (device + AV/BV + optional File + NC + TrendLog)
@@ -50,7 +50,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 Stdout is a single JSON Lines ready event after the BACnet/IP UDP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.4.1","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.8.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 `device_server` diagnostics go to stderr. See [`PLAN.md`](../../PLAN.md).
@@ -82,8 +82,17 @@ Images ship `device-baseline-v1`–`v8`. Default runtime fixture is v2
   (oversized responses Abort with segmentation-not-supported). Reject for
   unrecognized confirmed services is supported and asserted by `go-bacnet/interop`.
 
-Routed RP uses this image as the remote device behind [`bip-router`](../bip-router/README.md). BBMD/foreign-device peer mode is not implemented here (BACpypes3 / BACnet4J).
+Routed RP uses this image as the remote device behind [`bip-router`](../bip-router/README.md).
+
+**BBMD:** `device_server` is built with `BBMD_ENABLED` / `BBMD_CLIENT_ENABLED`.
+Upstream `dlenv` seeds a self BDT entry and accepts foreign-device registration
+by default (no `BACNET_BBMD` env required). BVLC Write-BDT is NAK at Protocol
+Revision ≥ 17. Upstream `apps/router` is not packaged in this image.
+
+Environment overrides: `BACNET_IP_PORT`, `DEVICE_FIXTURE_FILE`, `FIXTURE`,
+`ADAPTER_VERSION`, `BACNET_STACK_VERSION`, plus upstream BIP envs such as
+`BACNET_BDT_ADDR_N` when seeding additional BDT peers.
 
 ## Capability tracking
 
-Update [`COVERAGE.md`](../../COVERAGE.md) and [`inventory.yaml`](../inventory.yaml) when modes change.
+Update [`PEER_SUPPORT.md`](../../PEER_SUPPORT.md) and [`inventory.yaml`](../inventory.yaml) when modes change.

@@ -55,7 +55,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet4j@sha256:<digest>
 ## Readiness contract
 
 ```json
-{"event":"ready","adapter":"bacnet4j","version":"0.4.1","fixture":"device-baseline-v2","address":"<bind-ipv4>:47808","peer_version":"6.1.0"}
+{"event":"ready","adapter":"bacnet4j","version":"0.8.0","fixture":"device-baseline-v2","address":"<bind-ipv4>:47808","peer_version":"6.1.0"}
 ```
 
 ## Build
@@ -97,4 +97,4 @@ factories), precreated_deletable (e.g. AV-100), and protected core objects.
 
 ## Capability tracking
 
-Update [`COVERAGE.md`](../../COVERAGE.md) and [`inventory.yaml`](../inventory.yaml) when modes change.
+Update [`PEER_SUPPORT.md`](../../PEER_SUPPORT.md) and [`inventory.yaml`](../inventory.yaml) when modes change.
