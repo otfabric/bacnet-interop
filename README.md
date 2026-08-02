@@ -28,17 +28,22 @@ Same ownership split as [`mms-interop`](https://github.com/otfabric/mms-interop)
 
 ## Horizon 1 scope
 
-Aligned with the [`go-bacnet`](https://github.com/otfabric/go-bacnet) Horizon 1 client foundation:
+Aligned with the [`go-bacnet`](https://github.com/otfabric/go-bacnet) Horizon 1 client foundation and current supervisory / H2 peer surface:
 
 | In scope | Deferred |
 |---|---|
 | BACnet/IP over IPv4/UDP | BACnet/IPv6, MS/TP, BACnet/SC |
 | Who-Is / I-Am discovery peers | Full device/server product model |
-| ReadProperty / ReadPropertyMultiple / WriteProperty | WritePropertyMultiple unless free |
-| Confirmed-request / segmentation stress peers | Alarms, schedules, trends |
-| Routed network peer (IP↔remote via `bip-router`) | Product BBMD / BDT management |
-| COV subscribe + notifications | BTL certification itself |
-| Peer-as-BBMD + foreign-device registration aid | Vendor hardware claims without evidence |
+| Who-Has / I-Have | Product BBMD / BDT management |
+| ReadProperty / ReadPropertyMultiple / WriteProperty / WritePropertyMultiple | BTL certification itself |
+| ReadRange byPosition (TrendLog; bacnet-stack + BACnet4J) | Vendor hardware claims without evidence |
+| Confirmed-request / segmentation stress peers | Multi-BBMD failover |
+| EventNotification emit (BACpypes3 / BACnet4J via `BACNET_EMIT_EVENT`) | |
+| DeviceCommunicationControl enable (bacnet-stack) | |
+| ReinitializeDevice warmstart | |
+| Routed network peer (IP↔remote via `bip-router`) | |
+| COV subscribe + notifications | |
+| Peer-as-BBMD + foreign-device registration aid | |
 
 Do not claim vendor or BTL interoperability from this repository alone. Evidence is produced by `go-bacnet` interop runs against pinned adapter digests.
 
@@ -60,8 +65,9 @@ bacnet-interop/
 │   ├── schema/
 │   │   └── fixture.schema.json
 │   ├── codec/                  # Wire goldens
-│   └── device/                 # Live adapter device model (device-baseline-v1)
+│   └── device/                 # Live adapter device model (device-baseline-v2; v1 frozen)
 └── adapters/
+    ├── inventory.yaml          # Peer pins + capability evidence types
     ├── bacnet-stack/           # Fixture-driven C device-server image
     ├── bacpypes3/              # BACpypes3 device-server image (+ optional BBMD)
     ├── bacnet4j/               # BACnet4J device-server image (+ optional BBMD)
@@ -79,7 +85,7 @@ Consumer repositories pin a version tag for local use and a digest for CI once i
 
 ```bash
 # Local development — version tag (once published)
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.1.0 make interop
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.4.1 make interop
 
 # CI — digest-pinned
 BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest> make interop
@@ -103,7 +109,7 @@ Licensing note: peer stacks retain their upstream licenses inside adapter images
 Each server-mode adapter emits a single JSON Lines readiness event on stdout before accepting BACnet/IP traffic:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.4.1","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 - Stdout is JSON Lines only (ready events; optional future probe results).
@@ -119,7 +125,7 @@ Fixed-sequence JSON Lines **client probe** adapters (mms-interop style) are not 
 
 Fixtures are provenance-tracked corpus entries: hex input and/or semantic sidecars plus metadata describing source implementation, capture context, standard baseline, and equality expectations. See [`fixtures/README.md`](fixtures/README.md) and [`fixtures/schema/fixture.schema.json`](fixtures/schema/fixture.schema.json).
 
-[`fixtures/manifest.json`](fixtures/manifest.json) indexes codec goldens. Live adapter device semantics are documented in [`fixtures/device/device-baseline-v1.json`](fixtures/device/device-baseline-v1.json) (not part of the codec manifest).
+[`fixtures/manifest.json`](fixtures/manifest.json) indexes codec goldens. Live adapter device semantics are documented in [`fixtures/device/device-baseline-v2.json`](fixtures/device/device-baseline-v2.json) (not part of the codec manifest). `device-baseline-v1` remains frozen for historical digests.
 
 ## Local commands
 
@@ -127,25 +133,37 @@ Fixtures are provenance-tracked corpus entries: hex input and/or semantic sideca
 make help               # List targets
 make validate-fixtures  # Schema / manifest checks (no Docker)
 make build              # Build bacnet-stack, bacpypes3, bacnet4j, and bip-router images
-make smoke              # Start each image, assert event=ready, stop
+make smoke              # Start each image, assert ready + Who-Is, stop
 ```
+
+`SMOKE_ONLY=<adapter>` limits smoke to one peer (used by the candidate
+workflow). `SMOKE_WHOIS=0` skips the directed Who-Is probe.
 
 ## Upstream candidate probe
 
 Weekly (and `workflow_dispatch`) [Upstream candidates](.github/workflows/candidate.yml)
-resolves each peer pin vs latest upstream, builds a candidate image, and writes a
-**Decision table** Job Summary (same pattern as `snap7-interop` / `mms-interop`).
-Release pins are never mutated.
+resolves each peer pin vs latest upstream, builds a candidate image, smokes it
+(ready JSON + fixture + directed Who-Is), and writes a **Decision table** Job
+Summary (same pattern as `snap7-interop` / `mms-interop`). Release pins are
+never mutated.
 
-| Job | Resolves / builds |
+| Job | Resolves / builds / smokes |
 |---|---|
 | `bacnet-stack` | newest `bacnet-stack-X.Y.Z` tag on [bacnet-stack/bacnet-stack](https://github.com/bacnet-stack/bacnet-stack) |
 | `bacpypes3` | latest [bacpypes3](https://pypi.org/project/bacpypes3/) on PyPI |
 | `bacnet4j` | Maven `<release>` from the RadixIoT ias-release repo |
-| `Decision table` | pin vs latest + candidate build outcome |
+| `Decision table` | pin vs latest + build / ready / Who-Is outcomes |
 
-Build steps use `continue-on-error` so a broken upstream does not fail the run.
-Pin bumps remain a deliberate release decision.
+Build and smoke steps use `continue-on-error` so a broken upstream does not fail
+the run. Smoke logs are uploaded as artifacts. Consumer interop stays in
+`go-bacnet`. Pin bumps remain a deliberate release decision.
+
+Single-adapter local smoke (candidate mode):
+
+```bash
+SMOKE_ONLY=bacnet-stack BACNET_STACK_IMAGE=bacnet-interop-bacnet-stack:candidate \
+  ./scripts/smoke-test.sh
+```
 
 ## Consuming from go-bacnet
 

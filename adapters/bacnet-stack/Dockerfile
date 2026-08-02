@@ -20,7 +20,10 @@ ARG BACNET_STACK_REPO=https://github.com/bacnet-stack/bacnet-stack.git
 ARG BACNET_STACK_SHA=9bc3cfa07aab98852de432fa24079f4b4b6b7eed
 ARG BACNET_STACK_VERSION=bacnet-stack-1.6.0
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd
+# ("At least one invalid signature was encountered" despite good InRelease).
+RUN --mount=type=tmpfs,target=/tmp \
+    apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       gcc \
       git \
@@ -45,7 +48,8 @@ RUN make -C /src/adapter BACNET_STACK_ROOT=/src/bacnet-stack \
 # ---------------------------------------------------------------------------
 FROM debian:bookworm-slim@${DEBIAN_DIGEST} AS runtime
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=tmpfs,target=/tmp \
+    apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       python3 \
     && rm -rf /var/lib/apt/lists/* \

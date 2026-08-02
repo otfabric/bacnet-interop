@@ -1,0 +1,43 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "15.18"
+    ]
+  },
+  "license": {
+    "status": "malformed-constructed",
+    "notes": "ReadRange request with duplicate arrayIndex"
+  },
+  "id": "service-malformed-read-range-duplicate-array-index",
+  "description": "ReadRange request with duplicate arrayIndex",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "0c050000011983290129023e210131023f",
+  "tags": [
+    "service",
+    "read-range",
+    "malformed",
+    "horizon-2",
+    "gate-3"
+  ],
+  "operation": "decode_read_range",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
+  }
+}

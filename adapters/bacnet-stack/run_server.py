@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Any
 
 
-FIXTURE_DEFAULT = "device-baseline-v1"
-FIXTURE_PATH_DEFAULT = "/fixtures/device/device-baseline-v1.json"
+FIXTURE_DEFAULT = "device-baseline-v2"
+FIXTURE_PATH_DEFAULT = "/fixtures/device/device-baseline-v2.json"
 PORT_DEFAULT = 47808
 
 

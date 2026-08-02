@@ -12,7 +12,9 @@ FROM debian:bookworm-slim@${DEBIAN_DIGEST} AS runtime
 ARG BACPYPES3_VERSION=0.0.106
 ARG ADAPTER_VERSION=dev
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd.
+RUN --mount=type=tmpfs,target=/tmp \
+    apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       python3 \
       python3-pip \

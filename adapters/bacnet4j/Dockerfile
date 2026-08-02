@@ -15,7 +15,9 @@ FROM eclipse-temurin:17-jdk-jammy@${TEMURIN_JDK_DIGEST} AS build
 
 ARG BACNET4J_VERSION=6.1.0
 
-RUN apt-get update && apt-get install -y --no-install-recommends maven \
+# tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd.
+RUN --mount=type=tmpfs,target=/tmp \
+    apt-get update && apt-get install -y --no-install-recommends maven \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src

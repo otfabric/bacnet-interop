@@ -1,0 +1,43 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "15.10"
+    ]
+  },
+  "license": {
+    "status": "malformed-constructed",
+    "notes": "WritePropertyMultiple with duplicate priority context tag"
+  },
+  "id": "service-malformed-wpm-duplicate-priority",
+  "description": "WritePropertyMultiple with duplicate priority context tag",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "0c008000011e09552e44422900002f390839091f",
+  "tags": [
+    "service",
+    "write-property-multiple",
+    "malformed",
+    "horizon-2",
+    "gate-3"
+  ],
+  "operation": "decode_write_property_multiple",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
+  }
+}

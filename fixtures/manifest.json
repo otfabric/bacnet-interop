@@ -169,6 +169,26 @@
     {
       "id": "service-reinitialize-device-warmstart",
       "path": "fixtures/codec/service-reinitialize-device-warmstart.json"
+    },
+    {
+      "id": "service-malformed-wpm-duplicate-priority",
+      "path": "fixtures/codec/service-malformed-wpm-duplicate-priority.json"
+    },
+    {
+      "id": "service-malformed-wpm-array-index-overflow",
+      "path": "fixtures/codec/service-malformed-wpm-array-index-overflow.json"
+    },
+    {
+      "id": "service-malformed-read-range-duplicate-array-index",
+      "path": "fixtures/codec/service-malformed-read-range-duplicate-array-index.json"
+    },
+    {
+      "id": "service-malformed-dcc-duplicate-duration",
+      "path": "fixtures/codec/service-malformed-dcc-duplicate-duration.json"
+    },
+    {
+      "id": "service-malformed-reinitialize-duplicate-password",
+      "path": "fixtures/codec/service-malformed-reinitialize-duplicate-password.json"
     }
   ]
 }

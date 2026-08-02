@@ -1,0 +1,78 @@
+# Machine-readable adapter inventory for bacnet-interop.
+# Capability cells: native | adapter-shim | unsupported | topology-aid
+# Assertions live in go-bacnet/interop; this file documents peer pins and evidence types.
+
+schema_version: "1"
+adapter_version: "0.4.1"
+fixture: device-baseline-v2
+fixture_frozen: device-baseline-v1
+
+adapters:
+  - id: bacnet-stack
+    image: ghcr.io/otfabric/bacnet-interop-bacnet-stack
+    upstream: bacnet-stack
+    upstream_version: "1.6.0"
+    role: peer-oracle
+    capabilities:
+      who_is_i_am: native
+      who_has_i_have: native
+      read_property: native
+      read_property_multiple: native
+      write_property: native
+      write_property_multiple: native
+      read_range_by_position: native
+      cov: native
+      event_notification_emit: unsupported
+      device_communication_control: native
+      reinitialize_device_warmstart: native
+      segmented_confirmed_request_receive: unsupported
+      peer_as_bbmd: unsupported
+
+  - id: bacpypes3
+    image: ghcr.io/otfabric/bacnet-interop-bacpypes3
+    upstream: BACpypes3
+    upstream_version: "0.0.106"
+    role: peer-oracle
+    capabilities:
+      who_is_i_am: native
+      who_has_i_have: native
+      read_property: native
+      read_property_multiple: native
+      write_property: native
+      write_property_multiple: adapter-shim  # do_WritePropertyMultipleRequest → write_property
+      read_range_by_position: unsupported  # upstream NotImplementedError; TrendLog skipped
+      cov: native
+      event_notification_emit: adapter-shim  # BACNET_EMIT_EVENT=1 after first ReadProperty
+      device_communication_control: unsupported
+      reinitialize_device_warmstart: adapter-shim  # SimpleACK; no process restart
+      segmented_confirmed_request_receive: native
+      peer_as_bbmd: native  # BACNET_BBMD=1
+
+  - id: bacnet4j
+    image: ghcr.io/otfabric/bacnet-interop-bacnet4j
+    upstream: BACnet4J
+    upstream_version: "6.1.0"
+    role: peer-oracle
+    capabilities:
+      who_is_i_am: native
+      who_has_i_have: native
+      read_property: native
+      read_property_multiple: native
+      write_property: native
+      write_property_multiple: native
+      read_range_by_position: native  # TrendLogObject seeded buffer
+      cov: native
+      event_notification_emit: adapter-shim  # BACNET_EMIT_EVENT=1 after first ReadProperty
+      device_communication_control: unsupported
+      reinitialize_device_warmstart: adapter-shim  # handler SimpleACK; no process restart
+      segmented_confirmed_request_receive: unsupported  # rejects segmented confirmed requests
+      peer_as_bbmd: native  # BACNET_BBMD=1
+
+  - id: bip-router
+    image: ghcr.io/otfabric/bacnet-interop-bip-router
+    upstream: bacnet-interop
+    upstream_version: topology-router-v1
+    role: topology-aid
+    capabilities:
+      who_is_router_i_am_router: topology-aid
+      dnet_forward_hop_decrement: topology-aid

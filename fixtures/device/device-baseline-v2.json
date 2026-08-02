@@ -32,9 +32,9 @@
   ],
   "notes": [
     "Supersedes device-baseline-v1 for new adapter images; v1 remains frozen for historical digests.",
-    "bacnet-stack: TrendLog via MAX_TREND_LOGS=1 + handler_read_range; ReinitializeDevice registered with empty password; EventNotification emit optional via BACNET_EMIT_EVENT.",
-    "BACpypes3: same AV/BV; no server ReadRange (NotImplementedError); ReinitializeDevice SimpleACK; can emit UnconfirmedEventNotification.",
-    "BACnet4J: TrendLogObject with seeded buffer; ReinitializeDevice no-op warmstart handler."
+    "bacnet-stack: TrendLog via MAX_TREND_LOGS=1 + handler_read_range; ReinitializeDevice / DCC with empty password; no EventNotification emit.",
+    "BACpypes3: same AV/BV; no server ReadRange (NotImplementedError); WPM adapter-shim; ReinitializeDevice SimpleACK; BACNET_EMIT_EVENT=1 UnconfirmedEventNotification.",
+    "BACnet4J: TrendLogObject with seeded buffer; ReinitializeDevice no-op warmstart handler; BACNET_EMIT_EVENT=1 UnconfirmedEventNotification."
   ],
   "alignment": {
     "bacnet-stack": "full-object-graph",

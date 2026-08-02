@@ -11,7 +11,9 @@ FROM debian:bookworm-slim@${DEBIAN_DIGEST}
 
 ARG ADAPTER_VERSION=dev
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd.
+RUN --mount=type=tmpfs,target=/tmp \
+    apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
       iproute2 \
       python3 \
