@@ -6,14 +6,17 @@ Containerized [BACnet4J](https://github.com/RadixIoT/BACnet4J) peer for [`bacnet
 
 ## Role
 
-Primary **Java** semantic oracle for Horizon 1 / current H2 peer surface:
+Primary **Java** peer oracle for fixture-driven interop:
 
 - Independently implemented BACnet application layer (BACnet4J / RadixIoT)
-- BACnet/IP device server aligned with `device-baseline-v2` (device + AV-1 + BV-1 + TrendLog)
+- Default fixture `device-baseline-v2` (device + AV-1 + BV-1 + TrendLog)
+- Also loads `device-baseline-v3` (AI/NC/EE + AV intrinsic Out_Of_Range highLimit=80) and
+  `device-baseline-v4` (File stream/record objects seeded from fixture JSON)
 - Who-Has / I-Have, WPM, ReadRange byPosition, ReinitializeDevice warmstart
 - Optional `BACNET_EMIT_EVENT=1` UnconfirmedEventNotification emit (**adapter-shim**)
 - Optional peer-as-BBMD (`BACNET_BBMD=1`) and small MaxAPDU for segmentation stress
 - Rejects segmented confirmed-request receive (registered gap vs BACpypes3)
+- AtomicReadFile live path vs go-bacnet currently blocked (BLOCKERS B8)
 
 `go-bacnet` must never link against BACnet4J. The peer runs only as a separate
 image under its upstream license; distribution must preserve that license.
@@ -75,9 +78,12 @@ Environment overrides:
 
 ## Fixture notes
 
-`/fixtures/device/device-baseline-v2.json` is the shared revision
-(`device-baseline-v1` frozen). This adapter constructs commandable COV-capable
-AV-1, commandable BV-1, and a seeded TrendLogObject for ReadRange byPosition
+Default `/fixtures/device/device-baseline-v2.json` (`device-baseline-v1` frozen).
+Override with `DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v3.json` (or v4–v8).
+This adapter constructs commandable COV-capable AV-1, commandable BV-1, and a
+seeded TrendLogObject for ReadRange byPosition. For v3 it also creates AnalogInput,
+NotificationClass, EventEnrollment (after `initialize()`), and enables AV
+intrinsic reporting. For v4 it seeds File stream/record content under `/tmp`.
 (alignment: `full-object-graph`).
 
 ## Capability tracking

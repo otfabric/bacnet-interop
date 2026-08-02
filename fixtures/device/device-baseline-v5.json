@@ -1,0 +1,45 @@
+{
+  "fixture": "device-baseline-v5",
+  "description": "List and object lifecycle: creatable/deletable objects and list-valued properties.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice",
+      "description": "Supports AddListElement/RemoveListElement on selected list properties; CreateObject/DeleteObject for test AV instances >= 100."
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5
+    },
+    {
+      "type": "binary-value",
+      "instance": 1,
+      "object_name": "BV-1",
+      "present_value": "inactive"
+    },
+    {
+      "type": "analog-value",
+      "instance": 100,
+      "object_name": "AV-DELETABLE-100",
+      "present_value": 0,
+      "description": "Deterministic deletable test object; CreateObject may allocate AV:101+."
+    }
+  ],
+  "notes": [
+    "Creatable types: analog-value with required Object_Name initial property.",
+    "Duplicate element / unknown object / inconsistent type / missing required initial property error paths.",
+    "Object-ID allocation: prefer next free AV instance starting at 101."
+  ],
+  "alignment": {
+    "bacnet-stack": "partial-pending",
+    "bacpypes3": "partial-pending",
+    "bacnet4j": "partial-pending",
+    "worldiety": "partial-pending"
+  }
+}

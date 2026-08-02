@@ -40,6 +40,7 @@ jobs:
           BACNET_STACK_IMAGE: bacnet-interop-bacnet-stack:local
           BACPYPES3_IMAGE: bacnet-interop-bacpypes3:local
           BACNET4J_IMAGE: bacnet-interop-bacnet4j:local
+          WORLDIETY_IMAGE: bacnet-interop-worldiety:local
           BIP_ROUTER_IMAGE: bacnet-interop-bip-router:local
           BIP_ROUTER_REQUIRED: "1"
 
@@ -53,6 +54,7 @@ jobs:
             echo "bacnet-stack pin   : $(grep -E 'BACNET_STACK_(SHA|VERSION|REF)=' adapters/bacnet-stack/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "BACpypes3 pin      : $(grep -E 'BACPYPES3_(VERSION|REF)=' adapters/bacpypes3/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "BACnet4J pin       : $(grep -E 'BACNET4J_VERSION=' adapters/bacnet4j/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
+            echo "Worldiety pin      : $(grep -E 'WORLDIETY_COMMIT=' adapters/worldiety/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "bip-router         : topology-router-v1"
           } | tee build-provenance.txt
 

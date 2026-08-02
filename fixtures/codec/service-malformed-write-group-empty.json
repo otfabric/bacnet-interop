@@ -1,0 +1,40 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "12"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-malformed-write-group-empty",
+  "description": "Malformed WriteGroup missing change list",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "09011908",
+  "tags": [
+    "service",
+    "write-group",
+    "malformed"
+  ],
+  "operation": "decode_write_group",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
+  }
+}

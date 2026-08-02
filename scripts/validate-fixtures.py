@@ -136,7 +136,7 @@ def main() -> int:
                 errors.append(f"{rel}: missing semantic_file {sem}")
         expect = meta.get("expect") or {}
         if isinstance(expect, dict):
-            if expect.get("original_bytes_equal") and not meta.get("input_hex"):
+            if expect.get("original_bytes_equal") and "input_hex" not in meta:
                 errors.append(f"{rel}: original_bytes_equal requires input_hex")
             if expect.get("semantic_decode_equal"):
                 if not meta.get("semantic_file") and not meta.get("operation"):
@@ -167,8 +167,8 @@ def main() -> int:
             rel = str(meta_path.relative_to(ROOT)).replace("\\", "/")
             if rel.endswith("manifest.json") or "/schema/" in rel:
                 continue
-            # Live adapter device models (not codec goldens).
-            if "/device/" in rel:
+            # Live adapter / topology models (not codec goldens).
+            if "/device/" in rel or "/topology/" in rel or "/bbmd/" in rel:
                 continue
             if meta_path.name.endswith(".semantic.json"):
                 continue

@@ -1,0 +1,40 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "12"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-malformed-who-am-i",
+  "description": "Malformed Who-Am-I truncated",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "ff",
+  "tags": [
+    "service",
+    "identity",
+    "malformed"
+  ],
+  "operation": "decode_who_am_i",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
+  }
+}

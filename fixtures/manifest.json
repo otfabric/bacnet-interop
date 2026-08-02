@@ -189,6 +189,122 @@
     {
       "id": "service-malformed-reinitialize-duplicate-password",
       "path": "fixtures/codec/service-malformed-reinitialize-duplicate-password.json"
+    },
+    {
+      "id": "service-get-alarm-summary-req",
+      "path": "fixtures/codec/service-get-alarm-summary-req.json"
+    },
+    {
+      "id": "service-get-alarm-summary-ack",
+      "path": "fixtures/codec/service-get-alarm-summary-ack.json"
+    },
+    {
+      "id": "service-get-enrollment-summary-req",
+      "path": "fixtures/codec/service-get-enrollment-summary-req.json"
+    },
+    {
+      "id": "service-get-enrollment-summary-ack",
+      "path": "fixtures/codec/service-get-enrollment-summary-ack.json"
+    },
+    {
+      "id": "service-subscribe-cov-property-multiple",
+      "path": "fixtures/codec/service-subscribe-cov-property-multiple.json"
+    },
+    {
+      "id": "service-cov-notification-multiple",
+      "path": "fixtures/codec/service-cov-notification-multiple.json"
+    },
+    {
+      "id": "service-atomic-read-file-stream",
+      "path": "fixtures/codec/service-atomic-read-file-stream.json"
+    },
+    {
+      "id": "service-atomic-read-file-ack-stream",
+      "path": "fixtures/codec/service-atomic-read-file-ack-stream.json"
+    },
+    {
+      "id": "service-atomic-write-file-stream",
+      "path": "fixtures/codec/service-atomic-write-file-stream.json"
+    },
+    {
+      "id": "service-atomic-write-file-ack",
+      "path": "fixtures/codec/service-atomic-write-file-ack.json"
+    },
+    {
+      "id": "service-atomic-read-file-record",
+      "path": "fixtures/codec/service-atomic-read-file-record.json"
+    },
+    {
+      "id": "service-malformed-atomic-read-file-empty",
+      "path": "fixtures/codec/service-malformed-atomic-read-file-empty.json"
+    },
+    {
+      "id": "service-add-list-element",
+      "path": "fixtures/codec/service-add-list-element.json"
+    },
+    {
+      "id": "service-create-object",
+      "path": "fixtures/codec/service-create-object.json"
+    },
+    {
+      "id": "service-create-object-ack",
+      "path": "fixtures/codec/service-create-object-ack.json"
+    },
+    {
+      "id": "service-delete-object",
+      "path": "fixtures/codec/service-delete-object.json"
+    },
+    {
+      "id": "service-malformed-create-object-empty",
+      "path": "fixtures/codec/service-malformed-create-object-empty.json"
+    },
+    {
+      "id": "service-confirmed-private-transfer",
+      "path": "fixtures/codec/service-confirmed-private-transfer.json"
+    },
+    {
+      "id": "service-unconfirmed-text-message",
+      "path": "fixtures/codec/service-unconfirmed-text-message.json"
+    },
+    {
+      "id": "service-time-synchronization",
+      "path": "fixtures/codec/service-time-synchronization.json"
+    },
+    {
+      "id": "service-write-group",
+      "path": "fixtures/codec/service-write-group.json"
+    },
+    {
+      "id": "service-malformed-write-group-empty",
+      "path": "fixtures/codec/service-malformed-write-group-empty.json"
+    },
+    {
+      "id": "service-audit-log-query",
+      "path": "fixtures/codec/service-audit-log-query.json"
+    },
+    {
+      "id": "service-who-am-i",
+      "path": "fixtures/codec/service-who-am-i.json"
+    },
+    {
+      "id": "service-you-are",
+      "path": "fixtures/codec/service-you-are.json"
+    },
+    {
+      "id": "service-malformed-who-am-i",
+      "path": "fixtures/codec/service-malformed-who-am-i.json"
+    },
+    {
+      "id": "service-life-safety-operation",
+      "path": "fixtures/codec/service-life-safety-operation.json"
+    },
+    {
+      "id": "service-vt-open",
+      "path": "fixtures/codec/service-vt-open.json"
+    },
+    {
+      "id": "service-malformed-vt-open",
+      "path": "fixtures/codec/service-malformed-vt-open.json"
     }
   ]
 }

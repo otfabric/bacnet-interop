@@ -1,0 +1,39 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "12"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-get-enrollment-summary-req",
+  "description": "GetEnrollmentSummary with event-state filter",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "09002901",
+  "tags": [
+    "service",
+    "enrollment-summary"
+  ],
+  "operation": "decode_get_enrollment_summary",
+  "expected": {
+    "acknowledgment_filter": 0,
+    "event_state_filter": 1
+  }
+}

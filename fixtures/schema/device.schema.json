@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/otfabric/bacnet-interop/fixtures/schema/device.schema.json",
   "title": "bacnet-interop live device fixture",
-  "description": "Object graph advertised by Horizon peer adapters (device-baseline-v1/v2).",
+  "description": "Object graph advertised by peer adapters (device-baseline-v1 through v8).",
   "type": "object",
   "additionalProperties": false,
   "required": ["fixture", "device_instance", "device_name", "port", "objects"],
@@ -51,6 +51,10 @@
         "bacnet4j": {
           "type": "string",
           "description": "Which subset BACnet4J constructs from this file."
+        },
+        "worldiety": {
+          "type": "string",
+          "description": "Which subset the Worldiety adapter constructs from this file."
         }
       }
     }
@@ -72,7 +76,12 @@
             "binary-input",
             "binary-output",
             "trend-log",
-            "notification-class"
+            "notification-class",
+            "event-enrollment",
+            "file",
+            "audit-log",
+            "life-safety-point",
+            "life-safety-zone"
           ]
         },
         "instance": {
@@ -89,6 +98,15 @@
             { "type": "boolean" },
             { "type": "null" }
           ]
+        },
+        "access_method": {
+          "type": "string",
+          "enum": ["stream", "record"]
+        },
+        "stream_data_base64": { "type": "string" },
+        "records": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       }
     }

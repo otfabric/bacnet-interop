@@ -4,15 +4,32 @@ Single source of truth for **bacnet-interop**-owned deliverables. Consumer
 assertions and scenario matrices live in [`go-bacnet`](https://github.com/otfabric/go-bacnet)
 (`INTEROP.md`, `interop/`, `PLAN.md`).
 
-Horizon 1 peer set: **bacnet-stack**, **BACpypes3**, and **BACnet4J**. Topology
-aid: **bip-router** (not a product router or peer oracle). Current live fixture:
-`device-baseline-v2` (`device-baseline-v1` frozen).
+Peer set: **bacnet-stack**, **BACpypes3**, **BACnet4J**, and **Worldiety**.
+Topology aid: **bip-router** (not a product router or peer oracle). Current live
+fixture: `device-baseline-v2` (`device-baseline-v1` frozen).
 
 Status labels: `done` · `partial` · `open`.
 
-Latest published release: [`v0.4.1`](https://github.com/otfabric/bacnet-interop/releases/tag/v0.4.1).
-Next: **v0.4.2** hygiene (docs, `*.o` ignore, evidence types, inventory) — open
-until tagged.
+Latest published release: [`v0.4.2`](https://github.com/otfabric/bacnet-interop/releases/tag/v0.4.2).
+Next: **v0.5.0** — Worldiety fourth peer (ready locally; human tag/GHCR publish
+blocked — see [BLOCKERS.md](BLOCKERS.md) B1).
+
+## Fixture-generation roadmap (client completeness)
+
+Responsibility boundary: fixtures + adapters here; all client assertions in
+`go-bacnet`. Worldiety role is **server peer only** until `go-bacnet` has a
+server.
+
+| Release (interop) | Fixture | Focus | Status |
+|---|---|---|---|
+| v0.5.0 | `device-baseline-v2` | Worldiety peer | local done; publish B1 |
+| v0.6.0 | `device-baseline-v3` | Events / multi-COV | fixture + codecs done; BACnet4J loads AI/NC/EE (B3 remaining for ≥2 peers + live summaries) |
+| v0.7.0 | `device-baseline-v4` | Atomic file | fixture + codecs + BACnet4J File objects; live AtomicRead blocked B8 |
+| v0.8.0 | `device-baseline-v5` | List / Create/Delete | fixture + codecs; BACnet4J Create/Delete config B9 |
+| v0.9.0 | `device-baseline-v6` | Private/text/time/group | fixture + codecs; BACnet4J diagnostic operation events + TimeSync interop |
+| v0.10.0 | `device-baseline-v7` | Audit / identity | fixture + codecs; single-peer B4 |
+| v0.11.0 | `device-baseline-v8` | Life safety / VT | fixture + codecs; adapters B7 |
+| parallel | `topology-v2`, `bbmd-v2` | Router / BBMD | fixtures done; Worldiety modes B5 |
 
 ---
 
@@ -63,7 +80,8 @@ Reject undocumented vendor dumps.
 | BACnet4J `DeviceServer.java` | done (`bacnet4j==6.1.0`) |
 | BIP↔BIP topology router (`bip-router`) | done (interop fixture) |
 | `device-baseline-v2` shared by peer images | done (v1 frozen for historical digests) |
-| `make build` / `make smoke` | done (stack + bacpypes3 + bacnet4j + bip-router) |
+| `make build` / `make smoke` | done (stack + bacpypes3 + bacnet4j + worldiety + bip-router) |
+| Worldiety `adapters/worldiety` (`device-baseline-v2`) | done (local build + smoke; publish = B1) |
 
 ### bacnet-stack (`adapters/bacnet-stack`)
 

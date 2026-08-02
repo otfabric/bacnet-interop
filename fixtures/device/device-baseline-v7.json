@@ -1,0 +1,36 @@
+{
+  "fixture": "device-baseline-v7",
+  "description": "Audit and identity: Audit Log object plus Who-Am-I / You-Are / AuthRequest notes.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice"
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5
+    },
+    {
+      "type": "audit-log",
+      "instance": 1,
+      "object_name": "AUDIT-1",
+      "description": "Deterministic audit query results for AuditLogQuery; emit confirmed/unconfirmed audit notifications when triggered."
+    }
+  ],
+  "notes": [
+    "Primary peer: BACnet4J. Evidence state remains interop-single-peer until a second executable peer exists.",
+    "Who-Am-I / You-Are / AuthRequest where peer support allows."
+  ],
+  "alignment": {
+    "bacnet-stack": "unsupported",
+    "bacpypes3": "unsupported",
+    "bacnet4j": "partial-pending",
+    "worldiety": "unsupported"
+  }
+}

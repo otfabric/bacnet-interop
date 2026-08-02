@@ -39,6 +39,7 @@
   "alignment": {
     "bacnet-stack": "full-object-graph",
     "bacpypes3": "identity-av-bv-events-reinit",
-    "bacnet4j": "full-object-graph"
+    "bacnet4j": "full-object-graph",
+    "worldiety": "full-object-graph"
   }
 }

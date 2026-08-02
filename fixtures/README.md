@@ -11,14 +11,28 @@ Corpus and provenance for BACnet interoperability and codec goldens.
 | `schema/fixture.schema.json` | Draft 2020-12 schema for per-fixture provenance metadata |
 | `manifest.json` | Authoritative index of **codec** goldens (`schemaVersion` + `fixtures[]`) |
 | `codec/` | Independently generated wire goldens (BVLC/NPDU/APDU/service/malformed) |
-| `device/` | Live adapter device model (`device-baseline-v2.json` current; `device-baseline-v1.json` frozen); not in the codec manifest |
+| `device/` | Live adapter device models (`device-baseline-v1`…`v8`); not in the codec manifest |
+| `topology/` | Router/topology fixtures (`topology-v2.json`; v1 remains bip-router env) |
+| `bbmd/` | BBMD management fixtures (`bbmd-v2.json`; v1 remains `BACNET_BBMD=1` env) |
 | *(future)* `captures/` | Sanitized packet captures |
 
-Current peer images and `go-bacnet/interop` use
-`fixtures/device/device-baseline-v2.json` (device + AV + BV + TrendLog).
-`device-baseline-v1` remains frozen for historical digests. Codec goldens under
-`fixtures/codec/` are loaded via `go-bacnet/internal/fixtures`. Set
-`BACNET_INTEROP_ROOT` if the sibling checkout is not at `../bacnet-interop`.
+### Device fixture generations
+
+| Fixture | Goal | Peer status |
+|---|---|---|
+| `device-baseline-v1` | Frozen historical | published digests |
+| `device-baseline-v2` | Current Worldiety / v0.5.0 baseline (AV/BV/TL) | Worldiety + BACnet4J + BACpypes3 + stack |
+| `device-baseline-v3` | Alarms/COV (AI/NC/EE + AV trigger) | BACnet4J partial-local; ≥2 peers B3 |
+| `device-baseline-v4` | File stream/record | BACnet4J objects ready; AtomicRead wire B8 |
+| `device-baseline-v5` | List + Create/DeleteObject | objects load; Create/Delete config B9 |
+| `device-baseline-v6` | Private/text/time/group sinks | BACnet4J TimeSync/Text interop + diagnostic events |
+| `device-baseline-v7` | Audit + identity | single-peer expected (B4) |
+| `device-baseline-v8` | Life safety + VT | adapter-pending (B7) |
+
+Current peer images and `go-bacnet/interop` default to
+`fixtures/device/device-baseline-v2.json`. Codec goldens under `fixtures/codec/`
+are loaded via `go-bacnet/internal/fixtures`. Set `BACNET_INTEROP_ROOT` if the
+sibling checkout is not at `../bacnet-interop`.
 
 ## Provenance requirements
 

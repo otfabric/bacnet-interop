@@ -1,0 +1,41 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "client-to-server",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "12"
+    ]
+  },
+  "license": {
+    "status": "independently-generated"
+  },
+  "id": "service-time-synchronization",
+  "description": "TimeSynchronization date/time",
+  "expect": {
+    "semantic_decode_equal": true,
+    "deterministic_reencode_equal": true,
+    "original_bytes_equal": true
+  },
+  "input_hex": "a47e080207b40c000000",
+  "tags": [
+    "service",
+    "time-synchronization"
+  ],
+  "operation": "decode_time_synchronization",
+  "expected": {
+    "year": 126,
+    "month": 8,
+    "day": 2,
+    "hour": 12
+  }
+}

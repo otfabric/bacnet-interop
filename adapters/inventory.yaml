@@ -3,7 +3,7 @@
 # Assertions live in go-bacnet/interop; this file documents peer pins and evidence types.
 
 schema_version: "1"
-adapter_version: "0.4.1"
+adapter_version: "0.5.0"
 fixture: device-baseline-v2
 fixture_frozen: device-baseline-v1
 
@@ -67,6 +67,36 @@ adapters:
       reinitialize_device_warmstart: adapter-shim  # handler SimpleACK; no process restart
       segmented_confirmed_request_receive: unsupported  # rejects segmented confirmed requests
       peer_as_bbmd: native  # BACNET_BBMD=1
+
+  - id: worldiety
+    image: ghcr.io/otfabric/bacnet-interop-worldiety
+    upstream: worldiety/bacnet
+    upstream_version: "3cb2aa80efbb8a489abb9978c7f6e5dc603535a7"
+    upstream_commit: "3cb2aa80efbb8a489abb9978c7f6e5dc603535a7"
+    role: peer-oracle
+    evidence:
+      bvlc: native
+      npdu: native
+      apdu_dispatch: native
+      confirmed_transactions: native
+      segmented_request_receive: native
+      segmented_complex_ack_send: native
+      fixture_object_model: adapter-shim
+      service_payload_handlers: adapter-shim
+    capabilities:
+      who_is_i_am: native
+      who_has_i_have: adapter-shim  # payload + fixture match; ASE send native
+      read_property: adapter-shim
+      read_property_multiple: adapter-shim
+      write_property: adapter-shim
+      write_property_multiple: adapter-shim
+      read_range_by_position: adapter-shim  # seeded Log_Buffer
+      cov: unsupported
+      event_notification_emit: unsupported
+      device_communication_control: unsupported
+      reinitialize_device_warmstart: unsupported
+      segmented_confirmed_request_receive: native
+      peer_as_bbmd: unsupported
 
   - id: bip-router
     image: ghcr.io/otfabric/bacnet-interop-bip-router
