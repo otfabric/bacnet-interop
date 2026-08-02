@@ -18,7 +18,12 @@ Primary **executable** C oracle for Horizon 1 / current H2 peer surface:
 - AddListElement / RemoveListElement on Notification Class `Recipient_List`
   (NC instances 0..MAX after `Notification_Class_Init`; used with v3 NC-1)
 - GetAlarmSummary / GetEventInformation / AcknowledgeAlarm handlers registered
-  when `INTRINSIC_REPORTING` is enabled
+  when `INTRINSIC_REPORTING` is enabled; AV intrinsic Out_Of_Range configured for
+  `device-baseline-v3` (main loop calls `Device_local_reporting`)
+- GetEnrollmentSummary is **unsupported-upstream** (no stack handler / EE object)
+- Messaging (v6): TimeSynchronization / UTC / UnconfirmedPrivateTransfer / WriteGroup
+  registered; emits `{"event":"operation",...}` JSONL on stdout (bridged by
+  `run_server.py`). TextMessage and ConfirmedPrivateTransfer unsupported-upstream
 
 `go-bacnet` must never link against bacnet-stack. The peer runs only as a separate image under its upstream license; distribution must preserve that license and corresponding source obligations.
 

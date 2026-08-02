@@ -30,9 +30,9 @@
     "BACnet4J exposes confirmed/unconfirmed private transfer, text, time sync, and WriteGroup in service registries."
   ],
   "alignment": {
-    "bacnet-stack": "partial-pending",
-    "bacpypes3": "partial-pending",
-    "bacnet4j": "partial-local",
-    "worldiety": "partial-pending"
+    "bacnet-stack": "partial-live",
+    "bacpypes3": "live",
+    "bacnet4j": "partial-live",
+    "worldiety": "unsupported-upstream"
   }
 }

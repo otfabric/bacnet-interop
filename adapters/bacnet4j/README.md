@@ -21,8 +21,9 @@ Primary **Java** peer oracle for fixture-driven interop:
 - CreateObject/DeleteObject for `device-baseline-v5` via fixture `object_lifecycle`
   (registers AV/BV creators; marks `precreated_deletable`)
 - AddListElement / RemoveListElement on NC-1 `recipientList`
-- GetAlarmSummary after AV intrinsic Out_Of_Range (v3); COV-multiple still
-  upstream `NotImplementedException`
+- GetAlarmSummary after AV intrinsic Out_Of_Range (v3); GetEnrollmentSummary
+  with EE-1 (v3); messaging `operation` JSONL sinks (v6; WriteGroup + COV-multiple
+  still upstream `NotImplementedException`)
 
 `go-bacnet` must never link against BACnet4J. The peer runs only as a separate
 image under its upstream license; distribution must preserve that license.

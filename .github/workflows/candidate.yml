@@ -3,7 +3,9 @@ run-name: "Candidate upstream probe by @${{ github.actor }}"
 
 # Resolves newer upstreams, builds candidate images, smokes readiness + a
 # directed Who-Is probe, and publishes a pin-vs-latest decision table in the
-# workflow Job Summary. Release pins are never mutated.
+# workflow Job Summary. Probe steps continue on error so every stack is
+# reported; the summary job then fails the workflow if any Build / Ready /
+# Who-Is outcome is failure. Release pins are never mutated.
 on:
   schedule:
     - cron: "0 6 * * 1"
@@ -294,10 +296,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Resolve BACnet4J pin vs Maven
+      - name: Resolve BACnet4J pin vs Maven (stable only)
         id: resolve
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import re
           import sys
           import urllib.request
           import xml.etree.ElementTree as ET
@@ -314,19 +317,35 @@ jobs:
               "com/infiniteautomation/bacnet4j/maven-metadata.xml"
           )
           root = ET.fromstring(urllib.request.urlopen(url, timeout=60).read())
-          latest = root.findtext("./versioning/release") or root.findtext("./versioning/latest")
+          # Maven <release>/<latest> may point at alphas; only probe stable
+          # semver (no alpha/beta/rc/snapshot/milestone qualifiers).
+          stable_re = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+          latest = ""
+          latest_key = None
+          for node in root.findall("./versioning/versions/version"):
+              ver = (node.text or "").strip()
+              m = stable_re.match(ver)
+              if not m:
+                  continue
+              key = tuple(int(x) for x in m.groups())
+              if latest_key is None or key > latest_key:
+                  latest_key = key
+                  latest = ver
           if not latest:
-              raise SystemExit("maven-metadata.xml missing versioning/release")
+              raise SystemExit("no stable X.Y.Z BACnet4J versions in maven-metadata.xml")
 
           update = "yes" if pin != latest else "no"
 
           print(f"pin={pin}")
           print(f"latest={latest}")
           print(f"update={update}")
-          print(f"resolved pin={pin} latest={latest} update={update}", file=sys.stderr)
+          print(
+              f"resolved pin={pin} latest_stable={latest} update={update}",
+              file=sys.stderr,
+          )
           PY
 
-      - name: Build image at Maven latest
+      - name: Build image at Maven latest stable
         id: build
         continue-on-error: true
         run: |
@@ -384,10 +403,145 @@ jobs:
           path: dist/candidate/bacnet4j-smoke.log
           if-no-files-found: ignore
 
+  candidate-worldiety:
+    name: worldiety
+    runs-on: ubuntu-latest
+    outputs:
+      pin: ${{ steps.resolve.outputs.pin }}
+      tip_sha: ${{ steps.resolve.outputs.tip_sha }}
+      update: ${{ steps.resolve.outputs.update }}
+      build: ${{ steps.build.outcome }}
+      ready: ${{ steps.smoke.outputs.ready || steps.smoke_skip.outputs.ready }}
+      whois: ${{ steps.smoke.outputs.whois || steps.smoke_skip.outputs.whois }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: adapters/worldiety/go.mod
+          cache-dependency-path: adapters/worldiety/go.sum
+
+      - name: Resolve Worldiety pin vs upstream HEAD
+        id: resolve
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import re
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          repo = "https://github.com/worldiety/bacnet.git"
+          # Prefer Dockerfile ARG (full SHA); fall back to go.mod pseudo-version suffix.
+          pin = ""
+          for line in Path("adapters/worldiety/Dockerfile").read_text().splitlines():
+              if line.startswith("ARG WORLDIETY_COMMIT="):
+                  pin = line.split("=", 1)[1].strip()
+                  break
+          if not pin:
+              mod = Path("adapters/worldiety/go.mod").read_text()
+              m = re.search(
+                  r"github.com/worldiety/bacnet v0\.0\.0-\d+-([0-9a-f]+)",
+                  mod,
+              )
+              if not m:
+                  raise SystemExit("could not read Worldiety commit pin")
+              pin = m.group(1)
+
+          tip = subprocess.check_output(
+              ["git", "ls-remote", repo, "HEAD"], text=True
+          ).split()[0]
+
+          # Worldiety publishes no release tags; decision is HEAD tip drift.
+          # Allow short SHA (go.mod) vs full SHA (Dockerfile / ls-remote).
+          same = tip.startswith(pin) or pin.startswith(tip)
+          update = "no" if same else "yes"
+
+          print(f"pin={pin}")
+          print(f"tip_sha={tip}")
+          print(f"update={update}")
+          print(
+              f"resolved pin={pin[:12]} tip={tip[:12]} update={update}",
+              file=sys.stderr,
+          )
+          PY
+
+      - name: Build image at upstream HEAD
+        id: build
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          tip="${{ steps.resolve.outputs.tip_sha }}"
+          (
+            cd adapters/worldiety
+            go get "github.com/worldiety/bacnet@${tip}"
+            go mod tidy
+          )
+          docker buildx build --platform="${PLATFORM}" --load \
+            -f adapters/worldiety/Dockerfile \
+            --build-arg "WORLDIETY_COMMIT=${tip}" \
+            --build-arg ADAPTER_VERSION=candidate \
+            -t bacnet-interop-worldiety:candidate \
+            .
+
+      - name: Smoke candidate image
+        id: smoke
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p dist/candidate
+          set +e
+          SMOKE_ONLY=worldiety SMOKE_WHOIS=1 \
+            WORLDIETY_IMAGE=bacnet-interop-worldiety:candidate \
+            ./scripts/smoke-test.sh 2>&1 | tee dist/candidate/worldiety-smoke.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          from pathlib import Path
+          log = Path("dist/candidate/worldiety-smoke.log").read_text(errors="replace")
+          ready = "failure"
+          if "PASS worldiety device server: ready event OK" in log:
+              ready = "success"
+          whois = "skipped"
+          if "PASS worldiety device server: directed Who-Is" in log:
+              whois = "success"
+          elif "FAIL worldiety device server: directed Who-Is" in log:
+              whois = "failure"
+          print(f"ready={ready}")
+          print(f"whois={whois}")
+          PY
+          exit "$rc"
+
+      - name: Skip smoke (build failed)
+        id: smoke_skip
+        if: steps.build.outcome != 'success'
+        run: |
+          {
+            echo "ready=skipped"
+            echo "whois=skipped"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload smoke log
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-worldiety-smoke
+          path: dist/candidate/worldiety-smoke.log
+          if-no-files-found: ignore
+
   summary:
     name: Decision table
     runs-on: ubuntu-latest
-    needs: [candidate-bacnet-stack, candidate-bacpypes3, candidate-bacnet4j]
+    needs:
+      - candidate-bacnet-stack
+      - candidate-bacpypes3
+      - candidate-bacnet4j
+      - candidate-worldiety
     if: always()
     steps:
       - name: Write pin-vs-latest summary
@@ -413,6 +567,12 @@ jobs:
           B4J_BUILD: ${{ needs.candidate-bacnet4j.outputs.build }}
           B4J_READY: ${{ needs.candidate-bacnet4j.outputs.ready }}
           B4J_WHOIS: ${{ needs.candidate-bacnet4j.outputs.whois }}
+          WT_PIN: ${{ needs.candidate-worldiety.outputs.pin }}
+          WT_TIP: ${{ needs.candidate-worldiety.outputs.tip_sha }}
+          WT_UPDATE: ${{ needs.candidate-worldiety.outputs.update }}
+          WT_BUILD: ${{ needs.candidate-worldiety.outputs.build }}
+          WT_READY: ${{ needs.candidate-worldiety.outputs.ready }}
+          WT_WHOIS: ${{ needs.candidate-worldiety.outputs.whois }}
         run: |
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import os
@@ -446,6 +606,13 @@ jobs:
           b4j_build = os.environ.get("B4J_BUILD", "?")
           b4j_ready = os.environ.get("B4J_READY", "skipped")
           b4j_whois = os.environ.get("B4J_WHOIS", "skipped")
+
+          wt_pin = os.environ.get("WT_PIN", "")
+          wt_tip = os.environ.get("WT_TIP", "")
+          wt_update = os.environ.get("WT_UPDATE", "?")
+          wt_build = os.environ.get("WT_BUILD", "?")
+          wt_ready = os.environ.get("WT_READY", "skipped")
+          wt_whois = os.environ.get("WT_WHOIS", "skipped")
 
           if stack_pin_tag:
               stack_pin_label = f"`{stack_pin_tag}` (`{short(stack_pin)}`)"
@@ -487,21 +654,78 @@ jobs:
               f"`{cell(b4j_ready)}` | `{cell(b4j_whois)}` | n/a (`go-bacnet`) | "
               f"**{b4j_update}** |"
           )
+          print(
+              f"| [Worldiety](https://github.com/worldiety/bacnet) | git SHA (no tags) | "
+              f"`{short(wt_pin)}` | HEAD `{short(wt_tip)}` | `{cell(wt_build)}` | "
+              f"`{cell(wt_ready)}` | `{cell(wt_whois)}` | n/a (`go-bacnet`) | "
+              f"**{wt_update}** |"
+          )
           print()
           print("### Pin locations")
           print()
           print("- bacnet-stack: `adapters/bacnet-stack/Dockerfile` (`BACNET_STACK_SHA` / `BACNET_STACK_VERSION`)")
           print("- bacpypes3: `adapters/bacpypes3/requirements.txt` (`bacpypes3==…`)")
           print("- BACnet4J: `adapters/bacnet4j/Dockerfile` (`BACNET4J_VERSION`)")
+          print("- Worldiety: `adapters/worldiety/Dockerfile` (`WORLDIETY_COMMIT`) + `adapters/worldiety/go.mod`")
           print()
           print("### How to read this")
           print()
           print("- **Update? = yes** means the release pin differs from the latest upstream release.")
           print("- **bacnet-stack** candidates build the newest `bacnet-stack-X.Y.Z` tag only (not master HEAD).")
-          print("- **Build** / **Ready** / **Who-Is** use `continue-on-error`; a red cell does not fail the workflow.")
+          print("- **BACnet4J** candidates use the newest stable Maven `X.Y.Z` only (skip alpha/beta/rc/snapshot).")
+          print("- **Worldiety** has no release tags; candidates build upstream HEAD and compare commit SHAs.")
+          print("- Probe steps use `continue-on-error` so every stack is reported; the final gate fails the workflow if any Build/Ready/Who-Is cell is `failure`.")
           print("- **Ready** = JSON ready-event + fixture presence for the candidate image.")
           print("- **Who-Is** = directed Who-Is → I-Am on a shared Docker network (default mode only).")
           print("- **Consumer interop** stays in `go-bacnet` (`-tags=interop`); this repo never runs it.")
           print("- Smoke logs are uploaded as workflow artifacts (`candidate-*-smoke`).")
           print("- Bump deliberately after reviewing upstream changelog / release notes.")
+          PY
+
+      - name: Fail workflow if any candidate probe failed
+        env:
+          STACK_BUILD: ${{ needs.candidate-bacnet-stack.outputs.build }}
+          STACK_READY: ${{ needs.candidate-bacnet-stack.outputs.ready }}
+          STACK_WHOIS: ${{ needs.candidate-bacnet-stack.outputs.whois }}
+          BACP_BUILD: ${{ needs.candidate-bacpypes3.outputs.build }}
+          BACP_READY: ${{ needs.candidate-bacpypes3.outputs.ready }}
+          BACP_WHOIS: ${{ needs.candidate-bacpypes3.outputs.whois }}
+          B4J_BUILD: ${{ needs.candidate-bacnet4j.outputs.build }}
+          B4J_READY: ${{ needs.candidate-bacnet4j.outputs.ready }}
+          B4J_WHOIS: ${{ needs.candidate-bacnet4j.outputs.whois }}
+          WT_BUILD: ${{ needs.candidate-worldiety.outputs.build }}
+          WT_READY: ${{ needs.candidate-worldiety.outputs.ready }}
+          WT_WHOIS: ${{ needs.candidate-worldiety.outputs.whois }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+
+          checks = [
+              ("bacnet-stack", "STACK_BUILD", "STACK_READY", "STACK_WHOIS"),
+              ("bacpypes3", "BACP_BUILD", "BACP_READY", "BACP_WHOIS"),
+              ("BACnet4J", "B4J_BUILD", "B4J_READY", "B4J_WHOIS"),
+              ("Worldiety", "WT_BUILD", "WT_READY", "WT_WHOIS"),
+          ]
+          failures = []
+          for name, build_key, ready_key, whois_key in checks:
+              build = os.environ.get(build_key, "") or "?"
+              ready = os.environ.get(ready_key, "") or "skipped"
+              whois = os.environ.get(whois_key, "") or "skipped"
+              if build == "failure":
+                  failures.append(f"{name}: build failed")
+                  continue
+              if build != "success":
+                  failures.append(f"{name}: build outcome {build!r}")
+                  continue
+              if ready == "failure":
+                  failures.append(f"{name}: ready smoke failed")
+              if whois == "failure":
+                  failures.append(f"{name}: Who-Is smoke failed")
+          if failures:
+              print("Upstream candidate probe failures:", file=sys.stderr)
+              for item in failures:
+                  print(f"  - {item}", file=sys.stderr)
+              sys.exit(1)
+          print("All candidate probes succeeded", file=sys.stderr)
           PY

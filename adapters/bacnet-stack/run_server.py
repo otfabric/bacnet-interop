@@ -113,6 +113,20 @@ def server_args(fixture: dict[str, Any], work: Path) -> list[str]:
                 "--bv-value",
                 str(pv),
             ]
+        elif otype == "life-safety-point":
+            args += [
+                "--lsp-instance",
+                str(int(obj.get("instance", 1))),
+                "--lsp-name",
+                str(obj.get("object_name", "LSP-1")),
+            ]
+        elif otype == "life-safety-zone":
+            args += [
+                "--lsz-instance",
+                str(int(obj.get("instance", 1))),
+                "--lsz-name",
+                str(obj.get("object_name", "LSZ-1")),
+            ]
     for group in materialize_files(fixture, work):
         args += group
     if not saw_av:
@@ -169,8 +183,10 @@ def main() -> int:
     proc = subprocess.Popen(
         ["device_server", *args],
         cwd=str(work),
-        stdout=sys.stderr,
+        stdout=subprocess.PIPE,
         stderr=sys.stderr,
+        text=True,
+        bufsize=1,
     )
 
     def _stop(*_args: object) -> None:
@@ -197,6 +213,28 @@ def main() -> int:
         return 1
 
     emit_ready(adapter_version, fixture_id, port, peer_version)
+
+    # Forward device_server JSONL operation diagnostics onto adapter stdout.
+    # Non-JSON lines are mirrored to stderr for troubleshooting.
+    assert proc.stdout is not None
+    try:
+        for line in proc.stdout:
+            text = line.rstrip("\n")
+            if not text:
+                continue
+            try:
+                ev = json.loads(text)
+            except json.JSONDecodeError:
+                print(text, file=sys.stderr, flush=True)
+                continue
+            if isinstance(ev, dict) and ev.get("event") == "operation":
+                sys.stdout.write(text + "\n")
+                sys.stdout.flush()
+            else:
+                print(text, file=sys.stderr, flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"bacnet-stack stdout bridge: {exc}", file=sys.stderr, flush=True)
+
     return proc.wait()
 
 

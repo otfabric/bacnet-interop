@@ -9,8 +9,7 @@ Update a cell to ✓ only when a command or mode is built, smoke-tested, and
 listed in the adapter README. Document upstream gaps in the limitations table —
 never skip silently in consumer CI without a registered row.
 
-Adapter version: `v0.5.0` published · next evidence cut `v0.6.0` (local green) ·
-Default fixture: `device-baseline-v2`
+Adapter version: `v0.6.0` published · Default fixture: `device-baseline-v2`
 
 **Evidence types:** ✓ cells may be **upstream-native** (peer stack handles the
 service) or **adapter-shim** (adapter code fills a gap so `go-bacnet` can
@@ -44,7 +43,9 @@ Do not treat adapter-shim evidence as proof of upstream peer support.
 | AtomicReadFile / AtomicWriteFile (v4) | ✓ | — | ✓ | — | **live-multi-peer** upstream-native; BACpypes3/Worldiety unsupported |
 | CreateObject / DeleteObject (v5) | ✓ | — | ✓ | — | **live-multi-peer**; BACnet4J uses fixture `object_lifecycle` |
 | AddListElement / RemoveListElement (NC Recipient_List) | ✓ | — | ✓ | — | **live-multi-peer**; stack NC table + handlers; BACnet4J NC-1 |
-| GetAlarmSummary (AV Out_Of_Range) | — | — | ✓ | — | BACnet4J intrinsic reporting (v3); COV-multiple still upstream gap |
+| GetAlarmSummary (AV Out_Of_Range) | ✓ | — | ✓ | — | **live-multi-peer** intrinsic Out_Of_Range (v3) |
+| GetEnrollmentSummary | — | — | ✓ | — | **live-single-peer** BACnet4J EE-1; others unsupported-upstream |
+| SubscribeCOVPropertyMultiple / COVNotificationMultiple | — | — | — | — | All peers unsupported-upstream; family **codec-only** |
 | Readiness JSON Lines (`event=ready`) | ✓ | ✓ | ✓ | ✓ | After UDP bind / application construct |
 | `--capabilities` / `--version` | planned | planned | planned | planned | Optional until M1-style contract |
 
@@ -75,7 +76,13 @@ Do not treat adapter-shim evidence as proof of upstream peer support.
 | BACpypes3 | 0.0.106 | Reject | Unrecognized confirmed service | Application raises `RuntimeError` instead of emitting a Reject PDU | No BACpypes3 Reject assertion; covered by bacnet-stack + BACnet4J |
 | BACpypes3 | 0.0.106 | ReadRange | Server ReadRange | Upstream `NotImplementedError`; TrendLog objects skipped in adapter | No BACpypes3 ReadRange assertion; covered by bacnet-stack + BACnet4J |
 | BACnet4J | 6.1.0 | segmentation | Segmented confirmed-request receive | Rejects segmented confirmed requests (e.g. WPM send path) | Segmented WPM send asserted on BACpypes3 only |
-| BACnet4J | 6.1.0 | COV | SubscribeCOVPropertyMultiple | Upstream `NotImplementedException` | Codec-only / skip until upstream or second peer |
+| BACnet4J | 6.1.0 | COV-multiple | Subscribe + NotificationMultiple | Upstream `NotImplementedException` | Family codec-only ([EVIDENCE.md](EVIDENCE.md)) |
+| bacnet-stack | 1.6.0 | COV-multiple | Subscribe + NotificationMultiple | Enum only; no codec/handler | Family codec-only |
+| BACpypes3 | 0.0.106 | COV-multiple | Subscribe + NotificationMultiple | `###TODO`; no APDU/`do_` | Family codec-only |
+| Worldiety | pinned | COV-multiple | Subscribe + NotificationMultiple emit | No server emit (receive decode only) | Family codec-only |
+| bacnet-stack | 1.6.0 | enrollment | GetEnrollmentSummary | No handler / EE object | Covered by BACnet4J live |
+| BACpypes3 | 0.0.106 | enrollment | GetEnrollmentSummary | APDU only; no `do_GetEnrollmentSummary` | Covered by BACnet4J live |
+| Worldiety | pinned | enrollment | GetEnrollmentSummary | No enrollment surface | Covered by BACnet4J live |
 | BACpypes3 | 0.0.106 | File / Create-Delete | File object + CreateObject server | No File server; no `do_CreateObject` | Covered by bacnet-stack + BACnet4J |
 | Worldiety | pinned | File / Create-Delete | Fixture `file` + Create/Delete | Loader rejects `file`; no Create/Delete handlers | Covered by bacnet-stack + BACnet4J |
 | bacnet-stack | 1.6.0 | segmentation | Segmented ComplexACK | Stack TSM aborts with segmentation-not-supported rather than segmenting | Assert Abort; segmented reassembly covered by BACpypes3 + BACnet4J |
@@ -84,7 +91,7 @@ Do not treat adapter-shim evidence as proof of upstream peer support.
 **Notes:**
 
 - Device model documentation: `fixtures/device/device-baseline-v2.json` (includes TrendLog TL-0). `device-baseline-v1` is frozen for historical digests.
-- Fixture generations `v3`–`v8`, `topology-v2`, and `bbmd-v2` are authored under `fixtures/`; v4/v5 file+lifecycle and v3 NC list / GetAlarmSummary are **local live** on BACnet4J±stack (see [BLOCKERS.md](BLOCKERS.md)); B5/B6/B7d–g remain open.
+- Fixture generations `v3`–`v8`, `topology-v2`, and `bbmd-v2` are authored under `fixtures/`; v4/v5 file+lifecycle, v3 NC list, and GetAlarmSummary and LifeSafetyOperation (v8) are **live-multi-peer** on BACnet4J+stack; GetEnrollmentSummary is BACnet4J **live-single-peer**; Who-Am-I/You-Are (v7) is bacnet-stack **live-single-peer**; COV-multiple / audit / AuthRequest / VT are **codec-only** (B3a–d, B7e2–e4, B7g cleared); messaging semantic receipt on v6 clears **B7d**. Open work: B5/B5a–d ([BLOCKERS.md](BLOCKERS.md)). Worldiety segmentation is `upstream-deviation` ([EVIDENCE.md](EVIDENCE.md)), not a patch target.
 - Peer adapters construct device + AV-1 + BV-1 from v2 JSON; bacnet-stack and BACnet4J also serve TrendLog. BACpypes3 skips TrendLog (no server ReadRange).
 - BACpypes3/Worldiety skip or shim many v3+ object types (file/Create-Delete/audit/life-safety); BACnet4J + bacnet-stack are the executable oracles for those paths today.
 - Optional `BACNET_MAX_APDU` on BACpypes3 and BACnet4J overrides `maxApduLengthAccepted`.

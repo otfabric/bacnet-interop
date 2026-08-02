@@ -22,10 +22,10 @@ Corpus and provenance for BACnet interoperability and codec goldens.
 |---|---|---|
 | `device-baseline-v1` | Frozen historical | published digests |
 | `device-baseline-v2` | Current Worldiety / v0.5.0 baseline (AV/BV/TL) | Worldiety + BACnet4J + BACpypes3 + stack |
-| `device-baseline-v3` | Alarms/COV (AI/NC/EE + AV trigger) | BACnet4J GetAlarmSummary + NC list (local); COV-multiple / second peer still B3 |
+| `device-baseline-v3` | Alarms/COV (AI/NC/EE + AV trigger) | GetAlarmSummary **live-multi-peer**; GetEnrollmentSummary BACnet4J live; COV-multiple codec-only |
 | `device-baseline-v4` | File stream/record | **live-multi-peer** AtomicRead/Write (BACnet4J + bacnet-stack) |
 | `device-baseline-v5` | List + Create/DeleteObject | **live-multi-peer** Create/Delete (BACnet4J + bacnet-stack) |
-| `device-baseline-v6` | Private/text/time/group sinks | BACnet4J TimeSync/Text send; B7d semantic diagnostics open |
+| `device-baseline-v6` | Private/text/time/group sinks | Messaging **semantic receipt** via `operation` JSONL (B7d); see EVIDENCE matrix |
 | `device-baseline-v7` | Audit + identity | single-peer expected (B4) |
 | `device-baseline-v8` | Life safety + VT | adapter-pending (B7) |
 
