@@ -1,6 +1,6 @@
 # BIP↔BIP topology router
 
-Minimal dual-homed BACnet/IP router for Horizon 1 interop topology tests in
+Minimal dual-homed BACnet/IP router for interop topology tests in
 [`go-bacnet/interop`](https://github.com/otfabric/go-bacnet).
 
 **Not** a product BBMD or general-purpose BACnet router. Scope is intentional:
@@ -57,4 +57,4 @@ Stdout JSON Lines:
 ```
 
 Consumed by `go-bacnet/interop` routed topology tests (`BIP_ROUTER_IMAGE`).
-See [`COVERAGE.md`](../../COVERAGE.md) and [`go-bacnet/INTEROP.md`](https://github.com/otfabric/go-bacnet/blob/main/INTEROP.md).
+See [`PEER_SUPPORT.md`](../../PEER_SUPPORT.md) and [`go-bacnet/INTEROP.md`](https://github.com/otfabric/go-bacnet/blob/main/INTEROP.md).
