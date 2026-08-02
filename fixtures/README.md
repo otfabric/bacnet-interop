@@ -11,13 +11,14 @@ Corpus and provenance for BACnet interoperability and codec goldens.
 | `schema/fixture.schema.json` | Draft 2020-12 schema for per-fixture provenance metadata |
 | `manifest.json` | Authoritative index of **codec** goldens (`schemaVersion` + `fixtures[]`) |
 | `codec/` | Independently generated wire goldens (BVLC/NPDU/APDU/service/malformed) |
-| `device/` | Live adapter device model (`device-baseline-v1.json`); not in the codec manifest |
+| `device/` | Live adapter device model (`device-baseline-v2.json` current; `device-baseline-v1.json` frozen); not in the codec manifest |
 | *(future)* `captures/` | Sanitized packet captures |
 
-Horizon 1 Gate 3 uses `fixtures/codec/*` (via `go-bacnet/internal/fixtures`) and
-`fixtures/device/device-baseline-v1.json` (via adapter containers and
-`go-bacnet/interop`). Set `BACNET_INTEROP_ROOT` if the sibling checkout is not at
-`../bacnet-interop`.
+Current peer images and `go-bacnet/interop` use
+`fixtures/device/device-baseline-v2.json` (device + AV + BV + TrendLog).
+`device-baseline-v1` remains frozen for historical digests. Codec goldens under
+`fixtures/codec/` are loaded via `go-bacnet/internal/fixtures`. Set
+`BACNET_INTEROP_ROOT` if the sibling checkout is not at `../bacnet-interop`.
 
 ## Provenance requirements
 
@@ -81,7 +82,8 @@ Do not set `original_bytes_equal` for captures with non-canonical or peer-specif
 
 ## Relationship to adapters
 
-Live adapter device models live under `fixtures/device/` (e.g. `device-baseline-v1.json`)
-and are baked into peer images. They are **not** codec goldens and are excluded from
+Live adapter device models live under `fixtures/device/`
+(`device-baseline-v2.json` current; `device-baseline-v1.json` frozen) and are
+baked into peer images. They are **not** codec goldens and are excluded from
 the manifest orphan check. Codec goldens under `fixtures/codec/` remain the
 provenance-tracked wire corpus consumed by `go-bacnet` unit tests.

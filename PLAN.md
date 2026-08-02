@@ -5,9 +5,14 @@ assertions and scenario matrices live in [`go-bacnet`](https://github.com/otfabr
 (`INTEROP.md`, `interop/`, `PLAN.md`).
 
 Horizon 1 peer set: **bacnet-stack**, **BACpypes3**, and **BACnet4J**. Topology
-aid: **bip-router** (not a product router or peer oracle).
+aid: **bip-router** (not a product router or peer oracle). Current live fixture:
+`device-baseline-v2` (`device-baseline-v1` frozen).
 
 Status labels: `done` · `partial` · `open`.
+
+Latest published release: [`v0.4.1`](https://github.com/otfabric/bacnet-interop/releases/tag/v0.4.1).
+Next: **v0.4.2** hygiene (docs, `*.o` ignore, evidence types, inventory) — open
+until tagged.
 
 ---
 
@@ -30,7 +35,8 @@ Status labels: `done` · `partial` · `open`.
 |---|---|
 | Codec goldens under `fixtures/codec/` with provenance | done |
 | `fixtures/manifest.json` authoritative index | done |
-| Device model `fixtures/device/device-baseline-v1.json` | done |
+| Device model `fixtures/device/device-baseline-v1.json` | done (frozen) |
+| Device model `fixtures/device/device-baseline-v2.json` | done (current; +TrendLog) |
 | Consumed by `go-bacnet/internal/fixtures` | done |
 | Full executable semantics for all fixtures | done (consumer go-bacnet; includes service-layer negatives) |
 | Strict `deterministic_reencode_equal` / expected error layer | done (consumer + malformed APDU/NPDU/service goldens) |
@@ -56,20 +62,22 @@ Reject undocumented vendor dumps.
 | BACpypes3 `device_server.py` | done (`bacpypes3==0.0.106`) |
 | BACnet4J `DeviceServer.java` | done (`bacnet4j==6.1.0`) |
 | BIP↔BIP topology router (`bip-router`) | done (interop fixture) |
-| `device-baseline-v1` shared by all three peers | done |
+| `device-baseline-v2` shared by peer images | done (v1 frozen for historical digests) |
 | `make build` / `make smoke` | done (stack + bacpypes3 + bacnet4j + bip-router) |
 
 ### bacnet-stack (`adapters/bacnet-stack`)
 
 - Multi-stage Dockerfile pinning `BACNET_STACK_SHA`.
 - Custom `device_server` (not stock `bacserv`) + `run_server.py`.
-- Object graph from `device-baseline-v1.json` (alignment: `full-object-graph`).
+- Object graph from `device-baseline-v2.json` (device + AV + BV + TrendLog).
+- Who-Has, WPM, ReadRange, DCC enable, ReinitializeDevice warmstart.
 - Ready event after UDP bind; diagnostics on stderr.
 
 ### BACpypes3 (`adapters/bacpypes3`)
 
 - Python image pinning `BACPYPES3_VERSION`.
-- Serves device + AV-1 + BV-1 from `device-baseline-v1`.
+- Serves device + AV-1 + BV-1 from `device-baseline-v2` (TrendLog skipped).
+- WPM via **adapter-shim**; optional `BACNET_EMIT_EVENT=1` EventNotification emit.
 - Optional `BACNET_MAX_APDU`, `BACNET_BBMD=1` (numeric CIDR BDT), `BACNET_NETWORK`.
 - Same readiness / stdout contract as bacnet-stack so `go-bacnet/interop` can
   swap peers by image name.
@@ -77,7 +85,9 @@ Reject undocumented vendor dumps.
 ### BACnet4J (`adapters/bacnet4j`)
 
 - Java image pinning `BACNET4J_VERSION` (Maven artifact from RadixIoT).
-- Fixture-driven Device + AV-1 + BV-1; optional BBMD / max-APDU.
+- Fixture-driven Device + AV-1 + BV-1 + TrendLog; optional BBMD / max-APDU.
+- Optional `BACNET_EMIT_EVENT=1` EventNotification emit (**adapter-shim**).
+- Rejects segmented confirmed-request receive (registered gap).
 - Same readiness / stdout contract as the other peers.
 
 ### bip-router (`adapters/bip-router`)
@@ -98,7 +108,7 @@ Fixed-sequence JSON Lines **client probe** adapters remain future work.
 Freeze the server ready event:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.1.0","fixture":"device-baseline-v1","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.4.1","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 Required fields:
@@ -108,7 +118,7 @@ Required fields:
 | `event` | Always `"ready"` |
 | `adapter` | `bacnet-stack`, `bacpypes3`, `bacnet4j`, or `bip-router` |
 | `version` | Adapter image version (`ADAPTER_VERSION` build arg; default `dev`) |
-| `fixture` | Fixture revision (`device-baseline-v1` or `topology-router-v1`) |
+| `fixture` | Fixture revision (`device-baseline-v2` or `topology-router-v1`; v1 frozen) |
 | `address` | Bind address advertised for consumers (host:port) |
 
 Optional: `peer_version`, and for `bip-router` also `networks` / `addresses`.
@@ -128,9 +138,15 @@ Adapter support for scenarios asserted in `go-bacnet/INTEROP.md`:
 | Scenario | Status |
 |---|---|
 | Who-Is / I-Am (directed) | done (all three peers) |
-| ReadProperty / RPM / WriteProperty | done (all three peers) |
+| Who-Has / I-Have | done (all three peers) |
+| ReadProperty / RPM / WriteProperty / WPM | done (WPM: BACpypes3 adapter-shim) |
+| ReadRange byPosition (TrendLog) | done (bacnet-stack + BACnet4J; BACpypes3 unsupported) |
 | Error / Reject / Abort paths | done (Reject: bacnet-stack + BACnet4J; Abort: bacnet-stack + BACpypes3) |
 | COV subscribe / notify / cancel (+ renew on BACpypes3) | done |
+| EventNotification emit | done (BACpypes3 + BACnet4J via `BACNET_EMIT_EVENT`) |
+| DeviceCommunicationControl enable | done (bacnet-stack) |
+| ReinitializeDevice warmstart | done (all three peers) |
+| Segmented confirmed-request receive | done (BACpypes3; BACnet4J rejects) |
 | Routed remote device (via `bip-router`) | done (all three peers; topology evidence caveat above) |
 | Peer-as-BBMD + foreign-device registration aid | done (BACpypes3 + BACnet4J) |
 | Segmentation / small max-APDU stress | done (BACpypes3 + BACnet4J) |
@@ -145,13 +161,15 @@ assertion matrix.
 
 | Deliverable | Status |
 |---|---|
-| Publish all four GHCR images (stack, bacpypes3, bacnet4j, bip-router) | done (`v0.1.0`) |
+| Publish all four GHCR images (stack, bacpypes3, bacnet4j, bip-router) | done (through `v0.4.1`) |
 | Native amd64/arm64 release runners (no QEMU) | done |
 | Release `manifest.json` + digests for all peers + topology | done |
-| `go-bacnet` CI pins release digests + fixture tag | done (see go-bacnet `interop.yml`) |
+| `go-bacnet` CI pins release digests + fixture tag | done (see go-bacnet `interop.yml` → `v0.4.1`) |
 | Local `make smoke` ready-event check | done |
+| `v0.4.2` hygiene (docs, `*.o`, evidence types, inventory) | open |
 
-First tagged release: [`v0.1.0`](https://github.com/otfabric/bacnet-interop/releases/tag/v0.1.0).
+Releases: [`v0.1.0`](https://github.com/otfabric/bacnet-interop/releases/tag/v0.1.0) …
+[`v0.4.1`](https://github.com/otfabric/bacnet-interop/releases/tag/v0.4.1).
 
 ---
 
@@ -169,7 +187,9 @@ peer scenario matrices are owned exclusively by
 | CI smoke with `BIP_ROUTER_REQUIRED=1` | done |
 | Capture build provenance as CI artifacts | done |
 | No CI / Makefile / release path depends on `go-bacnet` | done |
-| Single machine-readable adapter inventory (Makefile/CI/release/smoke) | open |
+| Machine-readable adapter inventory (`adapters/inventory.yaml`) | done (v0.4.2 hygiene; wire into Makefile/CI/release still open) |
+| Makefile/CI/release consume inventory as single source | open |
+| Upstream candidate workflow smokes ready + directed Who-Is | done (`candidate.yml`; non-blocking; Decision table columns) |
 
 ---
 
@@ -183,3 +203,5 @@ peer scenario matrices are owned exclusively by
 - Full BBMD/BDT **product** server behaviour in Horizon 1 (peer-as-BBMD for
   FD registration tests is in scope; multi-BBMD failover is not).
 - Claiming independent BACnet **router** interoperability from `bip-router` alone.
+- Treating **adapter-shim** evidence (e.g. BACpypes3 WPM, `BACNET_EMIT_EVENT`)
+  as proof of upstream peer support.

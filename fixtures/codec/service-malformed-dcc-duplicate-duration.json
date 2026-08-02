@@ -1,0 +1,43 @@
+{
+  "source": {
+    "implementation": "otfabric-handwritten",
+    "version": "n/a",
+    "image_digest": "none"
+  },
+  "capture": {
+    "direction": "constructed",
+    "transport": "bacnet-ip-udp",
+    "original_endpoint": "lab-synthetic"
+  },
+  "standard": {
+    "base": "ANSI/ASHRAE 135-2024",
+    "protocol_revision": 31,
+    "clauses": [
+      "16.1"
+    ]
+  },
+  "license": {
+    "status": "malformed-constructed",
+    "notes": "DeviceCommunicationControl with duplicate timeDuration"
+  },
+  "id": "service-malformed-dcc-duplicate-duration",
+  "description": "DeviceCommunicationControl with duplicate timeDuration",
+  "expect": {
+    "semantic_decode_equal": false,
+    "deterministic_reencode_equal": false,
+    "original_bytes_equal": false
+  },
+  "input_hex": "090519000906",
+  "tags": [
+    "service",
+    "device-communication-control",
+    "malformed",
+    "horizon-2",
+    "gate-3"
+  ],
+  "operation": "decode_device_communication_control",
+  "expected_error": {
+    "category": "malformed",
+    "layer": "service"
+  }
+}
