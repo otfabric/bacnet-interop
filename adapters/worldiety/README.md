@@ -60,5 +60,8 @@ SMOKE_ONLY=worldiety make smoke
 ## Ready event
 
 ```json
-{"event":"ready","adapter":"worldiety","version":"…","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"3cb2aa80…"}
+{"event":"ready","adapter":"worldiety","version":"0.8.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"3cb2aa80…"}
 ```
+
+See [PEER_SUPPORT.md](../../PEER_SUPPORT.md) for the global peer matrix.
+

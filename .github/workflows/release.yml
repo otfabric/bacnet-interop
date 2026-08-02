@@ -399,7 +399,7 @@ jobs:
           body: |
             ## Adapter images
 
-            Horizon 1 peers for [`go-bacnet`](https://github.com/otfabric/go-bacnet).
+            BACnet/IP peers for [`go-bacnet`](https://github.com/otfabric/go-bacnet).
             Multi-arch manifests (`linux/amd64`, `linux/arm64`) built on native runners (no QEMU).
 
             | Image | Digest |
