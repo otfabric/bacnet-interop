@@ -49,7 +49,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet4j@sha256:<digest>
 | Mode | Entrypoint | Purpose |
 |---|---|---|
 | Device server (default) | `java -jar device_server.jar` | Bind UDP, emit `event=ready`, serve fixture objects |
-| Peer-as-BBMD | `BACNET_BBMD=1` | Same server with BBMD + BDT self-entry |
+| Peer-as-BBMD | `BACNET_BBMD=1` | Same server with BBMD + BDT self-entry; Read/Write-BDT and Read/Delete-FDT executable |
 | EventNotification emit | `BACNET_EMIT_EVENT=1` | Emit one UnconfirmedEventNotification after first ReadProperty |
 
 ## Readiness contract

@@ -63,5 +63,11 @@ SMOKE_ONLY=worldiety make smoke
 {"event":"ready","adapter":"worldiety","version":"0.8.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"3cb2aa80…"}
 ```
 
+## BBMD / router
+
+Peer-as-BBMD and native multi-homed BIP routing are **not** available through
+this adapter (`ClientRuntime` does not wire upstream BBMD/router helpers).
+See [PEER_SUPPORT.md](../../PEER_SUPPORT.md) and [BLOCKERS.md](../../BLOCKERS.md).
+
 See [PEER_SUPPORT.md](../../PEER_SUPPORT.md) for the global peer matrix.
 

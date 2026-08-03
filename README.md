@@ -20,7 +20,10 @@ bacnet-interop; this repository must never import or CI-test against go-bacnet.
 | Worldiety | `3cb2aa80` (Go) | Native transport/ASE; fixture object model for some services |
 | bip-router | topology aid | Dual-homed BIP↔BIP routing only |
 
-Capability matrix: [PEER_SUPPORT.md](PEER_SUPPORT.md).
+Capability matrix: [PEER_SUPPORT.md](PEER_SUPPORT.md). BBMD cells (Read/Write-BDT,
+Read/Delete-FDT, FDR) are executable on bacnet-stack / BACpypes3 / BACnet4J;
+Worldiety peer-as-BBMD remains unavailable. Routed scenarios use `bip-router`
+(bacnet-stack upstream router is not packaged).
 
 ## Fixture scenarios
 

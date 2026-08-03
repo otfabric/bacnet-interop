@@ -86,8 +86,9 @@ Routed RP uses this image as the remote device behind [`bip-router`](../bip-rout
 
 **BBMD:** `device_server` is built with `BBMD_ENABLED` / `BBMD_CLIENT_ENABLED`.
 Upstream `dlenv` seeds a self BDT entry and accepts foreign-device registration
-by default (no `BACNET_BBMD` env required). BVLC Write-BDT is NAK at Protocol
-Revision ≥ 17. Upstream `apps/router` is not packaged in this image.
+by default (no `BACNET_BBMD` env required). Executable BVLC cells: Read-BDT,
+Read-FDT (after FD), Delete-FDT. Write-BDT is NAK at Protocol Revision ≥ 17
+(asserted by go-bacnet). Upstream `apps/router` is not packaged in this image.
 
 Environment overrides: `BACNET_IP_PORT`, `DEVICE_FIXTURE_FILE`, `FIXTURE`,
 `ADAPTER_VERSION`, `BACNET_STACK_VERSION`, plus upstream BIP envs such as
