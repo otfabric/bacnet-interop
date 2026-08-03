@@ -4,8 +4,8 @@ Which independent BACnet stacks can execute which scenarios at the pinned
 adapter versions. Assertions and pass/fail decisions live in
 [`go-bacnet`](https://github.com/otfabric/go-bacnet) (`INTEROP.md`, `interop/`).
 
-**Published images:** [v0.8.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.8.0)
-@ `34f42dc` · default device fixture: `device-baseline-v2`
+**Published images:** [v0.9.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.9.0)
+@ `180006f` · default device fixture: `device-baseline-v2`
 
 Upstream peer pins are unchanged from v0.7.0; this release records the native
 router/BBMD audit and corrects bacnet-stack peer-as-BBMD documentation.
@@ -79,9 +79,16 @@ as codec/unit tests in go-bacnet only.
 | Continuation ServiceChoice on segments | n/a | ✅ | ✅ | ⚠ |
 | Routed remote via bip-router | ✅ | ✅ | ✅ | — |
 | Peer-as-BBMD / FDR target | ✅ | ✅ | ✅ | — |
-| Read-BDT / Read-FDT / Delete-FDT | ✅ | ✅ | ✅ | — |
-| Write-BDT (BVLC) | — | ✅ | ✅ | — |
+| Read-BDT | ✅ | ✅ | ✅ | — |
+| Read-FDT (after FD registration) | ✅ | ✅ | ✅ | — |
+| Delete-FDT entry | ✅ | ✅ | ✅ | — |
+| Write-BDT (BVLC) | — | — | ✅ | — |
 | Multi-homed BIP router / DNET forward | — | — | — | — |
+
+Executable go-bacnet cells require deterministic adapter state: Read-FDT after
+FD registration; Delete-FDT uses the address from Read-FDT (not the client's
+bind address); Write-BDT only where the peer accepts replacement.
+bacnet-stack and BACpypes3 Write-BDT NAK at the current pin (asserted).
 
 ### Network notes
 

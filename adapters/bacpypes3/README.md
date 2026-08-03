@@ -31,7 +31,7 @@ ghcr.io/otfabric/bacnet-interop-bacpypes3@sha256:<digest>
 | Mode | Entrypoint | Purpose |
 |---|---|---|
 | Device server (default) | `device_server.py` | Bind UDP, emit `event=ready`, serve fixture objects |
-| Peer-as-BBMD | `BACNET_BBMD=1` | Same server with BBMD + foreign-device table (numeric CIDR BDT self-entry) |
+| Peer-as-BBMD | `BACNET_BBMD=1` | Same server with BBMD + FDT; Read-BDT/FDT + Delete-FDT executable; Write-BDT NAK |
 | EventNotification emit | `BACNET_EMIT_EVENT=1` | Emit one UnconfirmedEventNotification after first ReadProperty |
 
 ## Readiness contract
@@ -39,7 +39,7 @@ ghcr.io/otfabric/bacnet-interop-bacpypes3@sha256:<digest>
 Same stdout contract as the bacnet-stack adapter:
 
 ```json
-{"event":"ready","adapter":"bacpypes3","version":"0.8.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"0.0.106"}
+{"event":"ready","adapter":"bacpypes3","version":"0.9.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"0.0.106"}
 ```
 
 Consumers can swap peers by image name without changing wait logic. See [`PLAN.md`](../../PLAN.md).
