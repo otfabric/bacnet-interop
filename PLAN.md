@@ -2,11 +2,11 @@
 
 ## Current release
 
-[v0.8.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.8.0)
-records the native router/BBMD audit against unchanged upstream peer pins
-(bacnet-stack / BACpypes3 / BACnet4J peer-as-BBMD; Worldiety BBMD/router
-unavailable; no packaged multi-homed native router). See
-[PEER_SUPPORT.md](PEER_SUPPORT.md).
+[v0.9.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.9.0)
+@ `180006f` publishes peer images with the BBMD/FDT documentation corrections
+and Write-BDT peer limits recorded in [PEER_SUPPORT.md](PEER_SUPPORT.md)
+(bacnet-stack / BACpypes3 Write-BDT NAK; BACnet4J Write-BDT live; Worldiety
+BBMD/router unavailable; no packaged multi-homed native router).
 
 ## Ongoing
 

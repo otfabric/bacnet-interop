@@ -8,7 +8,7 @@ metadata. Pass/fail assertions and compatibility claims live in go-bacnet
 (`INTEROP.md`, `interop/`). **Ownership is one-way:** go-bacnet depends on
 bacnet-interop; this repository must never import or CI-test against go-bacnet.
 
-**Latest images:** [v0.8.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.8.0)
+**Latest images:** [v0.9.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.9.0)
 
 ## Peers
 
@@ -20,7 +20,10 @@ bacnet-interop; this repository must never import or CI-test against go-bacnet.
 | Worldiety | `3cb2aa80` (Go) | Native transport/ASE; fixture object model for some services |
 | bip-router | topology aid | Dual-homed BIP↔BIP routing only |
 
-Capability matrix: [PEER_SUPPORT.md](PEER_SUPPORT.md).
+Capability matrix: [PEER_SUPPORT.md](PEER_SUPPORT.md). BBMD cells (Read/Write-BDT,
+Read/Delete-FDT, FDR) are executable on bacnet-stack / BACpypes3 / BACnet4J;
+Worldiety peer-as-BBMD remains unavailable. Routed scenarios use `bip-router`
+(bacnet-stack upstream router is not packaged).
 
 ## Fixture scenarios
 
@@ -54,7 +57,7 @@ Adapter-specific build notes: `adapters/<peer>/README.md`.
 Adapters emit JSON Lines readiness events. Example:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.8.0","peer_version":"bacnet-stack-1.6.0"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.9.0","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 Pin digests in the consuming repository (go-bacnet
@@ -62,10 +65,10 @@ Pin digests in the consuming repository (go-bacnet
 
 ```bash
 # Local — version tag
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.8.0
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.9.0
 
-# CI — digest
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:…
+# CI — digest (from https://github.com/otfabric/bacnet-interop/releases/tag/v0.9.0)
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:3eeb1a50798175242a71f259134f605e58e4696fa54d4f23858c2b20e0cb4458
 ```
 
 Open work: [BLOCKERS.md](BLOCKERS.md). Forward plan: [PLAN.md](PLAN.md).

@@ -50,7 +50,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 Stdout is a single JSON Lines ready event after the BACnet/IP UDP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.8.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.9.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.0"}
 ```
 
 `device_server` diagnostics go to stderr. See [`PLAN.md`](../../PLAN.md).
@@ -86,8 +86,9 @@ Routed RP uses this image as the remote device behind [`bip-router`](../bip-rout
 
 **BBMD:** `device_server` is built with `BBMD_ENABLED` / `BBMD_CLIENT_ENABLED`.
 Upstream `dlenv` seeds a self BDT entry and accepts foreign-device registration
-by default (no `BACNET_BBMD` env required). BVLC Write-BDT is NAK at Protocol
-Revision ≥ 17. Upstream `apps/router` is not packaged in this image.
+by default (no `BACNET_BBMD` env required). Executable BVLC cells: Read-BDT,
+Read-FDT (after FD), Delete-FDT. Write-BDT is NAK at Protocol Revision ≥ 17
+(asserted by go-bacnet). Upstream `apps/router` is not packaged in this image.
 
 Environment overrides: `BACNET_IP_PORT`, `DEVICE_FIXTURE_FILE`, `FIXTURE`,
 `ADAPTER_VERSION`, `BACNET_STACK_VERSION`, plus upstream BIP envs such as
