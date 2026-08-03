@@ -79,9 +79,16 @@ as codec/unit tests in go-bacnet only.
 | Continuation ServiceChoice on segments | n/a | ✅ | ✅ | ⚠ |
 | Routed remote via bip-router | ✅ | ✅ | ✅ | — |
 | Peer-as-BBMD / FDR target | ✅ | ✅ | ✅ | — |
-| Read-BDT / Read-FDT / Delete-FDT | ✅ | ✅ | ✅ | — |
-| Write-BDT (BVLC) | — | ✅ | ✅ | — |
+| Read-BDT | ✅ | ✅ | ✅ | — |
+| Read-FDT (after FD registration) | ✅ | ✅ | ✅ | — |
+| Delete-FDT entry | ✅ | ✅ | ✅ | — |
+| Write-BDT (BVLC) | — | — | ✅ | — |
 | Multi-homed BIP router / DNET forward | — | — | — | — |
+
+Executable go-bacnet cells require deterministic adapter state: Read-FDT after
+FD registration; Delete-FDT uses the address from Read-FDT (not the client's
+bind address); Write-BDT only where the peer accepts replacement.
+bacnet-stack and BACpypes3 Write-BDT NAK at the current pin (asserted).
 
 ### Network notes
 
