@@ -3,7 +3,12 @@
 Minimal dual-homed BACnet/IP router for interop topology tests in
 [`go-bacnet/interop`](https://github.com/otfabric/go-bacnet).
 
-**Not** a product BBMD or general-purpose BACnet router. Scope is intentional:
+**Not** a product BBMD or general-purpose BACnet router, and not evidence
+about any stack's routing: it is a Python program written for these tests. A
+real stack's router is packaged as
+[`bacnet-stack-router`](../bacnet-stack-router/README.md); this one stays
+because it helps devices that cannot route their own reply (the return-path
+assist below), which a real router does not do. Scope is intentional:
 
 - Who-Is-Router-To-Network → I-Am-Router-To-Network
 - Forward Original-Unicast / Original-Broadcast NPDUs with DNET

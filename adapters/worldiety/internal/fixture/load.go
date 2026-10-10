@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/worldiety/bacnet/common/types"
 	"github.com/worldiety/bacnet/encoding"
@@ -163,14 +164,32 @@ func parseBinaryPV(v any) (encoding.ApplicationValue, error) {
 	}
 }
 
-// seedTrendLogRecords builds four deterministic BACnetLogRecord payloads
-// (timestamp + real logDatum) matching the BACnet4J seeded buffer style.
+// Trend Log seed, the same records the BACnet4J adapter seeds. Record k
+// (1-based position) has
+//
+//	time stamp       LogSeedStart + (k-1) × LogSeedInterval (weekday unspecified)
+//	logDatum         real-value 20 + (k-1)
+//	statusFlags      absent
+//	sequence number  k
+//
+// with Record_Count = Total_Record_Count = LogSeedRecords. The ReadRange
+// handler computes a record's time stamp and sequence number from its
+// position with these constants.
+const (
+	LogSeedRecords  = 36
+	LogSeedInterval = 15 * time.Minute
+)
+
+// LogSeedStart is the time stamp of the first seeded record.
+var LogSeedStart = time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC)
+
 func seedTrendLogRecords() [][]byte {
-	out := make([][]byte, 0, 4)
-	for i := 0; i < 4; i++ {
+	out := make([][]byte, 0, LogSeedRecords)
+	for i := 0; i < LogSeedRecords; i++ {
+		ts := LogSeedStart.Add(time.Duration(i) * LogSeedInterval)
 		out = append(out, encodeLogRecordReal(
-			2024, 1, 1, // date
-			12, byte(i), 0, 0, // time
+			uint16(ts.Year()), uint8(ts.Month()), uint8(ts.Day()),
+			uint8(ts.Hour()), uint8(ts.Minute()), uint8(ts.Second()), 0,
 			float32(20+i),
 		))
 	}

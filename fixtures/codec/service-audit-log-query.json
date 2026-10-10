@@ -13,20 +13,21 @@
     "base": "ANSI/ASHRAE 135-2024",
     "protocol_revision": 31,
     "clauses": [
-      "12"
+      "13.21",
+      "21"
     ]
   },
   "license": {
     "status": "independently-generated"
   },
   "id": "service-audit-log-query",
-  "description": "AuditLogQuery for AUDIT-1",
+  "description": "AuditLogQuery by target for AUDIT-1: audit-log [0], query-parameters [1] { by-target [0] { target-device-identifier [0] device:1234, target-object-identifier [2] analog-value:1, target-property-identifier [3] present-value, target-array-index [4] 2, target-priority [5] 8, operations [6] (write), successful-actions-only [7] } }, start-at-sequence-number [2] 100, requested-count [3] 10. Layout decoded field by field by BACpypes3 0.0.110 (basetypes.AuditLogQueryParameters) and labelled by Wireshark 4.6. Replaces the hand-written vector 0c0f400001 (the audit-log identifier alone), which go-bacnet's provisional codec produced and no peer accepts: query-parameters and requested-count are required.",
   "expect": {
     "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "0c0f400001",
+  "input_hex": "0c0f4000011e0e0c020004d22c008000013955490259086a064079010f1f2964390a",
   "tags": [
     "service",
     "audit"
@@ -36,6 +37,22 @@
     "audit_log": {
       "type": 61,
       "instance": 1
-    }
+    },
+    "by_target": {
+      "target_device": {
+        "type": 8,
+        "instance": 1234
+      },
+      "target_object": {
+        "type": 2,
+        "instance": 1
+      },
+      "target_property": 85,
+      "target_array_index": 2,
+      "target_priority": 8,
+      "success_filter": 1
+    },
+    "start_at_sequence_number": 100,
+    "requested_count": 10
   }
 }

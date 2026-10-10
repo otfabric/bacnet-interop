@@ -23,7 +23,7 @@ BACNET_DEFINES += -DBACNET_TIME_MASTER
 BACNET_DEFINES += -DBACNET_BACKUP_RESTORE
 BACNET_DEFINES += -DBACNET_PROPERTY_LISTS=1
 BACNET_DEFINES += -DBACNET_PROPERTY_ARRAY_LISTS=1
-# Match apps/Makefile for the pinned bacnet-stack release (1.6.0 → rev 28).
+# Match apps/Makefile for the pinned bacnet-stack release (1.6.1 → rev 28).
 BACNET_DEFINES += -DBACNET_PROTOCOL_REVISION=28
 # Single Trend Log (instance 0) for device-baseline-v2 ReadRange evidence.
 BACNET_DEFINES += -DMAX_TREND_LOGS=1

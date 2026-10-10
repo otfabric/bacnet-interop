@@ -3,15 +3,18 @@
 # Assertions live in go-bacnet/interop; this file documents peer pins and evidence types.
 
 schema_version: "1"
-adapter_version: "0.9.0"
+adapter_version: "0.10.0"
 fixture: device-baseline-v2
 fixture_frozen: device-baseline-v1
+# Fixtures shipped by one adapter only (selected with DEVICE_FIXTURE_FILE / FIXTURE).
+fixtures_single_adapter:
+  device-baseline-v9: [bacnet-stack]  # large object model; since 0.10.0
 
 adapters:
   - id: bacnet-stack
     image: ghcr.io/otfabric/bacnet-interop-bacnet-stack
     upstream: bacnet-stack
-    upstream_version: "1.6.0"
+    upstream_version: "1.6.1"
     role: peer-oracle
     capabilities:
       who_is_i_am: native
@@ -21,6 +24,9 @@ adapters:
       write_property: native
       write_property_multiple: native
       read_range_by_position: native
+      read_range_by_sequence_number: native  # frozen upstream seed: 1000 records, sequence 9001..10000
+      read_range_by_time: native
+      large_object_list: native  # device-baseline-v9; whole read Aborts at Max_APDU 50 (no segmentation)
       cov: native
       get_alarm_summary: native
       get_enrollment_summary: unsupported
@@ -38,7 +44,7 @@ adapters:
   - id: bacpypes3
     image: ghcr.io/otfabric/bacnet-interop-bacpypes3
     upstream: BACpypes3
-    upstream_version: "0.0.106"
+    upstream_version: "0.0.110"
     role: peer-oracle
     capabilities:
       who_is_i_am: native
@@ -50,14 +56,14 @@ adapters:
       read_range_by_position: unsupported  # upstream NotImplementedError; TrendLog skipped
       cov: native
       get_alarm_summary: unsupported
-      get_enrollment_summary: unsupported  # APDU types only; no do_GetEnrollmentSummary
+      get_enrollment_summary: adapter-shim  # since 0.10.0: upstream request/ACK types, adapter handler and enrollment list
       cov_multiple: unsupported
       messaging_time_sync: native  # adapter do_* sinks + operation JSONL
       messaging_text: native
       messaging_private_transfer: native
       messaging_write_group: native
       event_notification_emit: adapter-shim  # BACNET_EMIT_EVENT=1 after first ReadProperty
-      device_communication_control: unsupported
+      device_communication_control: native  # since 0.10.0; upstream acknowledges "disable" without enforcing it
       reinitialize_device_warmstart: adapter-shim  # SimpleACK; no process restart
       segmented_confirmed_request_receive: native
       peer_as_bbmd: native  # BACNET_BBMD=1
@@ -65,7 +71,7 @@ adapters:
   - id: bacnet4j
     image: ghcr.io/otfabric/bacnet-interop-bacnet4j
     upstream: BACnet4J
-    upstream_version: "6.1.0"
+    upstream_version: "6.1.1"
     role: peer-oracle
     capabilities:
       who_is_i_am: native
@@ -75,16 +81,18 @@ adapters:
       write_property: native
       write_property_multiple: native
       read_range_by_position: native  # TrendLogObject seeded buffer
+      read_range_by_sequence_number: native  # since 0.10.0 (36 seeded records)
+      read_range_by_time: native  # since 0.10.0
       cov: native
       get_alarm_summary: native
       get_enrollment_summary: native
-      cov_multiple: unsupported  # NotImplementedException
+      cov_multiple: unsupported  # request parsed by the stack (operation line); with BACNET_EMIT_COV_MULTIPLE=1 notifications are emitted with the stack's encoder
       messaging_time_sync: native
       messaging_text: native
       messaging_private_transfer: native
       messaging_write_group: unsupported  # WriteGroupRequest.handle NotImplementedException
       event_notification_emit: adapter-shim  # BACNET_EMIT_EVENT=1 after first ReadProperty
-      device_communication_control: unsupported
+      device_communication_control: native
       reinitialize_device_warmstart: adapter-shim  # handler SimpleACK; no process restart
       segmented_confirmed_request_receive: unsupported  # rejects segmented confirmed requests
       peer_as_bbmd: native  # BACNET_BBMD=1
@@ -111,7 +119,9 @@ adapters:
       read_property_multiple: adapter-shim
       write_property: adapter-shim
       write_property_multiple: adapter-shim
-      read_range_by_position: adapter-shim  # seeded Log_Buffer
+      read_range_by_position: adapter-shim  # 36 seeded records
+      read_range_by_sequence_number: adapter-shim  # since 0.10.0
+      read_range_by_time: adapter-shim  # since 0.10.0
       cov: unsupported
       get_alarm_summary: unsupported
       get_enrollment_summary: unsupported
@@ -126,6 +136,43 @@ adapters:
       segmented_confirmed_request_receive: native
       peer_as_bbmd: unsupported
 
+  - id: sysiobacnet
+    image: ghcr.io/otfabric/bacnet-interop-sysiobacnet
+    upstream: System.IO.BACnet (NuGet "BACnet", ela-compil/BACnet)
+    upstream_version: "4.0.0"
+    upstream_commit: "af0e6c08b3888b18da8a3f0c9af540e2744e4f6e"
+    role: peer-oracle
+    evidence:
+      bvlc: native
+      npdu: native
+      apdu_dispatch: native
+      confirmed_transactions: native
+      segmented_request_receive: native
+      segmented_complex_ack_send: native
+      fixture_object_model: native  # upstream DeviceStorage, filled from the fixture
+      service_payload_handlers: adapter-shim  # glue between BacnetClient events and DeviceStorage
+    capabilities:
+      who_is_i_am: native  # I-Am unicast to the requester
+      who_has_i_have: adapter-shim  # decode + I-Have native; object lookup adapter
+      read_property: native  # DeviceStorage; status -> Error mapping adapter
+      read_property_multiple: native  # aborts on an empty list (upstream encoder)
+      write_property: native  # DeviceStorage priority array; writable list + datatype check adapter
+      write_property_multiple: adapter-shim  # loop over the WriteProperty path; plain Error body
+      read_range_by_position: adapter-shim  # seeded Log_Buffer; also bySequence / byTime
+      cov: adapter-shim  # subscription table adapter; ChangeOfValue trigger + notify native
+      get_alarm_summary: unsupported  # BacnetClient 4.0.0 rejects it
+      get_enrollment_summary: unsupported
+      cov_multiple: unsupported
+      messaging_time_sync: native  # decode native; operation JSONL
+      messaging_text: unsupported
+      messaging_private_transfer: unsupported  # upstream has it; not wired
+      messaging_write_group: unsupported
+      event_notification_emit: adapter-shim  # intrinsic out-of-range (v3) + BACNET_EMIT_EVENT=1
+      device_communication_control: unsupported  # upstream decodes it; not wired (Reject)
+      reinitialize_device_warmstart: adapter-shim  # SimpleACK; no process restart
+      segmented_confirmed_request_receive: native
+      peer_as_bbmd: unsupported  # upstream BVLC has BBMD code; not wired
+
   - id: bip-router
     image: ghcr.io/otfabric/bacnet-interop-bip-router
     upstream: bacnet-interop
@@ -134,3 +181,17 @@ adapters:
     capabilities:
       who_is_router_i_am_router: topology-aid
       dnet_forward_hop_decrement: topology-aid
+
+  - id: bacnet-stack-router
+    image: ghcr.io/otfabric/bacnet-interop-bacnet-stack-router
+    upstream: bacnet-stack  # apps/router, unpatched, same pin as bacnet-stack
+    upstream_version: "1.6.1"
+    role: native-router
+    since: "0.10.0"
+    capabilities:
+      who_is_router_i_am_router: native
+      dnet_forward: native  # adds SNET/SADR; no return-path assist
+      global_broadcast_forward: native  # DNET 0xFFFF kept, SNET/SADR added
+      hop_count_decrement: unsupported  # apps/router forwards the hop count unchanged
+      reject_message_to_network: unsupported  # unknown DNET triggers Who-Is-Router, no Reject
+      bbmd_foreign_device: unsupported

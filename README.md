@@ -3,73 +3,152 @@
 Reproducible BACnet/IP peer images and fixtures for
 [`go-bacnet`](https://github.com/otfabric/go-bacnet) interoperability testing.
 
-This repository publishes containers, device/topology fixtures, and provenance
-metadata. Pass/fail assertions and compatibility claims live in go-bacnet
-(`INTEROP.md`, `interop/`). **Ownership is one-way:** go-bacnet depends on
-bacnet-interop; this repository must never import or CI-test against go-bacnet.
+This repository publishes containers, device/topology fixtures, codec vectors
+and provenance metadata. Pass/fail assertions and compatibility claims live in
+go-bacnet (`INTEROP.md`, `interop/`). **Ownership is one-way:** go-bacnet
+depends on bacnet-interop; this repository must never import or CI-test
+against go-bacnet.
 
-**Latest images:** [v0.9.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.9.0)
+**Latest images:** [v0.10.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.10.0)
+([what changed](#changes-in-v0100)).
 
 ## Peers
 
-| Peer | Upstream | Role |
+| Image | Upstream | Role |
 |---|---|---|
-| bacnet-stack | 1.6.0 (C) | Device oracle |
-| BACpypes3 | 0.0.106 (Python) | Device oracle (+ BBMD) |
-| BACnet4J | 6.1.0 (Java) | Device oracle (+ BBMD) |
-| Worldiety | `3cb2aa80` (Go) | Native transport/ASE; fixture object model for some services |
-| bip-router | topology aid | Dual-homed BIP↔BIP routing only |
+| `bacnet-interop-bacnet-stack` | bacnet-stack 1.6.1 (C) | Device oracle (+ BBMD) |
+| `bacnet-interop-bacpypes3` | BACpypes3 0.0.110 (Python) | Device oracle (+ BBMD) |
+| `bacnet-interop-bacnet4j` | BACnet4J 6.1.1 (Java) | Device oracle (+ BBMD) |
+| `bacnet-interop-worldiety` | worldiety/bacnet `3cb2aa80` (Go) | Native transport and APDU layer; the adapter supplies the object model |
+| `bacnet-interop-sysiobacnet` | System.IO.BACnet, NuGet `BACnet` 4.0.0 (C#) | Device oracle; the stack behind YABE (new in 0.10.0) |
+| `bacnet-interop-bacnet-stack-router` | bacnet-stack 1.6.1 `apps/router` (C) | Native BACnet/IP ↔ BACnet/IP router (new in 0.10.0) |
+| `bacnet-interop-bip-router` | none (Python, written for the tests) | Topology aid for routed scenarios; not evidence about any stack |
 
-Capability matrix: [PEER_SUPPORT.md](PEER_SUPPORT.md). BBMD cells (Read/Write-BDT,
-Read/Delete-FDT, FDR) are executable on bacnet-stack / BACpypes3 / BACnet4J;
-Worldiety peer-as-BBMD remains unavailable. Routed scenarios use `bip-router`
-(bacnet-stack upstream router is not packaged).
+What each peer can execute, and where a peer behaves differently from the
+others: [PEER_SUPPORT.md](PEER_SUPPORT.md). Per-image details, environment
+variables and observed behaviour: `adapters/<name>/README.md`.
 
-## Fixture scenarios
+The adapters never patch an upstream stack. They load a fixture, start the
+stack's own server, and where a stack has no object or service of its own
+supply it in adapter code, which the capability matrix marks as such.
 
-Device baselines under `fixtures/device/`:
+## Fixtures
 
-| Fixture | Adds |
-|---|---|
-| v1 | Basic Device, AV and BV (frozen) |
-| v2 | Trend Log (default) |
-| v3 | Notification Class, Event Enrollment, alarms |
-| v4 | File objects |
-| v5 | Object lifecycle and list mutation |
-| v6 | Messaging and synchronization |
-| v7 | Identity |
-| v8 | Life safety |
+Device models under `fixtures/device/`, selected with `DEVICE_FIXTURE_FILE`
+and `FIXTURE`:
 
-Topology and BBMD fixtures: `fixtures/topology/`, `fixtures/bbmd/`. Codec goldens:
-`fixtures/codec/` (see [fixtures/README.md](fixtures/README.md)).
+| Fixture | Adds | Served by |
+|---|---|---|
+| v1 | Device, Analog Value, Binary Value (frozen) | all device peers |
+| v2 | Trend Log (default) | all device peers (BACpypes3 skips the Trend Log) |
+| v3 | Notification Class, Event Enrollment, alarms | bacnet-stack, BACnet4J; System.IO.BACnet with an adapter-supplied alarm model |
+| v4 | File objects | bacnet-stack, BACnet4J, System.IO.BACnet |
+| v5 | Object lifecycle and list mutation | bacnet-stack, BACnet4J |
+| v6 | Messaging and time synchronization | bacnet-stack, BACpypes3, BACnet4J |
+| v7 | Identity (Who-Am-I / You-Are) | bacnet-stack |
+| v8 | Life safety | bacnet-stack, BACnet4J |
+| v9 | Large object model: 40 more objects, an Object_List that does not fit a 50-octet APDU | bacnet-stack only (new in 0.10.0) |
 
-## Build and smoke
+`fixtures/codec/` holds wire vectors for go-bacnet's codec tests,
+`fixtures/topology/` and `fixtures/bbmd/` the routed and BBMD scenarios. See
+[fixtures/README.md](fixtures/README.md), including what a hand-written vector
+does and does not prove.
+
+## Build and check
 
 ```bash
-make validate-fixtures
-make smoke          # ready-event smoke for published/local images
+make validate-fixtures   # manifest, schemas, fixture metadata
+make dissect-fixtures    # codec vectors against Wireshark's dissector (needs tshark)
+make build               # all adapter images as bacnet-interop-<name>:local
+make smoke               # ready event (and a Who-Is probe) per image
+make ci                  # validate-fixtures + build + smoke
 ```
 
-Adapter-specific build notes: `adapters/<peer>/README.md`.
+`make build-<name>` builds one image. Images are built for the host
+architecture; the release workflow publishes linux/amd64 and linux/arm64.
+
+To run the go-bacnet assertions, from a go-bacnet checkout next to this one:
+
+```bash
+make interop-pinned   # against the published images pinned in interop/bacnet-interop-pin.json
+make interop          # against the :local images built here
+```
 
 ## Consumer contract
 
-Adapters emit JSON Lines readiness events. Example:
+Every image writes JSON Lines to stdout. The first line is the ready event,
+written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.9.0","peer_version":"bacnet-stack-1.6.0"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.10.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
-Pin digests in the consuming repository (go-bacnet
-`interop/bacnet-interop-pin.json`):
+`version` is the adapter release (a commit for a local build), `peer_version`
+the upstream stack. Some adapters then write
+`{"event":"operation","adapter":…,"operation":…,"result":…}` lines for requests
+that have no observable reply. Diagnostics go to stderr. The two routers add
+`networks` and `addresses` to the ready event.
+
+A consumer pins the images by digest (go-bacnet:
+`interop/bacnet-interop-pin.json`), taken from the release's `manifest.json`:
 
 ```bash
-# Local — version tag
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.9.0
-
-# CI — digest (from https://github.com/otfabric/bacnet-interop/releases/tag/v0.9.0)
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:3eeb1a50798175242a71f259134f605e58e4696fa54d4f23858c2b20e0cb4458
+# by tag, for a quick local run
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.10.0
+# by digest, for CI
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 ```
+
+## Changes in v0.10.0
+
+- **New peer `sysiobacnet`:** System.IO.BACnet 4.0.0 (C#), a fifth stack of
+  independent lineage.
+- **New image `bacnet-stack-router`:** upstream bacnet-stack `apps/router`,
+  so routed scenarios can run through a real stack's router.
+- **bacnet-stack:** upstream 1.6.0 → 1.6.1 (it now refuses a file request
+  with the access method the file does not have, instead of executing it);
+  fixture `device-baseline-v9` (large object model); up to
+  64 Analog Value and 64 Binary Value objects per fixture; the Trend Log is
+  frozen at upstream's seed, which makes ReadRange by sequence number and by
+  time assertable.
+- **BACpypes3:** upstream 0.0.106 → 0.0.110; DeviceCommunicationControl wired in (upstream mixin);
+  `BACNET_DCC_PASSWORD`; the device now has a subnet broadcast address and
+  answers a broadcast Who-Is; a GetEnrollmentSummary handler on the stack's
+  own request and ACK types.
+- **BACnet4J:** upstream 6.1.0 → 6.1.1; `BACNET_DCC_PASSWORD`; a deterministic
+  36-record Trend Log, which makes ReadRange by sequence number and by time
+  assertable; `BACNET_EMIT_COV_MULTIPLE=1` emits COVNotificationMultiple with
+  the stack's own encoder.
+- **Worldiety adapter:** the same 36-record Trend Log; ReadRange by sequence
+  number and by time; two adapter defects fixed (Record_Count was served
+  under the wrong property, and its WritePropertyMultiple-Error nested the
+  property reference one level too deep).
+- **Codec evidence for services no stack executes:** with `BACNET_EMIT_AUDIT=1`
+  bacnet-stack and BACpypes3 send audit notifications from their own
+  encoders; BACpypes3 decodes AuditLogQuery, SubscribeCOVPropertyMultiple and
+  the VT requests with its own types and reports the decoded fields.
+- **Codec vectors:** five hand-written vectors corrected
+  (`service-subscribe-cov-property-multiple`, `service-rpm-ack-partial-error`,
+  `service-write-property-multiple-error`, `apdu-error-unknown-property`,
+  `service-get-event-information-ack`). A consumer that asserts byte-identical
+  re-encoding of these vectors needs encoders that produce the corrected
+  bytes: go-bacnet from v0.4.0.
+- **`make dissect-fixtures`:** every codec vector is checked against
+  Wireshark's dissector, also in CI.
+- **Release workflow:** refuses a tag that is not on `main` or whose version
+  differs from `adapters/inventory.yaml`.
+
+## Releasing
+
+1. Set `adapter_version` in `adapters/inventory.yaml` and the version in the
+   documents to the release, and commit to `main`.
+2. Push `main`. Then tag **that commit** `vX.Y.Z` and push the tag. Do not
+   amend or rebase `main` afterwards: v0.8.0 and v0.9.0 were tagged on commits
+   that were later rewritten, so their tags are not on `main`.
+3. The release workflow validates the fixtures, builds every adapter for both
+   architectures, publishes the images and attaches `manifest.json` with the
+   digests.
+4. Update the pin in the consuming repository from that manifest.
 
 Open work: [BLOCKERS.md](BLOCKERS.md). Forward plan: [PLAN.md](PLAN.md).
 
@@ -78,18 +157,24 @@ Open work: [BLOCKERS.md](BLOCKERS.md). Forward plan: [PLAN.md](PLAN.md).
 ```text
 bacnet-interop/
 ├── README.md
-├── PEER_SUPPORT.md
-├── BLOCKERS.md
-├── PLAN.md
+├── PEER_SUPPORT.md        capability matrix and peer behaviour
+├── BLOCKERS.md            open work
+├── PLAN.md                forward plan
 ├── Makefile
-├── scripts/
+├── scripts/               fixture validation, dissector check, smoke test
 ├── fixtures/
+│   ├── codec/             wire vectors + manifest.json
+│   ├── device/            device models v1–v9
+│   ├── topology/, bbmd/   routed and BBMD scenarios
+│   └── schema/
 └── adapters/
-    ├── inventory.yaml    # build/release input (not public truth)
+    ├── inventory.yaml     build/release input (not public truth)
     ├── bacnet-stack/
+    ├── bacnet-stack-router/
     ├── bacpypes3/
     ├── bacnet4j/
     ├── worldiety/
+    ├── sysiobacnet/
     └── bip-router/
 ```
 

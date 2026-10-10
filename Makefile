@@ -1,4 +1,4 @@
-.PHONY: help validate-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-bip-router smoke ci
+.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-sysiobacnet build-bip-router build-bacnet-stack-router smoke ci
 
 SCHEMA              := fixtures/schema/fixture.schema.json
 MANIFEST            := fixtures/manifest.json
@@ -10,7 +10,9 @@ BACNET_STACK_IMAGE  ?= bacnet-interop-bacnet-stack:local
 BACPYPES3_IMAGE     ?= bacnet-interop-bacpypes3:local
 BACNET4J_IMAGE      ?= bacnet-interop-bacnet4j:local
 WORLDIETY_IMAGE     ?= bacnet-interop-worldiety:local
+SYSIOBACNET_IMAGE   ?= bacnet-interop-sysiobacnet:local
 BIP_ROUTER_IMAGE    ?= bacnet-interop-bip-router:local
+BACNET_STACK_ROUTER_IMAGE ?= bacnet-interop-bacnet-stack-router:local
 REGISTRY            ?= ghcr.io/otfabric
 
 help: ## Show this help
@@ -33,11 +35,15 @@ validate-fixtures: ## Validate manifest + fixture metadata against JSON Schema
 	"$(VENV)/bin/pip" install -q -r requirements-dev.txt; \
 	"$(VENV)/bin/python" scripts/validate-fixtures.py
 
+dissect-fixtures: ## Check the codec vectors against Wireshark's dissector (needs tshark)
+	@command -v tshark >/dev/null || { echo "ERROR: tshark is required (Wireshark)"; exit 1; }
+	@python3 scripts/dissect-fixtures.py
+
 # ---------------------------------------------------------------------------
 # Adapter images (Docker when Dockerfile exists; stub otherwise)
 # ---------------------------------------------------------------------------
 
-build: build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-bip-router ## Build all adapter images
+build: build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-sysiobacnet build-bip-router build-bacnet-stack-router ## Build all adapter images
 
 build-bacnet-stack: ## Build bacnet-stack adapter image
 	@if [ -f adapters/bacnet-stack/Dockerfile ]; then \
@@ -83,6 +89,17 @@ build-worldiety: ## Build Worldiety adapter image
 	  echo "adapter images TBD: worldiety (see adapters/worldiety/README.md)"; \
 	fi
 
+build-sysiobacnet: ## Build System.IO.BACnet adapter image
+	@if [ -f adapters/sysiobacnet/Dockerfile ]; then \
+	  echo "Building System.IO.BACnet adapter image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."; \
+	  docker buildx build --platform=$(PLATFORM) --load \
+	    --build-arg ADAPTER_VERSION=$(ADAPTER_VERSION) \
+	    -f adapters/sysiobacnet/Dockerfile \
+	    -t $(SYSIOBACNET_IMAGE) .; \
+	else \
+	  echo "adapter images TBD: sysiobacnet (see adapters/sysiobacnet/README.md)"; \
+	fi
+
 build-bip-router: ## Build BIP↔BIP topology router image
 	@if [ -f adapters/bip-router/Dockerfile ]; then \
 	  echo "Building bip-router image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."; \
@@ -94,12 +111,23 @@ build-bip-router: ## Build BIP↔BIP topology router image
 	  echo "adapter images TBD: bip-router (see adapters/bip-router/README.md)"; \
 	fi
 
+build-bacnet-stack-router: ## Build native bacnet-stack BACnet/IP router image (upstream apps/router)
+	@if [ -f adapters/bacnet-stack-router/Dockerfile ]; then \
+	  echo "Building bacnet-stack-router image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."; \
+	  docker buildx build --platform=$(PLATFORM) --load \
+	    --build-arg ADAPTER_VERSION=$(ADAPTER_VERSION) \
+	    -f adapters/bacnet-stack-router/Dockerfile \
+	    -t $(BACNET_STACK_ROUTER_IMAGE) .; \
+	else \
+	  echo "adapter images TBD: bacnet-stack-router (see adapters/bacnet-stack-router/README.md)"; \
+	fi
+
 # ---------------------------------------------------------------------------
 # Smoke
 # ---------------------------------------------------------------------------
 
 smoke: ## Smoke-test adapter ready events
-	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) ./scripts/smoke-test.sh
+	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) SYSIOBACNET_IMAGE=$(SYSIOBACNET_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) BACNET_STACK_ROUTER_IMAGE=$(BACNET_STACK_ROUTER_IMAGE) ./scripts/smoke-test.sh
 
 # ---------------------------------------------------------------------------
 # Local CI mirror

@@ -1,0 +1,284 @@
+{
+  "fixture": "device-baseline-v9",
+  "description": "Large device model: the v2 objects plus 20 analog-value and 20 binary-value objects, so Object_List (and a multi-property ReadPropertyMultiple reply) cannot fit one 50-octet APDU. Evidence for element-by-element Object_List reads and RPM batch shrinking against a peer that cannot segment.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice"
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5,
+      "description": "Interop AV-1 baseline present-value used for ReadProperty, WriteProperty, COV, WPM, and segmented RPM stress."
+    },
+    {
+      "type": "binary-value",
+      "instance": 1,
+      "object_name": "BV-1",
+      "present_value": "inactive"
+    },
+    {
+      "type": "trend-log",
+      "instance": 0,
+      "object_name": "TL-0",
+      "description": "Pre-seeded log-buffer for ReadRange byPosition / bySequenceNumber / byTime interop."
+    },
+    {
+      "type": "analog-value",
+      "instance": 101,
+      "object_name": "AV-LARGE-101",
+      "present_value": 50.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 102,
+      "object_name": "AV-LARGE-102",
+      "present_value": 51.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 103,
+      "object_name": "AV-LARGE-103",
+      "present_value": 51.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 104,
+      "object_name": "AV-LARGE-104",
+      "present_value": 52.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 105,
+      "object_name": "AV-LARGE-105",
+      "present_value": 52.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 106,
+      "object_name": "AV-LARGE-106",
+      "present_value": 53.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 107,
+      "object_name": "AV-LARGE-107",
+      "present_value": 53.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 108,
+      "object_name": "AV-LARGE-108",
+      "present_value": 54.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 109,
+      "object_name": "AV-LARGE-109",
+      "present_value": 54.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 110,
+      "object_name": "AV-LARGE-110",
+      "present_value": 55.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 111,
+      "object_name": "AV-LARGE-111",
+      "present_value": 55.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 112,
+      "object_name": "AV-LARGE-112",
+      "present_value": 56.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 113,
+      "object_name": "AV-LARGE-113",
+      "present_value": 56.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 114,
+      "object_name": "AV-LARGE-114",
+      "present_value": 57.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 115,
+      "object_name": "AV-LARGE-115",
+      "present_value": 57.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 116,
+      "object_name": "AV-LARGE-116",
+      "present_value": 58.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 117,
+      "object_name": "AV-LARGE-117",
+      "present_value": 58.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 118,
+      "object_name": "AV-LARGE-118",
+      "present_value": 59.0
+    },
+    {
+      "type": "analog-value",
+      "instance": 119,
+      "object_name": "AV-LARGE-119",
+      "present_value": 59.5
+    },
+    {
+      "type": "analog-value",
+      "instance": 120,
+      "object_name": "AV-LARGE-120",
+      "present_value": 60.0
+    },
+    {
+      "type": "binary-value",
+      "instance": 101,
+      "object_name": "BV-LARGE-101",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 102,
+      "object_name": "BV-LARGE-102",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 103,
+      "object_name": "BV-LARGE-103",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 104,
+      "object_name": "BV-LARGE-104",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 105,
+      "object_name": "BV-LARGE-105",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 106,
+      "object_name": "BV-LARGE-106",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 107,
+      "object_name": "BV-LARGE-107",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 108,
+      "object_name": "BV-LARGE-108",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 109,
+      "object_name": "BV-LARGE-109",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 110,
+      "object_name": "BV-LARGE-110",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 111,
+      "object_name": "BV-LARGE-111",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 112,
+      "object_name": "BV-LARGE-112",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 113,
+      "object_name": "BV-LARGE-113",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 114,
+      "object_name": "BV-LARGE-114",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 115,
+      "object_name": "BV-LARGE-115",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 116,
+      "object_name": "BV-LARGE-116",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 117,
+      "object_name": "BV-LARGE-117",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 118,
+      "object_name": "BV-LARGE-118",
+      "present_value": "active"
+    },
+    {
+      "type": "binary-value",
+      "instance": 119,
+      "object_name": "BV-LARGE-119",
+      "present_value": "inactive"
+    },
+    {
+      "type": "binary-value",
+      "instance": 120,
+      "object_name": "BV-LARGE-120",
+      "present_value": "active"
+    }
+  ],
+  "notes": [
+    "Objects 1-4 are device-baseline-v2 unchanged; AV-LARGE-101..120 have present-value instance/2, BV-LARGE-101..120 are active for even instances.",
+    "bacnet-stack: Object_List additionally holds the adapter's network-port:1 and notification-class:0..1 (47 objects, 235 octets of identifiers). The stack cannot segment, so a whole-array ReadProperty from a client advertising Max_APDU 50 is answered with Abort segmentation-not-supported.",
+    "Only the bacnet-stack image ships this fixture. Select it with DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v9.json FIXTURE=device-baseline-v9."
+  ],
+  "alignment": {
+    "bacnet-stack": "full-object-graph",
+    "bacpypes3": "not-shipped",
+    "bacnet4j": "not-shipped",
+    "worldiety": "not-shipped"
+  }
+}

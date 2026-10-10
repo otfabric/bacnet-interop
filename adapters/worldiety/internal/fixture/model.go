@@ -15,17 +15,17 @@ const ObjectTypeTrendLog types.ObjectType = 20
 
 // Property identifiers beyond the worldiety named set we need for baseline-v2.
 const (
-	PropertyDescription             types.PropertyIdentifier = 28
-	PropertyMaxAPDULengthAccepted   types.PropertyIdentifier = 62
-	PropertyObjectList              types.PropertyIdentifier = 76
-	PropertyProtocolVersion         types.PropertyIdentifier = 98
-	PropertySegmentationSupported   types.PropertyIdentifier = 107
-	PropertySystemStatus            types.PropertyIdentifier = 112
-	PropertyVendorIdentifier        types.PropertyIdentifier = 120
-	PropertyLogBuffer               types.PropertyIdentifier = 131
-	PropertyProtocolRevision        types.PropertyIdentifier = 139
-	PropertyTotalRecordCount        types.PropertyIdentifier = 145
-	PropertyRecordCount             types.PropertyIdentifier = 140
+	PropertyDescription           types.PropertyIdentifier = 28
+	PropertyMaxAPDULengthAccepted types.PropertyIdentifier = 62
+	PropertyObjectList            types.PropertyIdentifier = 76
+	PropertyProtocolVersion       types.PropertyIdentifier = 98
+	PropertySegmentationSupported types.PropertyIdentifier = 107
+	PropertySystemStatus          types.PropertyIdentifier = 112
+	PropertyVendorIdentifier      types.PropertyIdentifier = 120
+	PropertyLogBuffer             types.PropertyIdentifier = 131
+	PropertyProtocolRevision      types.PropertyIdentifier = 139
+	PropertyTotalRecordCount      types.PropertyIdentifier = 145
+	PropertyRecordCount           types.PropertyIdentifier = 141
 )
 
 // ObjectKey identifies a BACnet object in the fixture store.
@@ -42,8 +42,8 @@ func (k ObjectKey) Identifier() (types.ObjectIdentifier, error) {
 
 // Object is a mutable fixture-backed BACnet object.
 type Object struct {
-	Key        ObjectKey
-	ObjectName string
+	Key         ObjectKey
+	ObjectName  string
 	Description string
 
 	mu           sync.Mutex

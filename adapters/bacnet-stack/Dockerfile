@@ -16,9 +16,9 @@ ARG DEBIAN_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca
 FROM debian:bookworm-slim@${DEBIAN_DIGEST} AS bacnet-stack-build
 
 ARG BACNET_STACK_REPO=https://github.com/bacnet-stack/bacnet-stack.git
-# Tag bacnet-stack-1.6.0 (latest official release tag)
-ARG BACNET_STACK_SHA=9bc3cfa07aab98852de432fa24079f4b4b6b7eed
-ARG BACNET_STACK_VERSION=bacnet-stack-1.6.0
+# Tag bacnet-stack-1.6.1 (latest official release tag)
+ARG BACNET_STACK_SHA=7a53f0a72a92de1621d30fc63703a29afe12bfaf
+ARG BACNET_STACK_VERSION=bacnet-stack-1.6.1
 
 # tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd
 # ("At least one invalid signature was encountered" despite good InRelease).
@@ -67,11 +67,12 @@ COPY fixtures/device/device-baseline-v5.json /fixtures/device/device-baseline-v5
 COPY fixtures/device/device-baseline-v6.json /fixtures/device/device-baseline-v6.json
 COPY fixtures/device/device-baseline-v7.json /fixtures/device/device-baseline-v7.json
 COPY fixtures/device/device-baseline-v8.json /fixtures/device/device-baseline-v8.json
+COPY fixtures/device/device-baseline-v9.json /fixtures/device/device-baseline-v9.json
 
 RUN chmod 755 /usr/local/bin/entrypoint.sh /usr/local/bin/device_server /usr/local/bin/run_server.py
 
 ARG ADAPTER_VERSION=dev
-ARG BACNET_STACK_VERSION=bacnet-stack-1.6.0
+ARG BACNET_STACK_VERSION=bacnet-stack-1.6.1
 ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
     FIXTURE=device-baseline-v2 \
     DEVICE_FIXTURE_FILE=/fixtures/device/device-baseline-v2.json \

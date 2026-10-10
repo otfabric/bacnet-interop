@@ -6,6 +6,7 @@ on:
     paths:
       - 'fixtures/**'
       - 'scripts/validate-fixtures.py'
+      - 'scripts/dissect-fixtures.py'
       - 'Makefile'
       - '.github/workflows/validate-fixtures.yml'
   push:
@@ -14,6 +15,7 @@ on:
     paths:
       - 'fixtures/**'
       - 'scripts/validate-fixtures.py'
+      - 'scripts/dissect-fixtures.py'
       - 'Makefile'
       - '.github/workflows/validate-fixtures.yml'
   workflow_dispatch:
@@ -55,3 +57,19 @@ jobs:
 
       - name: Cross-validate manifest, schema, and on-disk paths
         run: make validate-fixtures
+
+  dissect:
+    name: Wireshark dissector check of codec vectors
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install tshark
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tshark
+          tshark --version | head -1
+
+      - name: Dissect codec vectors
+        run: make dissect-fixtures

@@ -18,13 +18,13 @@
     "status": "independently-generated"
   },
   "id": "service-get-event-information-ack",
-  "description": "GetEventInformation-ACK one AV summary, moreEvents=false",
+  "description": "GetEventInformation-ACK one AV summary, moreEvents=false eventTimeStamps and eventPriorities carry the three entries the standard requires (SEQUENCE SIZE(3)); the vector published up to v0.9.0 had both empty, which Wireshark rejects as malformed.",
   "expect": {
     "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "0e0c0080000119012a05e03e3f49005a05e06e6f0f1900",
+  "input_hex": "0e0c0080000119012a05e03e1901190019003f49005a05e06e2103210321036f0f1900",
   "tags": ["service", "get-event-information", "horizon-2", "gate-3"],
   "operation": "decode_get_event_information_ack",
   "expected": {

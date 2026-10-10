@@ -21,8 +21,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.serotonin.bacnet4j.LocalDevice;
+import com.serotonin.bacnet4j.ResponseConsumer;
+import com.serotonin.bacnet4j.apdu.AckAPDU;
+import com.serotonin.bacnet4j.enums.MaxApduLength;
+import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.service.acknowledgement.AcknowledgementService;
+import com.serotonin.bacnet4j.service.confirmed.ConfirmedCovNotificationMultipleRequest;
+import com.serotonin.bacnet4j.service.confirmed.ConfirmedCovNotificationMultipleRequest.CovNotification;
+import com.serotonin.bacnet4j.service.confirmed.ConfirmedCovNotificationMultipleRequest.CovNotification.CovNotificationValue;
+import com.serotonin.bacnet4j.service.confirmed.SubscribeCOVPropertyMultipleRequest;
+import com.serotonin.bacnet4j.service.confirmed.SubscribeCOVPropertyMultipleRequest.CovSubscriptionSpecification;
+import com.serotonin.bacnet4j.service.confirmed.SubscribeCOVPropertyMultipleRequest.CovSubscriptionSpecification.CovReference;
+import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedCovNotificationMultipleRequest;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
+import com.serotonin.bacnet4j.enums.DayOfWeek;
+import com.serotonin.bacnet4j.enums.Month;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.event.PrivateTransferHandler;
 import com.serotonin.bacnet4j.event.ReinitializeDeviceHandler;
@@ -79,8 +95,10 @@ import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.EncodedValue;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
+import com.serotonin.bacnet4j.type.primitive.Date;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
+import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 import java.io.File;
@@ -98,6 +116,9 @@ public final class DeviceServer {
     private static final String FIXTURE_DEFAULT = "device-baseline-v2";
     private static final String FIXTURE_PATH_DEFAULT = "/fixtures/device/device-baseline-v2.json";
     private static final int PORT_DEFAULT = 47808;
+    // Trend Log seed: see the trend-log case below and the adapter README.
+    private static final int TREND_LOG_SEED_RECORDS = 36;
+    private static final int TREND_LOG_SEED_INTERVAL_MINUTES = 15;
 
     private DeviceServer() {}
 
@@ -150,6 +171,14 @@ public final class DeviceServer {
 
         DefaultTransport transport = new DefaultTransport(network);
         LocalDevice localDevice = new LocalDevice(instance, transport);
+        // LocalDevice has one password; upstream checks it for both
+        // DeviceCommunicationControl and ReinitializeDevice. Unset = null: a
+        // request is then accepted only when it carries no password.
+        String devicePassword = env.getOrDefault("BACNET_DCC_PASSWORD", "");
+        if (!devicePassword.isEmpty()) {
+            localDevice.withPassword(devicePassword);
+            System.err.println("bacnet4j device password configured (DeviceCommunicationControl, ReinitializeDevice)");
+        }
         // Default handler rejects warmstart with notConfigured; install a no-op.
         localDevice.setReinitializeDeviceHandler(new ReinitializeDeviceHandler() {
             @Override
@@ -227,12 +256,24 @@ public final class DeviceServer {
                     }
                 }
                 case "trend-log" -> {
+                    // Deterministic seed (documented in the adapter README), built
+                    // the way TrendLogObject.addLogRecordImpl would have built it:
+                    // record k (1-based position) has
+                    //   time stamp       2024-01-01 00:00:00 + (k-1) x 15 minutes (a Monday)
+                    //   logDatum         real-value 20.0 + (k-1)
+                    //   statusFlags      present, all clear
+                    //   sequence number  k
+                    // with Record_Count = Total_Record_Count = TREND_LOG_SEED_RECORDS.
                     LinkedListLogBuffer<LogRecord> buffer = new LinkedListLogBuffer<>();
-                    DateTime now = new DateTime(System.currentTimeMillis());
                     StatusFlags flags = new StatusFlags(false, false, false, false);
-                    // Seed a few records so ReadRange byPosition has content without waiting on polls.
-                    for (int i = 0; i < 4; i++) {
-                        buffer.add(new LogRecord(now, true, new Real(20.0f + i), flags));
+                    for (int i = 0; i < TREND_LOG_SEED_RECORDS; i++) {
+                        int minutes = i * TREND_LOG_SEED_INTERVAL_MINUTES;
+                        DateTime stamp = new DateTime(
+                                new Date(2024, Month.JANUARY, 1, DayOfWeek.MONDAY),
+                                new Time(minutes / 60, minutes % 60, 0, 0));
+                        LogRecord record = new LogRecord(stamp, false, new Real(20.0f + i), flags);
+                        record.setSequenceNumber(i + 1L);
+                        buffer.add(record);
                     }
                     DeviceObjectPropertyReference monitored = new DeviceObjectPropertyReference(
                             instance,
@@ -243,6 +284,10 @@ public final class DeviceServer {
                             localDevice, oinst, oname, buffer,
                             false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
                             monitored, 0, false, 100);
+                    // The constructor resets both counts to zero; the records were
+                    // added to the buffer directly, so set them to match.
+                    tl.writePropertyInternal(PropertyIdentifier.recordCount, new UnsignedInteger(buffer.size()));
+                    tl.writePropertyInternal(PropertyIdentifier.totalRecordCount, new UnsignedInteger(buffer.size()));
                     if (!description.isEmpty()) {
                         tl.writePropertyInternal(PropertyIdentifier.description, new CharacterString(description));
                     }
@@ -366,6 +411,7 @@ public final class DeviceServer {
             }
         });
 
+        final boolean emitCovMultiple = truthy(env.get("BACNET_EMIT_COV_MULTIPLE"));
         // Diagnostic sinks for messaging / time / group services (device-baseline-v6+).
         localDevice.getEventHandler().addListener(new DeviceEventAdapter() {
             @Override
@@ -374,8 +420,15 @@ public final class DeviceServer {
                 if (op != null) {
                     emitOperation("bacnet4j", op, "accepted");
                 }
+                if (service instanceof SubscribeCOVPropertyMultipleRequest req) {
+                    covMultipleReceived(localDevice, transport, instance, from, req, emitCovMultiple);
+                }
             }
         });
+        if (emitCovMultiple) {
+            System.err.println("bacnet4j BACNET_EMIT_COV_MULTIPLE=1 "
+                    + "(COVNotificationMultiple after each SubscribeCOVPropertyMultiple)");
+        }
 
         // Register after initialize so internal TrendLog/COV setup does not trigger emit.
         if (truthy(env.get("BACNET_EMIT_EVENT"))) {
@@ -609,6 +662,239 @@ public final class DeviceServer {
         } catch (Exception e) {
             System.err.println("bacnet4j operation event failed: " + e);
         }
+    }
+
+    /** Operation line with the fields a stack decoder extracted or an emitter sent. */
+    private static void emitOperation(String adapter, String operation, String result, ObjectNode fields) {
+        try {
+            ObjectNode ev = JSON.createObjectNode();
+            ev.put("event", "operation");
+            ev.put("adapter", adapter);
+            ev.put("operation", operation);
+            ev.put("result", result);
+            ev.set("fields", fields);
+            BufferedWriter out = new BufferedWriter(new OutputStreamWriter(System.out, StandardCharsets.UTF_8));
+            out.write(JSON.writeValueAsString(ev));
+            out.write('\n');
+            out.flush();
+        } catch (Exception e) {
+            System.err.println("bacnet4j operation event failed: " + e);
+        }
+    }
+
+    private static Object privateField(Object target, String name) throws Exception {
+        Field f = target.getClass().getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(target);
+    }
+
+    private static ObjectNode objectIdJson(ObjectIdentifier oid) {
+        ObjectNode n = JSON.createObjectNode();
+        n.put("type", oid.getObjectType().intValue());
+        n.put("instance", oid.getInstanceNumber());
+        return n;
+    }
+
+    private static ObjectNode timeJson(Time t) {
+        ObjectNode n = JSON.createObjectNode();
+        n.put("hour", t.getHour());
+        n.put("minute", t.getMinute());
+        n.put("second", t.getSecond());
+        n.put("hundredths", t.getHundredth());
+        return n;
+    }
+
+    /**
+     * SubscribeCOVPropertyMultiple, seen in requestReceived: BACnet4J has
+     * parsed the request with its own class; its handle() then throws
+     * NotImplementedException, which the stack answers with Reject
+     * unrecognized-service. Nothing is subscribed.
+     *
+     * The operation line reports what the stack's parser extracted. The
+     * top-level class has no getters, so its private fields are read by
+     * reflection; the nested specification classes have getters.
+     *
+     * With BACNET_EMIT_COV_MULTIPLE=1 the adapter then sends the requester one
+     * UnconfirmedCOVNotificationMultiple and one ConfirmedCOVNotificationMultiple
+     * for the objects and properties of the request, built with BACnet4J's
+     * request classes from the current property values. That is an adapter
+     * trigger for the stack's encoder, not a subscription.
+     */
+    private static void covMultipleReceived(LocalDevice localDevice, DefaultTransport transport, int deviceInstance,
+            Address from, SubscribeCOVPropertyMultipleRequest req, boolean emit) {
+        final Unsigned32 processId;
+        final UnsignedInteger lifetime;
+        final SequenceOf<CovSubscriptionSpecification> specs;
+        try {
+            processId = (Unsigned32) privateField(req, "subscriberProcessIdentifier");
+            Boolean issueConfirmed = (Boolean) privateField(req, "issueConfirmedNotifications");
+            lifetime = (UnsignedInteger) privateField(req, "lifetime");
+            UnsignedInteger maxDelay = (UnsignedInteger) privateField(req, "maxNotificationDelay");
+            @SuppressWarnings("unchecked")
+            SequenceOf<CovSubscriptionSpecification> list = (SequenceOf<CovSubscriptionSpecification>)
+                    privateField(req, "listOfCovSubscriptionSpecifications");
+            specs = list;
+
+            ObjectNode fields = JSON.createObjectNode();
+            fields.put("subscriber_process_identifier", processId.longValue());
+            if (issueConfirmed == null) {
+                fields.putNull("issue_confirmed_notifications");
+            } else {
+                fields.put("issue_confirmed_notifications", issueConfirmed.booleanValue());
+            }
+            if (lifetime == null) {
+                fields.putNull("lifetime");
+            } else {
+                fields.put("lifetime", lifetime.longValue());
+            }
+            if (maxDelay == null) {
+                fields.putNull("max_notification_delay");
+            } else {
+                fields.put("max_notification_delay", maxDelay.longValue());
+            }
+            ArrayNode specNodes = fields.putArray("cov_subscription_specifications");
+            for (CovSubscriptionSpecification spec : specs) {
+                ObjectNode sn = specNodes.addObject();
+                sn.set("monitored_object_identifier", objectIdJson(spec.getMonitoredObjectIdentifier()));
+                ArrayNode refs = sn.putArray("cov_references");
+                for (CovReference ref : spec.getListOfCovReferences()) {
+                    ObjectNode rn = refs.addObject();
+                    rn.put("property_identifier", ref.getMonitoredProperty().getPropertyIdentifier().intValue());
+                    UnsignedInteger index = ref.getMonitoredProperty().getPropertyArrayIndex();
+                    if (index == null) {
+                        rn.putNull("property_array_index");
+                    } else {
+                        rn.put("property_array_index", index.longValue());
+                    }
+                    if (ref.getCovIncrement() == null) {
+                        rn.putNull("cov_increment");
+                    } else {
+                        rn.put("cov_increment", ref.getCovIncrement().floatValue());
+                    }
+                    rn.put("timestamped", ref.getTimestamped().booleanValue());
+                }
+            }
+            emitOperation("bacnet4j", "subscribe-cov-property-multiple", "parsed", fields);
+        } catch (Exception e) {
+            System.err.println("bacnet4j SubscribeCOVPropertyMultiple evidence failed: " + e);
+            return;
+        }
+        if (!emit) {
+            return;
+        }
+
+        // Build the notification from the current values. A reference the
+        // device cannot read (unknown object or property) is left out.
+        DateTime timestamp = new DateTime(localDevice);
+        Time timeOfChange = timestamp.getTime();
+        UnsignedInteger timeRemaining = lifetime == null ? UnsignedInteger.ZERO : lifetime;
+        ObjectIdentifier device = new ObjectIdentifier(ObjectType.device, deviceInstance);
+        // The two request classes each have their own nested notification types.
+        SequenceOf<CovNotification> notifications = new SequenceOf<>();
+        SequenceOf<UnconfirmedCovNotificationMultipleRequest.CovNotification> unconfirmedNotifications =
+                new SequenceOf<>();
+        ObjectNode sent = JSON.createObjectNode();
+        sent.put("subscriber_process_identifier", processId.longValue());
+        sent.set("initiating_device_identifier", objectIdJson(device));
+        sent.put("time_remaining", timeRemaining.longValue());
+        ObjectNode ts = sent.putObject("timestamp");
+        ts.put("year", timestamp.getDate().getCenturyYear());
+        ts.put("month", timestamp.getDate().getMonth().getId());
+        ts.put("day", timestamp.getDate().getDay());
+        ts.put("weekday", timestamp.getDate().getDayOfWeek().getId());
+        ts.setAll(timeJson(timestamp.getTime()));
+        ArrayNode noteNodes = sent.putArray("cov_notifications");
+        for (CovSubscriptionSpecification spec : specs) {
+            ObjectIdentifier oid = spec.getMonitoredObjectIdentifier();
+            BACnetObject obj = localDevice.getObject(oid);
+            if (obj == null) {
+                continue;
+            }
+            SequenceOf<CovNotificationValue> values = new SequenceOf<>();
+            SequenceOf<UnconfirmedCovNotificationMultipleRequest.CovNotification.CovNotificationValue>
+                    unconfirmedValues = new SequenceOf<>();
+            ObjectNode nn = JSON.createObjectNode();
+            nn.set("monitored_object_identifier", objectIdJson(oid));
+            ArrayNode valueNodes = nn.putArray("values");
+            for (CovReference ref : spec.getListOfCovReferences()) {
+                PropertyIdentifier pid = ref.getMonitoredProperty().getPropertyIdentifier();
+                UnsignedInteger index = ref.getMonitoredProperty().getPropertyArrayIndex();
+                Encodable value;
+                try {
+                    value = obj.readProperty(pid, index);
+                } catch (Exception e) {
+                    value = null;
+                }
+                if (value == null) {
+                    continue;
+                }
+                Time changed = ref.getTimestamped().booleanValue() ? timeOfChange : null;
+                values.add(new CovNotificationValue(pid, index, value, changed));
+                unconfirmedValues.add(
+                        new UnconfirmedCovNotificationMultipleRequest.CovNotification.CovNotificationValue(
+                                pid, index, value, changed));
+                ObjectNode vn = valueNodes.addObject();
+                vn.put("property_identifier", pid.intValue());
+                if (index == null) {
+                    vn.putNull("property_array_index");
+                } else {
+                    vn.put("property_array_index", index.longValue());
+                }
+                vn.put("value", value.toString());
+                if (changed == null) {
+                    vn.putNull("time_of_change");
+                } else {
+                    vn.set("time_of_change", timeJson(changed));
+                }
+            }
+            if (values.size() > 0) {
+                notifications.add(new CovNotification(oid, values));
+                unconfirmedNotifications.add(
+                        new UnconfirmedCovNotificationMultipleRequest.CovNotification(oid, unconfirmedValues));
+                noteNodes.add(nn);
+            }
+        }
+        final UnconfirmedCovNotificationMultipleRequest unconfirmed = new UnconfirmedCovNotificationMultipleRequest(
+                processId, device, timeRemaining, timestamp, unconfirmedNotifications);
+        final ConfirmedCovNotificationMultipleRequest confirmed = new ConfirmedCovNotificationMultipleRequest(
+                processId, device, timeRemaining, timestamp, notifications);
+        // Off the transport thread, and after the stack has answered the
+        // request itself.
+        Thread sender = new Thread(() -> {
+            try {
+                Thread.sleep(200);
+                localDevice.send(from, unconfirmed);
+                emitOperation("bacnet4j", "emit-unconfirmed-cov-notification-multiple", "sent", sent);
+                // The requester is not in the remote-device cache, for which
+                // LocalDevice.send assumes Max_APDU 50. Use the transport with
+                // 480 and no segmentation.
+                transport.send(from, MaxApduLength.UP_TO_480.getMaxLengthInt(), Segmentation.noSegmentation,
+                        confirmed, new ResponseConsumer() {
+                            @Override
+                            public void success(AcknowledgementService ack) {
+                                emitOperation("bacnet4j", "confirmed-cov-notification-multiple-ack",
+                                        ack == null ? "simple-ack" : "complex-ack");
+                            }
+
+                            @Override
+                            public void fail(AckAPDU ack) {
+                                emitOperation("bacnet4j", "confirmed-cov-notification-multiple-ack",
+                                        "refused: " + ack);
+                            }
+
+                            @Override
+                            public void ex(BACnetException e) {
+                                emitOperation("bacnet4j", "confirmed-cov-notification-multiple-ack",
+                                        "failed: " + e);
+                            }
+                        });
+                emitOperation("bacnet4j", "emit-confirmed-cov-notification-multiple", "sent", sent);
+            } catch (Exception e) {
+                System.err.println("bacnet4j COVNotificationMultiple emit failed: " + e);
+            }
+        }, "bacnet4j-cov-multiple");
+        sender.setDaemon(true);
+        sender.start();
     }
 
     /** Emit one UnconfirmedEventNotification to the given BACnet address. */

@@ -1,1 +1,1 @@
-bacpypes3==0.0.106
+bacpypes3==0.0.110

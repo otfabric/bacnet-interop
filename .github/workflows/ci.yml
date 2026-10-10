@@ -34,15 +34,18 @@ jobs:
         env:
           PLATFORM: linux/amd64
 
-      - name: Smoke-test adapters (including bip-router)
+      - name: Smoke-test adapters (including bip-router and bacnet-stack-router)
         run: make smoke
         env:
           BACNET_STACK_IMAGE: bacnet-interop-bacnet-stack:local
           BACPYPES3_IMAGE: bacnet-interop-bacpypes3:local
           BACNET4J_IMAGE: bacnet-interop-bacnet4j:local
           WORLDIETY_IMAGE: bacnet-interop-worldiety:local
+          SYSIOBACNET_IMAGE: bacnet-interop-sysiobacnet:local
           BIP_ROUTER_IMAGE: bacnet-interop-bip-router:local
           BIP_ROUTER_REQUIRED: "1"
+          BACNET_STACK_ROUTER_IMAGE: bacnet-interop-bacnet-stack-router:local
+          BACNET_STACK_ROUTER_REQUIRED: "1"
 
       - name: Record build provenance
         if: always()
@@ -55,7 +58,9 @@ jobs:
             echo "BACpypes3 pin      : $(grep -E 'BACPYPES3_(VERSION|REF)=' adapters/bacpypes3/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "BACnet4J pin       : $(grep -E 'BACNET4J_VERSION=' adapters/bacnet4j/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "Worldiety pin      : $(grep -E 'WORLDIETY_COMMIT=' adapters/worldiety/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
+            echo "System.IO.BACnet   : $(grep -E 'SYSIOBACNET_VERSION=' adapters/sysiobacnet/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "bip-router         : topology-router-v1"
+            echo "bacnet-stack-router: $(grep -E 'BACNET_STACK_(SHA|VERSION|REF)=' adapters/bacnet-stack-router/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
           } | tee build-provenance.txt
 
       - name: Upload provenance

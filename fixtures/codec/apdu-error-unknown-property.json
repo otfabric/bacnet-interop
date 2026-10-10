@@ -20,13 +20,13 @@
     "status": "independently-generated"
   },
   "id": "apdu-error-unknown-property",
-  "description": "Error PDU for ReadProperty: class=property(2) code=unknown-property(32)",
+  "description": "Error PDU for ReadProperty: class=property(2) code=unknown-property(32) Error class and code are application-tagged ENUMERATEDs (91 02 91 20), as the standard defines Error (Clause 21) and as bacnet-stack and BACpypes3 send them; the vector published up to v0.9.0 used context tags.",
   "expect": {
     "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "50010c09021920",
+  "input_hex": "50010c91029120",
   "tags": [
     "apdu",
     "error",

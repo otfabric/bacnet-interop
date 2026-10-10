@@ -18,13 +18,13 @@
     "status": "independently-generated"
   },
   "id": "service-write-property-multiple-error",
-  "description": "WritePropertyMultiple-Error with firstFailedWriteAttempt AV:1 present-value",
+  "description": "WritePropertyMultiple-Error with firstFailedWriteAttempt AV:1 present-value Error class and code are application-tagged ENUMERATEDs (91 02 91 20), as the standard defines Error (Clause 21) and as bacnet-stack and BACpypes3 send them; the vector published up to v0.9.0 used context tags.",
   "expect": {
     "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "0e090219200f1e0c0080000119551f",
+  "input_hex": "0e910291200f1e0c0080000119551f",
   "tags": ["service", "write-property-multiple", "error", "horizon-2", "gate-3"],
   "operation": "decode_write_property_multiple_error",
   "expected": {

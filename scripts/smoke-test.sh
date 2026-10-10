@@ -16,11 +16,13 @@
 #   SMOKE_ONLY=bacnet-stack BACNET_STACK_IMAGE=…:candidate ./scripts/smoke-test.sh
 #
 # Env:
-#   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,worldiety,bip-router
+#   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,worldiety,sysiobacnet,
+#                  bip-router,bacnet-stack-router
 #                  (empty = all present images; missing peers fail unless filtered)
 #   SMOKE_WHOIS    1 (default) run directed Who-Is→I-Am probe on default-mode peers
 #                  0 skip protocol probe
 #   BIP_ROUTER_REQUIRED  if set, missing bip-router image is a failure
+#   BACNET_STACK_ROUTER_REQUIRED  if set, missing bacnet-stack-router image is a failure
 
 set -euo pipefail
 
@@ -31,7 +33,9 @@ BACNET_STACK_IMAGE="${BACNET_STACK_IMAGE:-bacnet-interop-bacnet-stack:local}"
 BACPYPES3_IMAGE="${BACPYPES3_IMAGE:-bacnet-interop-bacpypes3:local}"
 BACNET4J_IMAGE="${BACNET4J_IMAGE:-bacnet-interop-bacnet4j:local}"
 WORLDIETY_IMAGE="${WORLDIETY_IMAGE:-bacnet-interop-worldiety:local}"
+SYSIOBACNET_IMAGE="${SYSIOBACNET_IMAGE:-bacnet-interop-sysiobacnet:local}"
 BIP_ROUTER_IMAGE="${BIP_ROUTER_IMAGE:-bacnet-interop-bip-router:local}"
+BACNET_STACK_ROUTER_IMAGE="${BACNET_STACK_ROUTER_IMAGE:-bacnet-interop-bacnet-stack-router:local}"
 SMOKE_ONLY="${SMOKE_ONLY:-}"
 SMOKE_WHOIS="${SMOKE_WHOIS:-1}"
 
@@ -171,6 +175,8 @@ run_start_server() {
     printf -v "$_whois_var" '%s' "${_whois:-skip}"
 }
 
+# Dual-homed router smoke. bip-router and bacnet-stack-router share the
+# BACNET_NETWORKS / BACNET_ADDR_NET1 / BACNET_ADDR_NET2 contract.
 start_bip_router_smoke() {
     local image="$1"
     local net_a="smoke-bip-a-$$"
@@ -197,7 +203,7 @@ start_bip_router_smoke() {
         ready=$(docker logs "$name" 2>&1 | grep '"event":"ready"' | head -1 || true)
         [ -n "$ready" ] && break
         if ! docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null | grep -q true; then
-            echo "bip-router exited early:" >&2
+            echo "router exited early:" >&2
             docker logs "$name" >&2 || true
             break
         fi
@@ -331,6 +337,13 @@ if want_adapter worldiety; then
         fail "image missing: ${WORLDIETY_IMAGE}"
     fi
 fi
+if want_adapter sysiobacnet; then
+    if image_exists "$SYSIOBACNET_IMAGE"; then
+        pass "image present: ${SYSIOBACNET_IMAGE}"
+    else
+        fail "image missing: ${SYSIOBACNET_IMAGE}"
+    fi
+fi
 if want_adapter bip-router; then
     if image_exists "$BIP_ROUTER_IMAGE"; then
         pass "image present: ${BIP_ROUTER_IMAGE}"
@@ -338,6 +351,15 @@ if want_adapter bip-router; then
         fail "image missing: ${BIP_ROUTER_IMAGE}"
     else
         info "bip-router image absent; skipping"
+    fi
+fi
+if want_adapter bacnet-stack-router; then
+    if image_exists "$BACNET_STACK_ROUTER_IMAGE"; then
+        pass "image present: ${BACNET_STACK_ROUTER_IMAGE}"
+    elif [ "${BACNET_STACK_ROUTER_REQUIRED:-}" != "" ]; then
+        fail "image missing: ${BACNET_STACK_ROUTER_IMAGE}"
+    else
+        info "bacnet-stack-router image absent; skipping"
     fi
 fi
 
@@ -351,6 +373,7 @@ if want_adapter bacnet-stack && image_exists "$BACNET_STACK_IMAGE"; then
         fail "run_server.py MISSING in ${BACNET_STACK_IMAGE}"
     fi
     check_fixture_file "$BACNET_STACK_IMAGE" /fixtures/device/device-baseline-v2.json
+    check_fixture_file "$BACNET_STACK_IMAGE" /fixtures/device/device-baseline-v9.json
     ready=""; whois=""
     run_start_server ready whois "$BACNET_STACK_IMAGE" 47881
     check_ready_event "bacnet-stack device server" "$ready" "bacnet-stack" "device-baseline-v2"
@@ -406,6 +429,22 @@ if want_adapter worldiety && image_exists "$WORLDIETY_IMAGE"; then
     check_whois "worldiety device server" "$whois"
 fi
 
+if want_adapter sysiobacnet && image_exists "$SYSIOBACNET_IMAGE"; then
+    info ""
+    info "=== System.IO.BACnet ==="
+    check_fixture_file "$SYSIOBACNET_IMAGE" /fixtures/device/device-baseline-v2.json
+    check_binary "$SYSIOBACNET_IMAGE" dotnet
+    if docker run --rm --entrypoint sh "$SYSIOBACNET_IMAGE" -c "test -f /usr/local/lib/sysiobacnet/device_server.dll && test -f /usr/local/lib/sysiobacnet/BACnet.dll" >/dev/null 2>&1; then
+        pass "device_server.dll and BACnet.dll in ${SYSIOBACNET_IMAGE}"
+    else
+        fail "device_server.dll or BACnet.dll MISSING in ${SYSIOBACNET_IMAGE}"
+    fi
+    ready=""; whois=""
+    run_start_server ready whois "$SYSIOBACNET_IMAGE" 47887
+    check_ready_event "sysiobacnet device server" "$ready" "sysiobacnet" "device-baseline-v2"
+    check_whois "sysiobacnet device server" "$whois"
+fi
+
 if want_adapter bip-router && image_exists "$BIP_ROUTER_IMAGE"; then
     info ""
     info "=== bip-router ==="
@@ -420,6 +459,16 @@ elif want_adapter bip-router && [ "${BIP_ROUTER_REQUIRED:-}" != "" ]; then
     : # already failed above when required
 elif [ -z "$SMOKE_ONLY" ] && ! image_exists "$BIP_ROUTER_IMAGE"; then
     info "bip-router image absent; skipping topology router smoke (build with make build-bip-router)"
+fi
+
+if want_adapter bacnet-stack-router && image_exists "$BACNET_STACK_ROUTER_IMAGE"; then
+    info ""
+    info "=== bacnet-stack-router ==="
+    check_binary "$BACNET_STACK_ROUTER_IMAGE" bacnet-router
+    ready=$(start_bip_router_smoke "$BACNET_STACK_ROUTER_IMAGE")
+    check_ready_event "bacnet-stack-router" "$ready" "bacnet-stack-router" "topology-router-v1"
+elif [ -z "$SMOKE_ONLY" ] && ! image_exists "$BACNET_STACK_ROUTER_IMAGE" && [ "${BACNET_STACK_ROUTER_REQUIRED:-}" = "" ]; then
+    info "bacnet-stack-router image absent; skipping native router smoke (build with make build-bacnet-stack-router)"
 fi
 
 echo ""
