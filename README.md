@@ -1,13 +1,23 @@
-# bacnet-interop
+# bacnet-interop — BACnet/IP Interoperability Testing with Docker
 
-Reproducible BACnet/IP peer images and fixtures for
-[`go-bacnet`](https://github.com/otfabric/go-bacnet) interoperability testing.
+**bacnet-interop** provides reproducible BACnet/IP interoperability
+testing infrastructure using multiple independent BACnet protocol
+implementations.
 
-This repository publishes containers, device/topology fixtures, codec vectors
-and provenance metadata. Pass/fail assertions and compatibility claims live in
-go-bacnet (`INTEROP.md`, `interop/`). **Ownership is one-way:** go-bacnet
-depends on bacnet-interop; this repository must never import or CI-test
-against go-bacnet.
+It offers Dockerized BACnet devices, deterministic device fixtures,
+BACnet object models, BBMD and routed-network scenarios, codec test
+vectors, and automated protocol compatibility testing.
+
+Reference implementations include BACnet Stack (C), BACpypes3
+(Python), BACnet4J (Java), System.IO.BACnet (C#), and Worldiety
+(Go).
+
+The infrastructure is independently maintained and can be used
+by any BACnet client implementation.
+
+[OTFabric go-bacnet](https://github.com/otfabric/go-bacnet)
+consumes these reference images to validate its own BACnet protocol
+implementation.
 
 **Latest images:** [v0.10.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.10.0)
 ([what changed](#changes-in-v0100)).
