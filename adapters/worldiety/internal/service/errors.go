@@ -14,13 +14,14 @@ const (
 	ErrorClassProperty uint32 = 2
 	ErrorClassServices uint32 = 5
 
-	ErrorCodeOther                 uint32 = 0
-	ErrorCodeUnknownObject         uint32 = 31
-	ErrorCodeUnknownProperty       uint32 = 32
-	ErrorCodeWriteAccessDenied     uint32 = 40
-	ErrorCodeInvalidArrayIndex     uint32 = 42
-	ErrorCodeValueOutOfRange       uint32 = 37
-	ErrorCodePropertyIsNotAList    uint32 = 22
+	ErrorCodeOther                  uint32 = 0
+	ErrorCodeUnknownObject          uint32 = 31
+	ErrorCodeUnknownProperty        uint32 = 32
+	ErrorCodeWriteAccessDenied      uint32 = 40
+	ErrorCodeInvalidArrayIndex      uint32 = 42
+	ErrorCodeValueOutOfRange        uint32 = 37
+	ErrorCodeDatatypeNotSupported   uint32 = 47
+	ErrorCodePropertyIsNotAList     uint32 = 22
 	ErrorCodeInconsistentParameters uint32 = 7
 )
 

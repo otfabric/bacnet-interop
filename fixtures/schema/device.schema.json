@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/otfabric/bacnet-interop/fixtures/schema/device.schema.json",
   "title": "bacnet-interop live device fixture",
-  "description": "Object graph advertised by peer adapters (device-baseline-v1 through v8).",
+  "description": "Object graph advertised by peer adapters (device-baseline-v1 through v9).",
   "type": "object",
   "additionalProperties": false,
   "required": ["fixture", "device_instance", "device_name", "port", "objects"],

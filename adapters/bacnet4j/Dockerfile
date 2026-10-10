@@ -13,7 +13,7 @@ ARG TEMURIN_JRE_DIGEST=sha256:475d8e96b4b2bfe08999e5e854755c773af1581acdf959a454
 
 FROM eclipse-temurin:17-jdk-jammy@${TEMURIN_JDK_DIGEST} AS build
 
-ARG BACNET4J_VERSION=6.1.0
+ARG BACNET4J_VERSION=6.1.1
 
 # tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd.
 RUN --mount=type=tmpfs,target=/tmp \
@@ -30,7 +30,7 @@ RUN mvn -q -DskipTests -Dbacnet4j.version=${BACNET4J_VERSION} package \
 FROM eclipse-temurin:17-jre-jammy@${TEMURIN_JRE_DIGEST} AS runtime
 
 ARG ADAPTER_VERSION=dev
-ARG BACNET4J_VERSION=6.1.0
+ARG BACNET4J_VERSION=6.1.1
 
 RUN addgroup --system --gid 10001 adapter \
     && adduser --system --uid 10001 --ingroup adapter --no-create-home adapter

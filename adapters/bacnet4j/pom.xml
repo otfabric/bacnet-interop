@@ -15,7 +15,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>17</maven.compiler.release>
-    <bacnet4j.version>6.1.0</bacnet4j.version>
+    <bacnet4j.version>6.1.1</bacnet4j.version>
   </properties>
 
   <repositories>

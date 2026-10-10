@@ -9,7 +9,7 @@ ARG DEBIAN_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca
 
 FROM debian:bookworm-slim@${DEBIAN_DIGEST} AS runtime
 
-ARG BACPYPES3_VERSION=0.0.106
+ARG BACPYPES3_VERSION=0.0.110
 ARG ADAPTER_VERSION=dev
 
 # tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd.

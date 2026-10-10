@@ -22,6 +22,33 @@ jobs:
       version: ${{ steps.detect.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # v0.8.0 and v0.9.0 were tagged on commits that were amended on main
+      # afterwards: the tagged tree kept the previous version in its documents
+      # and inventory while its images reported the new one. A release must be
+      # cut from a commit that is on main.
+      - name: Tag must be on main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::${GITHUB_REF_NAME} (${GITHUB_SHA}) is not an ancestor of origin/main. Push main first, then tag the commit that is on it; do not amend or rebase main after tagging."
+            exit 1
+          fi
+
+      # The inventory version is what README, PEER_SUPPORT and the adapter
+      # READMEs are written against; it must name the release being cut.
+      - name: Inventory version matches the tag
+        run: |
+          set -euo pipefail
+          want="${GITHUB_REF_NAME#v}"
+          have="$(sed -n 's/^adapter_version: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' adapters/inventory.yaml | head -1)"
+          if [ "$have" != "$want" ]; then
+            echo "::error::adapters/inventory.yaml has adapter_version \"$have\", the tag is $GITHUB_REF_NAME. Update the inventory and the documents, commit to main, then tag."
+            exit 1
+          fi
 
       - name: Validate fixtures before release
         run: make validate-fixtures
@@ -80,6 +107,13 @@ jobs:
               peer \
               'WORLDIETY_(COMMIT|REF)='
           fi
+          if [ -f adapters/sysiobacnet/Dockerfile ]; then
+            add_adapter sysiobacnet \
+              adapters/sysiobacnet/Dockerfile \
+              ghcr.io/otfabric/bacnet-interop-sysiobacnet \
+              peer \
+              'SYSIOBACNET_(VERSION|REF)='
+          fi
           if [ -f adapters/bip-router/Dockerfile ]; then
             add_adapter bip-router \
               adapters/bip-router/Dockerfile \
@@ -87,6 +121,13 @@ jobs:
               topology \
               '' \
               topology-router-v1
+          fi
+          if [ -f adapters/bacnet-stack-router/Dockerfile ]; then
+            add_adapter bacnet-stack-router \
+              adapters/bacnet-stack-router/Dockerfile \
+              ghcr.io/otfabric/bacnet-interop-bacnet-stack-router \
+              topology \
+              'BACNET_STACK_(SHA|VERSION|REF)='
           fi
 
           echo "adapters=${adapters}" >> "$GITHUB_OUTPUT"
@@ -161,7 +202,9 @@ jobs:
       bacpypes3-digest: ${{ steps.collect.outputs.bacpypes3-digest }}
       bacnet4j-digest: ${{ steps.collect.outputs.bacnet4j-digest }}
       worldiety-digest: ${{ steps.collect.outputs.worldiety-digest }}
+      sysiobacnet-digest: ${{ steps.collect.outputs.sysiobacnet-digest }}
       bip-router-digest: ${{ steps.collect.outputs.bip-router-digest }}
+      bacnet-stack-router-digest: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
     steps:
       - uses: actions/checkout@v7
 
@@ -233,12 +276,36 @@ jobs:
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Metadata — sysiobacnet
+        if: hashFiles('adapters/sysiobacnet/Dockerfile') != ''
+        id: meta-sysiobacnet
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/otfabric/bacnet-interop-sysiobacnet
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Metadata — bip-router
         if: hashFiles('adapters/bip-router/Dockerfile') != ''
         id: meta-bip-router
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/otfabric/bacnet-interop-bip-router
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Metadata — bacnet-stack-router
+        if: hashFiles('adapters/bacnet-stack-router/Dockerfile') != ''
+        id: meta-bacnet-stack-router
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/otfabric/bacnet-interop-bacnet-stack-router
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -254,7 +321,9 @@ jobs:
           META_BACP: ${{ steps.meta-bacpypes3.outputs.tags }}
           META_B4J: ${{ steps.meta-bacnet4j.outputs.tags }}
           META_WORLD: ${{ steps.meta-worldiety.outputs.tags }}
+          META_SYSIO: ${{ steps.meta-sysiobacnet.outputs.tags }}
           META_BIP: ${{ steps.meta-bip-router.outputs.tags }}
+          META_STACK_ROUTER: ${{ steps.meta-bacnet-stack-router.outputs.tags }}
         run: |
           set -euo pipefail
 
@@ -264,7 +333,9 @@ jobs:
               bacpypes3)    printf '%s' "$META_BACP" ;;
               bacnet4j)     printf '%s' "$META_B4J" ;;
               worldiety)    printf '%s' "$META_WORLD" ;;
+              sysiobacnet)  printf '%s' "$META_SYSIO" ;;
               bip-router)   printf '%s' "$META_BIP" ;;
+              bacnet-stack-router) printf '%s' "$META_STACK_ROUTER" ;;
               *)            return 1 ;;
             esac
           }
@@ -315,7 +386,9 @@ jobs:
           BACP_DIGEST: ${{ steps.collect.outputs.bacpypes3-digest }}
           B4J_DIGEST: ${{ steps.collect.outputs.bacnet4j-digest }}
           WORLD_DIGEST: ${{ steps.collect.outputs.worldiety-digest }}
+          SYSIO_DIGEST: ${{ steps.collect.outputs.sysiobacnet-digest }}
           BIP_DIGEST: ${{ steps.collect.outputs.bip-router-digest }}
+          STACK_ROUTER_DIGEST: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -327,7 +400,9 @@ jobs:
               "bacpypes3": os.environ.get("BACP_DIGEST") or None,
               "bacnet4j": os.environ.get("B4J_DIGEST") or None,
               "worldiety": os.environ.get("WORLD_DIGEST") or None,
+              "sysiobacnet": os.environ.get("SYSIO_DIGEST") or None,
               "bip-router": os.environ.get("BIP_DIGEST") or None,
+              "bacnet-stack-router": os.environ.get("STACK_ROUTER_DIGEST") or None,
           }
 
           def pin_for(adapter):
@@ -365,6 +440,7 @@ jobs:
               ("bacpypes3", "ghcr.io/otfabric/bacnet-interop-bacpypes3"),
               ("bacnet4j", "ghcr.io/otfabric/bacnet-interop-bacnet4j"),
               ("worldiety", "ghcr.io/otfabric/bacnet-interop-worldiety"),
+              ("sysiobacnet", "ghcr.io/otfabric/bacnet-interop-sysiobacnet"),
           ):
               peers.setdefault(name, {"pin": None, "image": image, "digest": None})
           topology.setdefault(
@@ -372,6 +448,14 @@ jobs:
               {
                   "pin": None,
                   "image": "ghcr.io/otfabric/bacnet-interop-bip-router",
+                  "digest": None,
+              },
+          )
+          topology.setdefault(
+              "bacnet-stack-router",
+              {
+                  "pin": None,
+                  "image": "ghcr.io/otfabric/bacnet-interop-bacnet-stack-router",
                   "digest": None,
               },
           )
@@ -408,9 +492,11 @@ jobs:
             | `ghcr.io/otfabric/bacnet-interop-bacpypes3:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bacpypes3-digest || 'not published (Dockerfile pending)' }}` |
             | `ghcr.io/otfabric/bacnet-interop-bacnet4j:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bacnet4j-digest || 'not published (Dockerfile pending)' }}` |
             | `ghcr.io/otfabric/bacnet-interop-worldiety:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.worldiety-digest || 'not published (Dockerfile pending)' }}` |
+            | `ghcr.io/otfabric/bacnet-interop-sysiobacnet:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.sysiobacnet-digest || 'not published (Dockerfile pending)' }}` |
             | `ghcr.io/otfabric/bacnet-interop-bip-router:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bip-router-digest || 'not published (Dockerfile pending)' }}` |
+            | `ghcr.io/otfabric/bacnet-interop-bacnet-stack-router:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bacnet-stack-router-digest || 'not published (Dockerfile pending)' }}` |
 
-            `bip-router` is a topology aid (not a peer oracle). Worldiety is the fourth peer oracle.
+            `bip-router` is a topology aid (not a peer oracle). `bacnet-stack-router` is upstream bacnet-stack `apps/router` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (`sysiobacnet`) the fifth.
 
             ## Pinning in consumer repositories
 
@@ -419,7 +505,9 @@ jobs:
             BACPYPES3_IMAGE=ghcr.io/otfabric/bacnet-interop-bacpypes3@${{ steps.collect.outputs.bacpypes3-digest || 'sha256:<digest>' }}
             BACNET4J_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet4j@${{ steps.collect.outputs.bacnet4j-digest || 'sha256:<digest>' }}
             WORLDIETY_IMAGE=ghcr.io/otfabric/bacnet-interop-worldiety@${{ steps.collect.outputs.worldiety-digest || 'sha256:<digest>' }}
+            SYSIOBACNET_IMAGE=ghcr.io/otfabric/bacnet-interop-sysiobacnet@${{ steps.collect.outputs.sysiobacnet-digest || 'sha256:<digest>' }}
             BIP_ROUTER_IMAGE=ghcr.io/otfabric/bacnet-interop-bip-router@${{ steps.collect.outputs.bip-router-digest || 'sha256:<digest>' }}
+            BACNET_STACK_ROUTER_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack-router@${{ steps.collect.outputs.bacnet-stack-router-digest || 'sha256:<digest>' }}
             ```
 
             See `manifest.json` for fixture schema path and peer provenance pins.

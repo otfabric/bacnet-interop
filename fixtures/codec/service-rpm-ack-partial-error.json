@@ -20,13 +20,13 @@
     "status": "independently-generated"
   },
   "id": "service-rpm-ack-partial-error",
-  "description": "RPM ACK: object-name success + present-value propertyAccessError class=2 code=32",
+  "description": "RPM ACK: object-name success + present-value propertyAccessError class=2 code=32 Error class and code are application-tagged ENUMERATEDs (91 02 91 20), as the standard defines Error (Clause 21) and as bacnet-stack and BACpypes3 send them; the vector published up to v0.9.0 used context tags.",
   "expect": {
     "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "0c020000011e294d4e7200614f29555e090219205f1f",
+  "input_hex": "0c020000011e294d4e7200614f29555e910291205f1f",
   "tags": [
     "service",
     "rpm",

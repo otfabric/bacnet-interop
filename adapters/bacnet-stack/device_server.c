@@ -17,6 +17,7 @@
 
 #include "bacnet/apdu.h"
 #include "bacnet/bacapp.h"
+#include "bacnet/bacaudit.h"
 #include "bacnet/bacdef.h"
 #include "bacnet/bacdcode.h"
 #include "bacnet/wp.h"
@@ -48,8 +49,9 @@
 #include "bacnet/youare.h"
 #include "bacfile-posix.h"
 
-#define MAX_FIXTURE_AVS 16
-#define MAX_FIXTURE_BVS 8
+/* device-baseline-v9 declares 21 AV and 21 BV objects. */
+#define MAX_FIXTURE_AVS 64
+#define MAX_FIXTURE_BVS 64
 #define MAX_FIXTURE_FILES 8
 #define MAX_FIXTURE_LSPS 8
 #define MAX_FIXTURE_LSZS 8
@@ -165,7 +167,7 @@ static void on_signal(int signo)
 }
 
 #if defined(INTRINSIC_REPORTING)
-/* bacnet-stack 1.6.0 declares Analog_Value_*_Set helpers but does not
+/* bacnet-stack 1.6.1 declares Analog_Value_*_Set helpers but does not
  * implement them; configure intrinsic reporting through WriteProperty. */
 static bool av_wp(
     uint32_t instance, BACNET_PROPERTY_ID prop, uint8_t *apdu, int apdu_len)
@@ -339,6 +341,224 @@ static void interop_lso(
     emit_operation("life-safety-operation");
 }
 
+/* ---------------------------------------------------------------------------
+ * Audit (Clause 13.19-13.21) evidence. bacnet-stack ships the data-type
+ * codecs bacnet_audit_log_notification_encode()/_decode() and
+ * bacnet_audit_log_record_encode() but no audit service: there is no
+ * request/ACK codec and no handler. The adapter therefore writes only the
+ * service frames (opening/closing tags, sequence numbers, booleans) with the
+ * stack's primitive encoders and leaves every BACnetAuditNotification and
+ * BACnetAuditLogRecord to the upstream encoders.
+ * ------------------------------------------------------------------------- */
+static bool Emit_Audit; /* BACNET_EMIT_AUDIT=1 */
+static bool Audit_Emitted;
+
+static void emit_hex_operation(
+    const char *operation, const char *result, const uint8_t *data, int len)
+{
+    int i;
+
+    printf("{\"event\":\"operation\",\"adapter\":\"bacnet-stack\","
+           "\"operation\":\"%s\",\"result\":\"%s\","
+           "\"encoder\":\"bacnet_audit_log_notification_encode\","
+           "\"service_request_hex\":\"",
+        operation, result);
+    for (i = 0; i < len; i++) {
+        printf("%02x", data[i]);
+    }
+    printf("\"}\n");
+    fflush(stdout);
+}
+
+/* The one notification the adapter reports. bacnet-stack encodes every
+ * optional field of BACnetAuditNotification, so all of them carry a value. */
+static void interop_audit_notification(BACNET_AUDIT_NOTIFICATION *n)
+{
+    BACNET_DATE_TIME dt = { 0 };
+
+    memset(n, 0, sizeof(*n));
+    bacapp_timestamp_sequence_set(&n->source_timestamp, 7);
+    datetime_set_values(&dt, 2026, 10, 10, 12, 30, 0, 0);
+    bacapp_timestamp_datetime_set(&n->target_timestamp, &dt);
+    n->source_device.tag = BACNET_RECIPIENT_TAG_DEVICE;
+    n->source_device.type.device.type = OBJECT_DEVICE;
+    n->source_device.type.device.instance = Device_Object_Instance_Number();
+    n->source_object.type = OBJECT_DEVICE;
+    n->source_object.instance = Device_Object_Instance_Number();
+    n->operation = AUDIT_OPERATION_WRITE;
+    characterstring_init_ansi(&n->source_comment, "interop-source");
+    characterstring_init_ansi(&n->target_comment, "interop-target");
+    n->invoke_id = 5;
+    n->source_user_id = 1001;
+    n->source_user_role = 3;
+    n->target_device.tag = BACNET_RECIPIENT_TAG_DEVICE;
+    n->target_device.type.device.type = OBJECT_DEVICE;
+    n->target_device.type.device.instance = Device_Object_Instance_Number();
+    n->target_object.type = OBJECT_ANALOG_VALUE;
+    n->target_object.instance = 1;
+    n->target_property.property_identifier = PROP_PRESENT_VALUE;
+    n->target_property.property_array_index = BACNET_ARRAY_ALL;
+    n->target_priority = 8;
+    n->target_value.tag = BACNET_APPLICATION_TAG_REAL;
+    n->target_value.type.real_value = 42.5f;
+    n->current_value.tag = BACNET_APPLICATION_TAG_REAL;
+    n->current_value.type.real_value = 21.5f;
+    n->result = ERROR_CODE_SUCCESS;
+}
+
+/* Audit notification service request: notifications [0] SEQUENCE OF
+ * BACnetAuditNotification, one element. */
+static int interop_audit_notification_request(uint8_t *apdu)
+{
+    BACNET_AUDIT_NOTIFICATION n;
+    int len = 0;
+
+    interop_audit_notification(&n);
+    len += encode_opening_tag(&apdu[len], 0);
+    len += bacnet_audit_log_notification_encode(&apdu[len], &n);
+    len += encode_closing_tag(&apdu[len], 0);
+    return len;
+}
+
+static void interop_emit_audit_notifications(BACNET_ADDRESS *dest)
+{
+    static uint8_t pdu[MAX_PDU];
+    BACNET_NPDU_DATA npdu_data;
+    BACNET_ADDRESS my_address;
+    uint8_t invoke_id;
+    int pdu_len, len;
+
+    datalink_get_my_address(&my_address);
+
+    /* UnconfirmedAuditNotification */
+    npdu_encode_npdu_data(&npdu_data, false, MESSAGE_PRIORITY_NORMAL);
+    pdu_len = npdu_encode_pdu(pdu, dest, &my_address, &npdu_data);
+    pdu[pdu_len++] = PDU_TYPE_UNCONFIRMED_SERVICE_REQUEST;
+    pdu[pdu_len++] = SERVICE_UNCONFIRMED_AUDIT_NOTIFICATION;
+    len = interop_audit_notification_request(&pdu[pdu_len]);
+    if (datalink_send_pdu(dest, &npdu_data, pdu, pdu_len + len) > 0) {
+        emit_hex_operation("emit-unconfirmed-audit-notification", "sent",
+            &pdu[pdu_len], len);
+    }
+
+    /* ConfirmedAuditNotification */
+    invoke_id = tsm_next_free_invokeID();
+    if (!invoke_id) {
+        return;
+    }
+    npdu_encode_npdu_data(&npdu_data, true, MESSAGE_PRIORITY_NORMAL);
+    pdu_len = npdu_encode_pdu(pdu, dest, &my_address, &npdu_data);
+    pdu[pdu_len++] = PDU_TYPE_CONFIRMED_SERVICE_REQUEST;
+    pdu[pdu_len++] = encode_max_segs_max_apdu(0, MAX_APDU);
+    pdu[pdu_len++] = invoke_id;
+    pdu[pdu_len++] = SERVICE_CONFIRMED_AUDIT_NOTIFICATION;
+    len = interop_audit_notification_request(&pdu[pdu_len]);
+    tsm_set_confirmed_unsegmented_transaction(
+        invoke_id, dest, &npdu_data, pdu, (uint16_t)(pdu_len + len));
+    if (datalink_send_pdu(dest, &npdu_data, pdu, pdu_len + len) > 0) {
+        emit_hex_operation("emit-confirmed-audit-notification", "sent",
+            &pdu[pdu_len], len);
+    }
+}
+
+/* The peer acknowledged the ConfirmedAuditNotification with a SimpleACK. */
+static void interop_audit_notification_ack(BACNET_ADDRESS *src, uint8_t invoke_id)
+{
+    (void)src;
+    printf("{\"event\":\"operation\",\"adapter\":\"bacnet-stack\","
+           "\"operation\":\"confirmed-audit-notification-ack\","
+           "\"result\":\"simple-ack\",\"invoke_id\":%u}\n",
+        (unsigned)invoke_id);
+    fflush(stdout);
+}
+
+/* With BACNET_EMIT_AUDIT=1 the first ReadProperty is answered and then
+ * followed by one Unconfirmed and one ConfirmedAuditNotification to the
+ * requester. */
+static void interop_read_property(
+    uint8_t *service_request,
+    uint16_t service_len,
+    BACNET_ADDRESS *src,
+    BACNET_CONFIRMED_SERVICE_DATA *service_data)
+{
+    handler_read_property(service_request, service_len, src, service_data);
+    if (Emit_Audit && !Audit_Emitted) {
+        Audit_Emitted = true;
+        interop_emit_audit_notifications(src);
+    }
+}
+
+/* AuditLogQuery: bacnet-stack has no request decoder, so the query
+ * parameters are NOT decoded (the operation line says so). The reply is an
+ * AuditLogQuery-ACK whose three records - log-status, audit-notification,
+ * time-change - are encoded by bacnet_audit_log_record_encode(). */
+static void interop_audit_log_query(
+    uint8_t *service_request,
+    uint16_t service_len,
+    BACNET_ADDRESS *src,
+    BACNET_CONFIRMED_SERVICE_DATA *service_data)
+{
+    static uint8_t pdu[MAX_PDU];
+    BACNET_NPDU_DATA npdu_data;
+    BACNET_ADDRESS my_address;
+    BACNET_AUDIT_LOG_RECORD record;
+    BACNET_OBJECT_TYPE object_type = OBJECT_NONE;
+    uint32_t object_instance = 0;
+    int pdu_len, start, i;
+
+    if (bacnet_object_id_context_decode(service_request, service_len, 0,
+            &object_type, &object_instance) <= 0) {
+        object_type = OBJECT_AUDIT_LOG;
+        object_instance = BACNET_MAX_INSTANCE;
+    }
+    datalink_get_my_address(&my_address);
+    npdu_encode_npdu_data(&npdu_data, false, MESSAGE_PRIORITY_NORMAL);
+    pdu_len = npdu_encode_pdu(pdu, src, &my_address, &npdu_data);
+    pdu[pdu_len++] = PDU_TYPE_COMPLEX_ACK;
+    pdu[pdu_len++] = service_data->invoke_id;
+    pdu[pdu_len++] = SERVICE_CONFIRMED_AUDIT_LOG_QUERY;
+    start = pdu_len;
+    /* audit-log [0] */
+    pdu_len += encode_context_object_id(
+        &pdu[pdu_len], 0, object_type, object_instance);
+    /* records [1] SEQUENCE OF { sequence-number [0], log-record [1] } */
+    pdu_len += encode_opening_tag(&pdu[pdu_len], 1);
+    for (i = 0; i < 3; i++) {
+        memset(&record, 0, sizeof(record));
+        datetime_set_values(&record.timestamp, 2026, 10, 10, 12, 30, i, 0);
+        if (i == 0) {
+            record.tag = AUDIT_LOG_DATUM_TAG_STATUS;
+            record.log_datum.log_status = 1 << LOG_STATUS_BUFFER_PURGED;
+        } else if (i == 1) {
+            record.tag = AUDIT_LOG_DATUM_TAG_NOTIFICATION;
+            interop_audit_notification(&record.log_datum.notification);
+        } else {
+            record.tag = AUDIT_LOG_DATUM_TAG_TIME_CHANGE;
+            record.log_datum.time_change = 1.5f;
+        }
+        pdu_len += encode_context_unsigned(&pdu[pdu_len], 0, 100 + i);
+        pdu_len += encode_opening_tag(&pdu[pdu_len], 1);
+        pdu_len += bacnet_audit_log_record_encode(&pdu[pdu_len], &record);
+        pdu_len += encode_closing_tag(&pdu[pdu_len], 1);
+    }
+    pdu_len += encode_closing_tag(&pdu[pdu_len], 1);
+    /* no-more-items [2] */
+    pdu_len += encode_context_boolean(&pdu[pdu_len], 2, true);
+    datalink_send_pdu(src, &npdu_data, pdu, pdu_len);
+
+    printf("{\"event\":\"operation\",\"adapter\":\"bacnet-stack\","
+           "\"operation\":\"audit-log-query\",\"result\":\"accepted\","
+           "\"request_decoder\":\"none\","
+           "\"ack_record_encoder\":\"bacnet_audit_log_record_encode\","
+           "\"audit_log\":\"%u:%u\",\"ack_hex\":\"",
+        (unsigned)object_type, (unsigned)object_instance);
+    for (i = start; i < pdu_len; i++) {
+        printf("%02x", pdu[i]);
+    }
+    printf("\"}\n");
+    fflush(stdout);
+}
+
 static void Init_Service_Handlers(void)
 {
     Device_Init(Interop_Object_Table);
@@ -348,7 +568,7 @@ static void Init_Service_Handlers(void)
     apdu_set_unrecognized_service_handler_handler(handler_unrecognized_service);
 
     apdu_set_confirmed_handler(
-        SERVICE_CONFIRMED_READ_PROPERTY, handler_read_property);
+        SERVICE_CONFIRMED_READ_PROPERTY, interop_read_property);
     apdu_set_confirmed_handler(
         SERVICE_CONFIRMED_READ_PROP_MULTIPLE, handler_read_property_multiple);
     apdu_set_confirmed_handler(
@@ -388,7 +608,7 @@ static void Init_Service_Handlers(void)
 #endif
 
     /* Messaging / time / group (device-baseline-v6). TextMessage and
-     * ConfirmedPrivateTransfer are unsupported-upstream at bacnet-stack 1.6.0. */
+     * ConfirmedPrivateTransfer are unsupported-upstream at bacnet-stack 1.6.1. */
     apdu_set_unconfirmed_handler(
         SERVICE_UNCONFIRMED_TIME_SYNCHRONIZATION, handler_timesync);
     apdu_set_unconfirmed_handler(
@@ -405,6 +625,17 @@ static void Init_Service_Handlers(void)
     apdu_set_unconfirmed_handler(SERVICE_UNCONFIRMED_YOU_ARE, interop_you_are);
     apdu_set_confirmed_handler(
         SERVICE_CONFIRMED_LIFE_SAFETY_OPERATION, interop_lso);
+
+    /* Audit evidence (see interop_audit_log_query). */
+    apdu_set_confirmed_handler(
+        SERVICE_CONFIRMED_AUDIT_LOG_QUERY, interop_audit_log_query);
+    apdu_set_confirmed_simple_ack_handler(
+        SERVICE_CONFIRMED_AUDIT_NOTIFICATION, interop_audit_notification_ack);
+    {
+        const char *emit_audit = getenv("BACNET_EMIT_AUDIT");
+        Emit_Audit = emit_audit && (strcmp(emit_audit, "1") == 0 ||
+            strcmp(emit_audit, "true") == 0 || strcmp(emit_audit, "yes") == 0);
+    }
 
     mstimer_set(&BACnet_Task_Timer, 1000UL);
     mstimer_set(&BACnet_TSM_Timer, 50UL);
@@ -765,8 +996,11 @@ int main(int argc, char *argv[])
             bvs[i].value == BINARY_ACTIVE ? "active" : "inactive");
     }
     fprintf(stderr, "  file count=%d\n", file_count);
-    fprintf(stderr, "  trend-log count=%u (MAX_TREND_LOGS)\n",
-        (unsigned)Trend_Log_Count());
+    fprintf(stderr,
+        "  trend-log count=%u (MAX_TREND_LOGS) frozen: records=%u "
+        "total=%u\n",
+        (unsigned)Trend_Log_Count(), (unsigned)Trend_Log_Record_Count(0),
+        (unsigned)Trend_Log_Total_Record_Count(0));
     fprintf(stderr,
         "  services: AtomicRead/WriteFile, CreateObject, DeleteObject"
 #if defined(INTRINSIC_REPORTING)
@@ -790,7 +1024,9 @@ int main(int argc, char *argv[])
             datalink_maintenance_timer(elapsed_seconds);
             dlenv_maintenance_timer(elapsed_seconds);
             handler_cov_timer_seconds(elapsed_seconds);
-            trend_log_timer((uint16_t)elapsed_seconds);
+            /* trend_log_timer() is deliberately not called: the Trend Log
+             * keeps the records Trend_Log_Init() seeds and never samples, so
+             * ReadRange results are the same on every run (see README). */
 #if defined(INTRINSIC_REPORTING)
             /* Run AV/AI intrinsic Out_Of_Range evaluation (not done by Device_Timer). */
             Device_local_reporting();

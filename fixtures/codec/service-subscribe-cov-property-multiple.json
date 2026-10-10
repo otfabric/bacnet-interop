@@ -13,20 +13,21 @@
     "base": "ANSI/ASHRAE 135-2024",
     "protocol_revision": 31,
     "clauses": [
-      "12"
+      "13.16",
+      "21"
     ]
   },
   "license": {
     "status": "independently-generated"
   },
   "id": "service-subscribe-cov-property-multiple",
-  "description": "SubscribeCOVPropertyMultiple for AV-1 present-value",
+  "description": "SubscribeCOVPropertyMultiple for AV-1 present-value: lifetime [2], list-of-cov-subscription-specifications [4], monitored-property [0] constructed, timestamped [2]. Layout checked against Wireshark 4.6 (replaces a hand-written vector that put the list at [3] and flattened the property reference).",
   "expect": {
     "semantic_decode_equal": true,
     "deterministic_reencode_equal": true,
     "original_bytes_equal": true
   },
-  "input_hex": "09011900293c3e0c008000011e095539001f3f",
+  "input_hex": "09011900293c4e0c008000011e0e09550f29001f4f",
   "tags": [
     "service",
     "cov-multiple"

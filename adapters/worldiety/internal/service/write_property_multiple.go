@@ -121,7 +121,11 @@ func decodeWPM(payload []byte) ([]wpmWrite, error) {
 }
 
 func encodeWPMError(key fixture.ObjectKey, prop propertyRef, class, code uint32) []byte {
-	// Error PDU payload for WPM: errorType [0] { class, code } + firstFailed [1]
+	// WritePropertyMultiple-Error ::= SEQUENCE {
+	//   errorType               [0] Error,
+	//   firstFailedWriteAttempt [1] BACnetObjectPropertyReference }
+	// BACnetObjectPropertyReference ::= SEQUENCE {
+	//   objectIdentifier   [0], propertyIdentifier [1], propertyArrayIndex [2] OPTIONAL }
 	id, _ := key.Identifier()
 	var out []byte
 	out = append(out, encodeOpening(0)...)
@@ -130,12 +134,10 @@ func encodeWPMError(key fixture.ObjectKey, prop propertyRef, class, code uint32)
 	out = append(out, encodeClosing(0)...)
 	out = append(out, encodeOpening(1)...)
 	out = append(out, encodeContextObjectID(0, id)...)
-	out = append(out, encodeOpening(1)...)
-	out = append(out, encodeContextUnsigned(0, uint32(prop.ID))...)
+	out = append(out, encodeContextUnsigned(1, uint32(prop.ID))...)
 	if prop.Index != nil {
-		out = append(out, encodeContextUnsigned(1, *prop.Index)...)
+		out = append(out, encodeContextUnsigned(2, *prop.Index)...)
 	}
-	out = append(out, encodeClosing(1)...)
 	out = append(out, encodeClosing(1)...)
 	return out
 }
