@@ -8,14 +8,10 @@ native bacnet-stack router, the large device model, DeviceCommunicationControl
 on BACpypes3 and BACnet4J, corrected codec vectors and a Wireshark check for
 them.
 
-v0.10.0 is a coordinated release with go-bacnet v0.4.0: the corrected codec
+v0.10.0 was a coordinated release with go-bacnet v0.4.0: the corrected codec
 vectors need go-bacnet's corrected encoders, and go-bacnet's new peer tests
-need the 0.10.0 adapters (they skip against 0.9.0 images). Order:
-
-1. Release bacnet-interop v0.10.0 ([how](README.md#releasing)).
-2. In go-bacnet, move `interop/bacnet-interop-pin.json` to v0.10.0 (ref and
-   the digests from the release's `manifest.json`), add the two new images to
-   it, and release.
+need the 0.10.0 adapters. Both are released, and go-bacnet's
+`interop/bacnet-interop-pin.json` pins v0.10.0, including the two new images.
 
 ## Upstream versions
 
