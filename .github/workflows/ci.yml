@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: RELEASE.md has the notes of adapter_version
+        run: scripts/release-notes.sh > /dev/null
+
       - name: Validate fixture manifest and schema
         run: make validate-fixtures
 
