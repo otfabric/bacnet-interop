@@ -50,6 +50,12 @@ jobs:
             exit 1
           fi
 
+      # The body of the GitHub release is the section of this tag in
+      # RELEASE.md, up to its "---" line (the otfabric rule). Check it before
+      # anything is built or pushed.
+      - name: RELEASE.md has the notes of the tag
+        run: scripts/release-notes.sh "${GITHUB_REF_NAME}"
+
       - name: Validate fixtures before release
         run: make validate-fixtures
 
@@ -477,41 +483,66 @@ jobs:
           sha256sum manifest.json > checksums.txt
           cat checksums.txt
 
+      # The body is the section of this version in RELEASE.md (up to its
+      # "---", as in every otfabric repository), followed by the images.
+      - name: Write the release body
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          STACK_DIGEST: ${{ steps.collect.outputs.bacnet-stack-digest }}
+          BACP_DIGEST: ${{ steps.collect.outputs.bacpypes3-digest }}
+          B4J_DIGEST: ${{ steps.collect.outputs.bacnet4j-digest }}
+          WORLD_DIGEST: ${{ steps.collect.outputs.worldiety-digest }}
+          SYSIO_DIGEST: ${{ steps.collect.outputs.sysiobacnet-digest }}
+          BIP_DIGEST: ${{ steps.collect.outputs.bip-router-digest }}
+          STACK_ROUTER_DIGEST: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
+        run: |
+          set -euo pipefail
+          registry=ghcr.io/otfabric
+          # name|digest|pin variable, in the order of the table.
+          images=(
+            "bacnet-stack|${STACK_DIGEST}|BACNET_STACK_IMAGE"
+            "bacpypes3|${BACP_DIGEST}|BACPYPES3_IMAGE"
+            "bacnet4j|${B4J_DIGEST}|BACNET4J_IMAGE"
+            "worldiety|${WORLD_DIGEST}|WORLDIETY_IMAGE"
+            "sysiobacnet|${SYSIO_DIGEST}|SYSIOBACNET_IMAGE"
+            "bip-router|${BIP_DIGEST}|BIP_ROUTER_IMAGE"
+            "bacnet-stack-router|${STACK_ROUTER_DIGEST}|BACNET_STACK_ROUTER_IMAGE"
+          )
+          {
+            scripts/release-notes.sh "${GITHUB_REF_NAME}"
+            echo
+            echo "## Adapter images"
+            echo
+            echo "BACnet/IP peer images for interoperability tests."
+            echo "Multi-arch manifests (\`linux/amd64\`, \`linux/arm64\`) built on native runners (no QEMU)."
+            echo
+            echo "| Image | Digest |"
+            echo "|-------|--------|"
+            for entry in "${images[@]}"; do
+              IFS='|' read -r name digest _ <<<"${entry}"
+              echo "| \`${registry}/bacnet-interop-${name}:${VERSION}\` | \`${digest:-not published (Dockerfile pending)}\` |"
+            done
+            echo
+            echo "\`bip-router\` is a topology aid (not a peer oracle). \`bacnet-stack-router\` is upstream bacnet-stack \`apps/router\` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (\`sysiobacnet\`) the fifth."
+            echo
+            echo "## Pinning in consumer repositories"
+            echo
+            echo '```bash'
+            for entry in "${images[@]}"; do
+              IFS='|' read -r name digest var <<<"${entry}"
+              echo "${var}=${registry}/bacnet-interop-${name}@${digest:-sha256:<digest>}"
+            done
+            echo '```'
+            echo
+            echo "See \`manifest.json\` for fixture schema path and peer provenance pins."
+            echo "Adapter Dockerfiles may still be pending; fixture-only tags remain valid for schema/manifest consumers."
+          } > "${RUNNER_TEMP}/release-body.md"
+          cat "${RUNNER_TEMP}/release-body.md"
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          body: |
-            ## Adapter images
-
-            BACnet/IP peers for [`go-bacnet`](https://github.com/otfabric/go-bacnet).
-            Multi-arch manifests (`linux/amd64`, `linux/arm64`) built on native runners (no QEMU).
-
-            | Image | Digest |
-            |-------|--------|
-            | `ghcr.io/otfabric/bacnet-interop-bacnet-stack:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bacnet-stack-digest || 'not published (Dockerfile pending)' }}` |
-            | `ghcr.io/otfabric/bacnet-interop-bacpypes3:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bacpypes3-digest || 'not published (Dockerfile pending)' }}` |
-            | `ghcr.io/otfabric/bacnet-interop-bacnet4j:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bacnet4j-digest || 'not published (Dockerfile pending)' }}` |
-            | `ghcr.io/otfabric/bacnet-interop-worldiety:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.worldiety-digest || 'not published (Dockerfile pending)' }}` |
-            | `ghcr.io/otfabric/bacnet-interop-sysiobacnet:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.sysiobacnet-digest || 'not published (Dockerfile pending)' }}` |
-            | `ghcr.io/otfabric/bacnet-interop-bip-router:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bip-router-digest || 'not published (Dockerfile pending)' }}` |
-            | `ghcr.io/otfabric/bacnet-interop-bacnet-stack-router:${{ needs.prepare.outputs.version }}` | `${{ steps.collect.outputs.bacnet-stack-router-digest || 'not published (Dockerfile pending)' }}` |
-
-            `bip-router` is a topology aid (not a peer oracle). `bacnet-stack-router` is upstream bacnet-stack `apps/router` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (`sysiobacnet`) the fifth.
-
-            ## Pinning in consumer repositories
-
-            ```bash
-            BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@${{ steps.collect.outputs.bacnet-stack-digest || 'sha256:<digest>' }}
-            BACPYPES3_IMAGE=ghcr.io/otfabric/bacnet-interop-bacpypes3@${{ steps.collect.outputs.bacpypes3-digest || 'sha256:<digest>' }}
-            BACNET4J_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet4j@${{ steps.collect.outputs.bacnet4j-digest || 'sha256:<digest>' }}
-            WORLDIETY_IMAGE=ghcr.io/otfabric/bacnet-interop-worldiety@${{ steps.collect.outputs.worldiety-digest || 'sha256:<digest>' }}
-            SYSIOBACNET_IMAGE=ghcr.io/otfabric/bacnet-interop-sysiobacnet@${{ steps.collect.outputs.sysiobacnet-digest || 'sha256:<digest>' }}
-            BIP_ROUTER_IMAGE=ghcr.io/otfabric/bacnet-interop-bip-router@${{ steps.collect.outputs.bip-router-digest || 'sha256:<digest>' }}
-            BACNET_STACK_ROUTER_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack-router@${{ steps.collect.outputs.bacnet-stack-router-digest || 'sha256:<digest>' }}
-            ```
-
-            See `manifest.json` for fixture schema path and peer provenance pins.
-            Adapter Dockerfiles may still be pending; fixture-only tags remain valid for schema/manifest consumers.
+          body_path: ${{ runner.temp }}/release-body.md
           files: |
             manifest.json
             checksums.txt

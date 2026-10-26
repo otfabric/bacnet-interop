@@ -150,14 +150,17 @@ BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 
 ## Releasing
 
-1. Set `adapter_version` in `adapters/inventory.yaml` and the version in the
+1. Write the notes of the release in [RELEASE.md](RELEASE.md), set
+   `adapter_version` in `adapters/inventory.yaml` and the version in the
    documents to the release, and commit to `main`.
 2. Push `main`. Then tag **that commit** `vX.Y.Z` and push the tag. Do not
    amend or rebase `main` afterwards: v0.8.0 and v0.9.0 were tagged on commits
    that were later rewritten, so their tags are not on `main`.
-3. The release workflow validates the fixtures, builds every adapter for both
-   architectures, publishes the images and attaches `manifest.json` with the
-   digests.
+3. The release workflow checks the notes and validates the fixtures, builds
+   every adapter for both architectures, publishes the images and attaches
+   `manifest.json` with the digests. The body of the GitHub release is the
+   section of the tag in RELEASE.md (up to its `---` line), followed by the
+   image digests.
 4. Update the pin in the consuming repository from that manifest.
 
 Open work: [BLOCKERS.md](BLOCKERS.md). Forward plan: [PLAN.md](PLAN.md).
@@ -167,11 +170,12 @@ Open work: [BLOCKERS.md](BLOCKERS.md). Forward plan: [PLAN.md](PLAN.md).
 ```text
 bacnet-interop/
 ├── README.md
+├── RELEASE.md             release notes (the body of each GitHub release)
 ├── PEER_SUPPORT.md        capability matrix and peer behaviour
 ├── BLOCKERS.md            open work
 ├── PLAN.md                forward plan
 ├── Makefile
-├── scripts/               fixture validation, dissector check, smoke test
+├── scripts/               fixture validation, dissector check, smoke test, release notes
 ├── fixtures/
 │   ├── codec/             wire vectors + manifest.json
 │   ├── device/            device models v1–v9
