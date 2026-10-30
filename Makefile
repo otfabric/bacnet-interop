@@ -27,6 +27,7 @@ VENV := .venv
 validate-fixtures: ## Validate manifest + fixture metadata against JSON Schema; check RELEASE.md has the notes of adapter_version
 	@python3 scripts/check-versions.py
 	@scripts/release-notes.sh > /dev/null && echo "ok   RELEASE.md has the notes of adapter_version"
+	@python3 -m unittest discover -q -s scripts -p 'test_*.py'
 	@set -e; \
 	if [ ! -f scripts/validate-fixtures.py ] || ! command -v python3 >/dev/null 2>&1; then \
 	  echo "ERROR: python3 and scripts/validate-fixtures.py are required"; exit 1; \
