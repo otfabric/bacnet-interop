@@ -29,6 +29,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WHOIS_PROBE="${SCRIPT_DIR}/whois-probe.py"
 
+# Every check also goes to results.json (interop-result-v1), in REPORT_DIR
+# (default reports/). A run with no pass, or a waiver that no longer reproduces, fails.
+# shellcheck source=scripts/results.sh
+source "$(dirname "${BASH_SOURCE[0]}")/results.sh"
+
 BACNET_STACK_IMAGE="${BACNET_STACK_IMAGE:-bacnet-interop-bacnet-stack:local}"
 BACPYPES3_IMAGE="${BACPYPES3_IMAGE:-bacnet-interop-bacpypes3:local}"
 BACNET4J_IMAGE="${BACNET4J_IMAGE:-bacnet-interop-bacnet4j:local}"
@@ -39,8 +44,13 @@ BACNET_STACK_ROUTER_IMAGE="${BACNET_STACK_ROUTER_IMAGE:-bacnet-interop-bacnet-st
 SMOKE_ONLY="${SMOKE_ONLY:-}"
 SMOKE_WHOIS="${SMOKE_WHOIS:-1}"
 
+trap results_abort EXIT
+results_open smoke "${REPORT_DIR:-$(dirname "${SCRIPT_DIR}")/reports}" "SMOKE_ONLY=${SMOKE_ONLY} SMOKE_WHOIS=${SMOKE_WHOIS} scripts/smoke-test.sh"
+export RESULT_IMAGE="${BACNET_STACK_IMAGE/bacnet-stack/\{\}}"
+
 PASS=0
 FAIL=0
+ADAPTER=""
 
 if [ -t 1 ]; then
     RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; RESET='\033[0m'
@@ -48,9 +58,16 @@ else
     RED=''; GREEN=''; YELLOW=''; RESET=''
 fi
 
-pass() { echo -e "${GREEN}PASS${RESET} $*"; PASS=$((PASS + 1)); }
-fail() { echo -e "${RED}FAIL${RESET} $*"; FAIL=$((FAIL + 1)); }
+pass() { echo -e "${GREEN}PASS${RESET} $*"; PASS=$((PASS + 1)); result pass; }
+fail() { echo -e "${RED}FAIL${RESET} $*"; FAIL=$((FAIL + 1)); result fail "$*"; }
 info() { echo -e "${YELLOW}INFO${RESET} $*"; }
+
+# label_id <label>: the label, without the adapter, as a part of a scenario id.
+label_id() {
+    local rest="${1#"${ADAPTER}"}"
+    rest=$(echo "${rest:-router}" | tr 'A-Z ' 'a-z-' | sed -E 's/^-+//')
+    echo "${rest}"
+}
 
 want_adapter() {
     local name="$1"
@@ -219,6 +236,7 @@ start_bip_router_smoke() {
 
 check_ready_event() {
     local label="$1" ready="$2" want_adapter="$3" want_fixture="$4"
+    at "ready.$(label_id "${label}")" "" "${ADAPTER}"
 
     if [ -z "$ready" ]; then
         fail "${label}: no ready event received within timeout"
@@ -272,16 +290,18 @@ check_ready_event() {
 
 check_whois() {
     local label="$1" status="$2"
+    at "whois.$(label_id "${label}")" "" "${ADAPTER}"
     case "${status:-skip}" in
         ok) pass "${label}: directed Who-Is → I-Am" ;;
         fail) fail "${label}: directed Who-Is → I-Am" ;;
-        skip) info "${label}: Who-Is probe skipped" ;;
-        *) info "${label}: Who-Is probe status unknown (${status})" ;;
+        skip) info "${label}: Who-Is probe skipped"; result not-tested "the Who-Is probe was skipped (SMOKE_WHOIS=0 or a BBMD)" ;;
+        *) info "${label}: Who-Is probe status unknown (${status})"; result not-tested "Who-Is probe status unknown: ${status}" ;;
     esac
 }
 
 check_binary() {
     local image="$1" bin="$2"
+    at "binary.$(echo "${bin}" | tr '_' '-')" "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "${image}" -c "command -v ${bin}" >/dev/null 2>&1; then
         pass "binary ${bin} in ${image}"
     else
@@ -291,6 +311,7 @@ check_binary() {
 
 check_fixture_file() {
     local image="$1" path="$2"
+    at "fixture.$(basename "${path}" .json)" "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "${image}" -c "test -f ${path}" >/dev/null 2>&1; then
         pass "fixture ${path} in ${image}"
     else
@@ -310,6 +331,7 @@ fi
 
 info "=== Images ==="
 if want_adapter bacnet-stack; then
+    at image.present "" bacnet-stack
     if image_exists "$BACNET_STACK_IMAGE"; then
         pass "image present: ${BACNET_STACK_IMAGE}"
     else
@@ -317,6 +339,7 @@ if want_adapter bacnet-stack; then
     fi
 fi
 if want_adapter bacpypes3; then
+    at image.present "" bacpypes3
     if image_exists "$BACPYPES3_IMAGE"; then
         pass "image present: ${BACPYPES3_IMAGE}"
     else
@@ -324,6 +347,7 @@ if want_adapter bacpypes3; then
     fi
 fi
 if want_adapter bacnet4j; then
+    at image.present "" bacnet4j
     if image_exists "$BACNET4J_IMAGE"; then
         pass "image present: ${BACNET4J_IMAGE}"
     else
@@ -331,6 +355,7 @@ if want_adapter bacnet4j; then
     fi
 fi
 if want_adapter worldiety; then
+    at image.present "" worldiety
     if image_exists "$WORLDIETY_IMAGE"; then
         pass "image present: ${WORLDIETY_IMAGE}"
     else
@@ -338,6 +363,7 @@ if want_adapter worldiety; then
     fi
 fi
 if want_adapter sysiobacnet; then
+    at image.present "" sysiobacnet
     if image_exists "$SYSIOBACNET_IMAGE"; then
         pass "image present: ${SYSIOBACNET_IMAGE}"
     else
@@ -345,28 +371,34 @@ if want_adapter sysiobacnet; then
     fi
 fi
 if want_adapter bip-router; then
+    at image.present "" bip-router
     if image_exists "$BIP_ROUTER_IMAGE"; then
         pass "image present: ${BIP_ROUTER_IMAGE}"
     elif [ "${BIP_ROUTER_REQUIRED:-}" != "" ]; then
         fail "image missing: ${BIP_ROUTER_IMAGE}"
     else
         info "bip-router image absent; skipping"
+        result not-tested "the image is absent"
     fi
 fi
 if want_adapter bacnet-stack-router; then
+    at image.present "" bacnet-stack-router
     if image_exists "$BACNET_STACK_ROUTER_IMAGE"; then
         pass "image present: ${BACNET_STACK_ROUTER_IMAGE}"
     elif [ "${BACNET_STACK_ROUTER_REQUIRED:-}" != "" ]; then
         fail "image missing: ${BACNET_STACK_ROUTER_IMAGE}"
     else
         info "bacnet-stack-router image absent; skipping"
+        result not-tested "the image is absent"
     fi
 fi
 
 if want_adapter bacnet-stack && image_exists "$BACNET_STACK_IMAGE"; then
+    ADAPTER=bacnet-stack
     info ""
     info "=== bacnet-stack ==="
     check_binary "$BACNET_STACK_IMAGE" device_server
+    at files.entrypoint "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "$BACNET_STACK_IMAGE" -c "test -f /usr/local/bin/run_server.py" >/dev/null 2>&1; then
         pass "run_server.py in ${BACNET_STACK_IMAGE}"
     else
@@ -381,9 +413,11 @@ if want_adapter bacnet-stack && image_exists "$BACNET_STACK_IMAGE"; then
 fi
 
 if want_adapter bacpypes3 && image_exists "$BACPYPES3_IMAGE"; then
+    ADAPTER=bacpypes3
     info ""
     info "=== BACpypes3 ==="
     check_fixture_file "$BACPYPES3_IMAGE" /fixtures/device/device-baseline-v2.json
+    at files.entrypoint "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "$BACPYPES3_IMAGE" -c "test -f /usr/local/bin/device_server.py" >/dev/null 2>&1; then
         pass "device_server.py in ${BACPYPES3_IMAGE}"
     else
@@ -400,9 +434,11 @@ if want_adapter bacpypes3 && image_exists "$BACPYPES3_IMAGE"; then
 fi
 
 if want_adapter bacnet4j && image_exists "$BACNET4J_IMAGE"; then
+    ADAPTER=bacnet4j
     info ""
     info "=== BACnet4J ==="
     check_fixture_file "$BACNET4J_IMAGE" /fixtures/device/device-baseline-v2.json
+    at files.entrypoint "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "$BACNET4J_IMAGE" -c "test -f /usr/local/lib/device_server.jar" >/dev/null 2>&1; then
         pass "device_server.jar in ${BACNET4J_IMAGE}"
     else
@@ -419,6 +455,7 @@ if want_adapter bacnet4j && image_exists "$BACNET4J_IMAGE"; then
 fi
 
 if want_adapter worldiety && image_exists "$WORLDIETY_IMAGE"; then
+    ADAPTER=worldiety
     info ""
     info "=== Worldiety ==="
     check_fixture_file "$WORLDIETY_IMAGE" /fixtures/device/device-baseline-v2.json
@@ -430,10 +467,12 @@ if want_adapter worldiety && image_exists "$WORLDIETY_IMAGE"; then
 fi
 
 if want_adapter sysiobacnet && image_exists "$SYSIOBACNET_IMAGE"; then
+    ADAPTER=sysiobacnet
     info ""
     info "=== System.IO.BACnet ==="
     check_fixture_file "$SYSIOBACNET_IMAGE" /fixtures/device/device-baseline-v2.json
     check_binary "$SYSIOBACNET_IMAGE" dotnet
+    at files.entrypoint "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "$SYSIOBACNET_IMAGE" -c "test -f /usr/local/lib/sysiobacnet/device_server.dll && test -f /usr/local/lib/sysiobacnet/BACnet.dll" >/dev/null 2>&1; then
         pass "device_server.dll and BACnet.dll in ${SYSIOBACNET_IMAGE}"
     else
@@ -446,8 +485,10 @@ if want_adapter sysiobacnet && image_exists "$SYSIOBACNET_IMAGE"; then
 fi
 
 if want_adapter bip-router && image_exists "$BIP_ROUTER_IMAGE"; then
+    ADAPTER=bip-router
     info ""
     info "=== bip-router ==="
+    at files.entrypoint "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "$BIP_ROUTER_IMAGE" -c "test -f /usr/local/bin/bip_router.py" >/dev/null 2>&1; then
         pass "bip_router.py in ${BIP_ROUTER_IMAGE}"
     else
@@ -462,6 +503,7 @@ elif [ -z "$SMOKE_ONLY" ] && ! image_exists "$BIP_ROUTER_IMAGE"; then
 fi
 
 if want_adapter bacnet-stack-router && image_exists "$BACNET_STACK_ROUTER_IMAGE"; then
+    ADAPTER=bacnet-stack-router
     info ""
     info "=== bacnet-stack-router ==="
     check_binary "$BACNET_STACK_ROUTER_IMAGE" bacnet-router
@@ -473,4 +515,5 @@ fi
 
 echo ""
 echo -e "Results: ${GREEN}${PASS} passed${RESET}  ${RED}${FAIL} failed${RESET}"
+results_close || FAIL=$((FAIL + 1))
 [ "$FAIL" -eq 0 ]
