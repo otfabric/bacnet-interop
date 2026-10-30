@@ -1,4 +1,4 @@
-.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-sysiobacnet build-bip-router build-bacnet-stack-router smoke ci
+.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-sysiobacnet build-bip-router build-bacnet-stack-router smoke ci FORCE
 
 SCHEMA              := fixtures/schema/fixture.schema.json
 MANIFEST            := fixtures/manifest.json
@@ -16,7 +16,7 @@ BACNET_STACK_ROUTER_IMAGE ?= bacnet-interop-bacnet-stack-router:local
 REGISTRY            ?= ghcr.io/otfabric
 
 help: ## Show this help
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_%-]+:.*?## / {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # ---------------------------------------------------------------------------
 # Fixture validation (no Docker required)
@@ -129,6 +129,24 @@ build-bacnet-stack-router: ## Build native bacnet-stack BACnet/IP router image (
 
 smoke: ## Smoke-test adapter ready events
 	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) SYSIOBACNET_IMAGE=$(SYSIOBACNET_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) BACNET_STACK_ROUTER_IMAGE=$(BACNET_STACK_ROUTER_IMAGE) ./scripts/smoke-test.sh
+
+# ---------------------------------------------------------------------------
+# Upstream candidates
+# ---------------------------------------------------------------------------
+# Builds one stack on another upstream version than its release pin and
+# smoke-tests it (readiness + directed Who-Is). The Upstream workflow runs this
+# for every stack whose pin is behind; scripts/latest-upstream.py <stack>
+# prints the version (latest) and the commit (latest_sha). candidate-% is a
+# pattern rule, which make ignores for .PHONY targets: it depends on FORCE.
+
+CANDIDATE_VERSION ?=
+CANDIDATE_SHA     ?=
+
+candidate-%: FORCE ## Build one stack on CANDIDATE_VERSION (and CANDIDATE_SHA) and smoke it, e.g. candidate-bacpypes3 CANDIDATE_VERSION=0.0.110
+	@test -n "$(CANDIDATE_VERSION)" || { echo "Error: CANDIDATE_VERSION=<upstream version> is required"; exit 1; }
+	@PLATFORM=$(PLATFORM) scripts/candidate.sh $* "$(CANDIDATE_VERSION)" "$(CANDIDATE_SHA)"
+
+FORCE:
 
 # ---------------------------------------------------------------------------
 # Local CI mirror

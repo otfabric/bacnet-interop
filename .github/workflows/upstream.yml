@@ -1,0 +1,127 @@
+name: Upstream
+run-name: "Upstream check (${{ github.event_name }})"
+
+# Daily check of every pin against the latest upstream: the release of every
+# stack (scripts/latest-upstream.py; stable X.Y.Z only, bacnet-stack by its
+# release tags, Worldiety by the HEAD commit) and the digest of every base
+# image. A stack whose pin is behind is built at the latest upstream and
+# smoke-tested: readiness and a directed Who-Is (make candidate-<stack>;
+# bacnet-stack with its router image). That runs once per pin -> latest pair;
+# later runs reuse the result. The table goes to the Job Summary and to the
+# issue "Upstream releases: pins behind the latest", which is opened or
+# updated (with a comment when a new version shows up) and closed once every
+# pin is current. A failing candidate is reported in the table, not as a red
+# run. Pins are never changed here: a bump is a reviewed change.
+# Shared steps: https://github.com/otfabric/.github/tree/main/actions
+on:
+  schedule:
+    - cron: "3 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream
+  cancel-in-progress: false
+
+env:
+  # Docker Hub mirror the base-image check reads digests from.
+  BASE_REGISTRY: mirror.gcr.io/library
+
+jobs:
+  images:
+    name: Base images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: otfabric/.github/actions/upstream-images@main
+
+  candidate:
+    name: ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - stack: bacnet-stack
+          - stack: bacpypes3
+          - stack: bacnet4j
+          - stack: worldiety
+            kind: commit
+          - stack: sysiobacnet
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve the pin against upstream
+        id: resolve
+        run: scripts/latest-upstream.py "${{ matrix.stack }}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Set up Go (go.mod of the Worldiety candidate)
+        if: matrix.stack == 'worldiety' && steps.resolve.outputs.update == 'yes'
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: adapters/worldiety/go.mod
+          cache-dependency-path: adapters/worldiety/go.sum
+
+      - name: Build and smoke-test the latest upstream
+        id: test
+        if: steps.resolve.outputs.update == 'yes'
+        uses: otfabric/.github/actions/upstream-candidate@main
+        with:
+          name: ${{ matrix.stack }}
+          pinned: ${{ steps.resolve.outputs.pin }}
+          latest: ${{ steps.resolve.outputs.latest }}
+          result-pattern: '^Results: [0-9]+ passed'
+          command: >-
+            make "candidate-${{ matrix.stack }}"
+            CANDIDATE_VERSION="${{ steps.resolve.outputs.latest }}"
+            CANDIDATE_SHA="${{ steps.resolve.outputs.latest_sha }}"
+
+      - name: Table row
+        if: always()
+        uses: otfabric/.github/actions/upstream-row@main
+        with:
+          component: ${{ matrix.stack }}
+          kind: ${{ matrix.kind || 'library' }}
+          source: ${{ steps.resolve.outputs.source }}
+          pinned: ${{ steps.resolve.outputs.pin }}
+          latest: ${{ steps.resolve.outputs.latest }}
+          update: ${{ steps.resolve.outputs.update }}
+          detail: ${{ steps.resolve.outcome == 'failure' && 'upstream lookup failed (see the job log)' || '' }}
+          test-outcome: ${{ steps.test.outputs.outcome }}
+          test-result: ${{ steps.test.outputs.result }}
+          test-cached: ${{ steps.test.outputs.cached }}
+
+  report:
+    name: Report
+    runs-on: ubuntu-latest
+    needs: [images, candidate]
+    if: always()
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: otfabric/.github/actions/upstream-report@main
+        with:
+          needs: ${{ toJSON(needs) }}
+          notes: |
+            ### To update
+
+            - **bacnet-stack:** `ARG BACNET_STACK_SHA` and `BACNET_STACK_VERSION` (both
+              places) in `adapters/bacnet-stack/Dockerfile` and `adapters/bacnet-stack-router/Dockerfile`.
+            - **BACpypes3:** `adapters/bacpypes3/requirements.txt` and `ARG BACPYPES3_VERSION`
+              in its Dockerfile.
+            - **BACnet4J:** `ARG BACNET4J_VERSION` (both places) in its Dockerfile and
+              `bacnet4j.version` in `adapters/bacnet4j/pom.xml`.
+            - **System.IO.BACnet:** `ARG SYSIOBACNET_VERSION` (both places) in its Dockerfile and
+              `SysIoBacnetVersion` in `adapters/sysiobacnet/DeviceServer.csproj`.
+            - **Worldiety (commit):** `ARG WORLDIETY_COMMIT` in its Dockerfile, and
+              `go get github.com/worldiety/bacnet@<commit> && go mod tidy` in `adapters/worldiety`.
+            - Reproduce a candidate with `make candidate-<stack> CANDIDATE_VERSION=<latest>
+              CANDIDATE_SHA=<latest_sha>` (values from `scripts/latest-upstream.py <stack>`);
+              a `failure` needs the smoke log of the run first.
+            - **Base image:** replace the digest in every file that pins it.
+            - Record the change in `PLAN.md` (Upstream versions), `README.md` and `RELEASE.md`.

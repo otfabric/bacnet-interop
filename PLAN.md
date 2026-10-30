@@ -56,10 +56,10 @@ BACnet4J (6.1.0 → 6.1.1), both without an adapter change:
 - **bacnet-stack record files:** a record read of the v4 record file returns
   one empty record; the seeding in `run_server.py` or upstream needs a look.
 - **BACnet4J releases:** upstream stopped publishing to the Maven repository
-  the pom and `candidate.yml` read ("publish only to GitHub Packages"), so the
-  weekly candidate run will not see the next 6.x or 7.x. BACnet4J 7.0 (alpha
-  today) adds the audit services and AuthRequest and would turn the audit
-  codec evidence into a real service codec.
+  the pom and `scripts/latest-upstream.py` read ("publish only to GitHub
+  Packages"), so the daily Upstream check will not see the next 6.x or 7.x.
+  BACnet4J 7.0 (alpha today) adds the audit services and AuthRequest and
+  would turn the audit codec evidence into a real service codec.
 - **Upstream defects to watch:** BACpypes3 DeviceCommunicationControl never
   takes effect in 0.0.110; when it is fixed the adapter's `smap`
   alias goes and the "not enforced" test changes.

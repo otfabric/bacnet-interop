@@ -77,6 +77,13 @@ make ci                  # validate-fixtures + build + smoke
 `make build-<name>` builds one image. Images are built for the host
 architecture; the release workflow publishes linux/amd64 and linux/arm64.
 
+The Upstream workflow checks every pin daily against the latest upstream
+(`scripts/latest-upstream.py <stack>`) and the base-image digests. A stack
+that is behind is built and smoke-tested at the latest upstream
+(`make candidate-<stack> CANDIDATE_VERSION=… [CANDIDATE_SHA=…]`); the
+result goes to the issue "Upstream releases: pins behind the latest". Pins
+are never changed by it.
+
 To run the go-bacnet assertions, from a go-bacnet checkout next to this one:
 
 ```bash
@@ -175,7 +182,8 @@ bacnet-interop/
 ├── BLOCKERS.md            open work
 ├── PLAN.md                forward plan
 ├── Makefile
-├── scripts/               fixture validation, dissector check, smoke test, release notes
+├── scripts/               fixture validation, dissector check, smoke test, release notes,
+│                          upstream check and candidates
 ├── fixtures/
 │   ├── codec/             wire vectors + manifest.json
 │   ├── device/            device models v1–v9
