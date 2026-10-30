@@ -132,7 +132,7 @@ has at least the codecs, the adapter turns them into codec evidence (D):
   implementation. bacnet-stack has no codec for the service at all.
 
 For everything a stack cannot check, go-bacnet compares its request layout
-with Wireshark's dissector (`make dissector` there; `make dissect-fixtures`
+with Wireshark's dissector (`make -C ../go-bacnet dissector`; `make dissect-fixtures`
 here for the codec vectors).
 
 Notes on individual cells:
