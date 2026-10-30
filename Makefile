@@ -25,6 +25,7 @@ help: ## Show this help
 VENV := .venv
 
 validate-fixtures: ## Validate manifest + fixture metadata against JSON Schema; check RELEASE.md has the notes of adapter_version
+	@python3 scripts/check-versions.py
 	@scripts/release-notes.sh > /dev/null && echo "ok   RELEASE.md has the notes of adapter_version"
 	@set -e; \
 	if [ ! -f scripts/validate-fixtures.py ] || ! command -v python3 >/dev/null 2>&1; then \

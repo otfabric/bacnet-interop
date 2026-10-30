@@ -87,8 +87,8 @@ are never changed by it.
 To run the go-bacnet assertions, from a go-bacnet checkout next to this one:
 
 ```bash
-make interop-pinned   # against the published images pinned in interop/bacnet-interop-pin.json
-make interop          # against the :local images built here
+make -C ../go-bacnet interop-pinned   # against the published images pinned in interop/bacnet-interop-pin.json
+make -C ../go-bacnet interop          # against the :local images built here
 ```
 
 ## Consumer contract

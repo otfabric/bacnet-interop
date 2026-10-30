@@ -1,0 +1,91 @@
+# Machine-readable version manifest of bacnet-interop. The Dockerfiles,
+# requirements.txt and pom.xml are the source of truth for a build;
+# scripts/check-versions.py (make validate-fixtures) fails when this file
+# disagrees with them. Capabilities per peer: adapters/inventory.yaml.
+# Dockerfiles pin upstream by commit or by exact package version; no source
+# archive hash is recorded.
+
+interop_version: "0.10.0"      # equals adapter_version in adapters/inventory.yaml
+contract_version: "1.0"        # docs/CONTAINER_CONTRACT.md
+
+protocol:
+  name: "BACnet/IP"
+  udp_port: 47808
+
+implementations:
+  bacnet-stack:
+    upstream: "bacnet-stack"
+    repository: "https://github.com/bacnet-stack/bacnet-stack"
+    version: "1.6.1"
+    revision: "7a53f0a72a92de1621d30fc63703a29afe12bfaf"
+    license: "GPL-2.0-or-later WITH GCC-exception-2.0"   # per-file; see license/ upstream
+    roles: [device, bbmd]
+    published: true
+    pinned_in:
+      - adapters/bacnet-stack/Dockerfile
+  bacnet-stack-router:
+    upstream: "bacnet-stack apps/router"
+    repository: "https://github.com/bacnet-stack/bacnet-stack"
+    version: "1.6.1"
+    revision: "7a53f0a72a92de1621d30fc63703a29afe12bfaf"
+    license: "MIT"                                       # apps/router, adapters/bacnet-stack-router/README.md
+    roles: [router]
+    published: true
+    pinned_in:
+      - adapters/bacnet-stack-router/Dockerfile
+  bacpypes3:
+    upstream: "BACpypes3"
+    repository: "https://github.com/JoelBender/BACpypes3"
+    version: "0.0.110"
+    license: "MIT"                                       # PyPI license expression
+    roles: [device, bbmd]
+    published: true
+    pinned_in:
+      - adapters/bacpypes3/Dockerfile
+      - adapters/bacpypes3/requirements.txt
+  bacnet4j:
+    upstream: "BACnet4J"
+    repository: "https://github.com/RadixIoT/BACnet4J"
+    version: "6.1.1"
+    license: "GPL-3.0"
+    roles: [device, bbmd]
+    published: true
+    pinned_in:
+      - adapters/bacnet4j/Dockerfile
+      - adapters/bacnet4j/pom.xml
+  sysiobacnet:
+    upstream: "System.IO.BACnet (NuGet BACnet)"
+    repository: "https://github.com/ela-compil/BACnet"
+    version: "4.0.0"
+    revision: "af0e6c08b3888b18da8a3f0c9af540e2744e4f6e"
+    license: "MIT"
+    roles: [device]
+    published: true
+    pinned_in:
+      - adapters/sysiobacnet/Dockerfile
+      - adapters/inventory.yaml
+  worldiety:
+    upstream: "worldiety/bacnet"
+    repository: "https://github.com/worldiety/bacnet"
+    revision: "3cb2aa80efbb8a489abb9978c7f6e5dc603535a7"
+    license: "BSD-2-Clause"
+    roles: [device]
+    published: true
+    pinned_in:
+      - adapters/worldiety/Dockerfile
+  bip-router:
+    upstream: "none (written for the tests, a topology aid)"
+    version: "topology-router-v1"
+    license: "MIT"
+    roles: [topology-aid]
+    published: true
+    pinned_in:
+      - adapters/inventory.yaml
+
+base_images:
+  debian: "docker.io/library/debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818"
+  temurin_jdk: "docker.io/library/eclipse-temurin:17-jdk-jammy@sha256:723151f3fc88ca2060153ee08ab8dbbea7983d6ed6f2622fe440acf178737c94"
+  temurin_jre: "docker.io/library/eclipse-temurin:17-jre-jammy@sha256:475d8e96b4b2bfe08999e5e854755c773af1581acdf959a4545d88f0696a2339"
+  dotnet_sdk: "mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317"
+  dotnet_runtime: "mcr.microsoft.com/dotnet/runtime:10.0@sha256:b89586dc17781f25531909993658aa8161205ae38b8cec8847df4a8221a403d5"
+  golang: "docker.io/library/golang:1.26-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb"
