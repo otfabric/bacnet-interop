@@ -70,7 +70,7 @@ does and does not prove.
 make validate-fixtures   # manifest, schemas, fixture metadata
 make dissect-fixtures    # codec vectors against Wireshark's dissector (needs tshark)
 make build               # all adapter images as bacnet-interop-<name>:local
-make smoke               # ready event (and a Who-Is probe) per image
+make smoke               # ready event (and a Who-Is probe) per image; writes reports/results.json (interop-result-v1)
 make ci                  # validate-fixtures + build + smoke
 ```
 
