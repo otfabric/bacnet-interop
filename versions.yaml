@@ -5,7 +5,7 @@
 # Dockerfiles pin upstream by commit or by exact package version; no source
 # archive hash is recorded.
 
-interop_version: "0.10.0"      # equals adapter_version in adapters/inventory.yaml
+interop_version: "0.11.0"      # equals adapter_version in adapters/inventory.yaml
 contract_version: "1.0"        # docs/CONTAINER_CONTRACT.md
 
 protocol:
