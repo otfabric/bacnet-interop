@@ -28,7 +28,7 @@ venv/
 # Build / local artefacts
 adapters/*/build/
 adapters/*/dist/
-bin/
+/bin/
 tmp/
 *.tmp
 *.log
@@ -44,3 +44,11 @@ adapters/**/target/
 # Coverage / reports (future smoke)
 coverage/
 reports/
+
+# Build artefacts live in /bin/ and /release/ (otfabric/engineering REPO-005)
+/release/
+*.test
+coverage.out
+
+# Output of a bare `go build`, anchored so it can never hide a source folder
+/adapters/worldiety/cmd/device-server/device-server
