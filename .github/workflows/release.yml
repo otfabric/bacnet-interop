@@ -1,9 +1,27 @@
 name: Release
+run-name: "Release ${{ inputs.bump && format('({0}) from {1}', inputs.bump, github.ref_name) || github.ref_name }}"
 
+# Tag push: publish that tag. Manual run: bump the latest vX.Y.Z tag (patch by
+# default) and publish that from main; the git tag is created with the GitHub
+# release, its last step, so a failed run leaves no tag behind.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semver component to increment from the latest vX.Y.Z tag
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: write   # create GitHub release
@@ -13,13 +31,61 @@ permissions:
 # merge creates the multi-arch tags consumers pin.
 
 jobs:
+  # The tag to release. Fails before anything is built when the commit is not
+  # ready for it: versions.yaml and RELEASE.md must already name that version.
+  version:
+    name: Resolve version
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve tag
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          BUMP: ${{ inputs.bump || 'patch' }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force origin
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            if [ "${REF_NAME}" != "${DEFAULT_BRANCH}" ]; then
+              echo "::error::Releases are only allowed from ${DEFAULT_BRANCH}, not ${REF_NAME}"
+              exit 1
+            fi
+            tag="$(scripts/next-version.sh "${BUMP}")"
+            if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+              echo "::error::tag ${tag} already exists"
+              exit 1
+            fi
+          else
+            tag="${REF_NAME}"
+          fi
+          [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "::error::${tag} is not vX.Y.Z"; exit 1; }
+          grep -qF "interop_version: \"${tag#v}\"" versions.yaml \
+            || { echo "::error::versions.yaml does not say interop_version: \"${tag#v}\""; exit 1; }
+          scripts/release-notes.sh "${tag}" > /dev/null \
+            || { echo "::error::RELEASE.md has no notes for ${tag}"; exit 1; }
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "releasing ${tag} (from ${EVENT_NAME})"
+
   prepare:
     name: Validate and detect adapters
+    needs: version
     runs-on: ubuntu-24.04
     outputs:
       adapters: ${{ steps.detect.outputs.adapters }}
       has_adapters: ${{ steps.detect.outputs.has_adapters }}
       version: ${{ steps.detect.outputs.version }}
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -34,7 +100,7 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::${GITHUB_REF_NAME} (${GITHUB_SHA}) is not an ancestor of origin/main. Push main first, then tag the commit that is on it; do not amend or rebase main after tagging."
+            echo "::error::${TAG} (${GITHUB_SHA}) is not an ancestor of origin/main. Push main first, then tag the commit that is on it; do not amend or rebase main after tagging."
             exit 1
           fi
 
@@ -43,10 +109,10 @@ jobs:
       - name: Inventory version matches the tag
         run: |
           set -euo pipefail
-          want="${GITHUB_REF_NAME#v}"
+          want="${TAG#v}"
           have="$(sed -n 's/^adapter_version: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' adapters/inventory.yaml | head -1)"
           if [ "$have" != "$want" ]; then
-            echo "::error::adapters/inventory.yaml has adapter_version \"$have\", the tag is $GITHUB_REF_NAME. Update the inventory and the documents, commit to main, then tag."
+            echo "::error::adapters/inventory.yaml has adapter_version \"$have\", the tag is $TAG. Update the inventory and the documents, commit to main, then tag."
             exit 1
           fi
 
@@ -54,7 +120,7 @@ jobs:
       # RELEASE.md, up to its "---" line (the otfabric rule). Check it before
       # anything is built or pushed.
       - name: RELEASE.md has the notes of the tag
-        run: scripts/release-notes.sh "${GITHUB_REF_NAME}"
+        run: scripts/release-notes.sh "${TAG}"
 
       - name: Validate fixtures before release
         run: make validate-fixtures
@@ -64,7 +130,7 @@ jobs:
         run: |
           set -euo pipefail
           # metadata-action type=semver pattern={{version}} strips a leading v.
-          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
           adapters='[]'
           add_adapter() {
             local name="$1" file="$2" image="$3" kind="$4" pin_grep="${5:-}" pin_fixed="${6:-}"
@@ -146,7 +212,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.adapter.name }} (${{ matrix.arch }})
-    needs: prepare
+    needs: [version, prepare]
     if: needs.prepare.outputs.has_adapters == 'true'
     strategy:
       fail-fast: true
@@ -154,6 +220,8 @@ jobs:
         adapter: ${{ fromJson(needs.prepare.outputs.adapters) }}
         arch: [amd64, arm64]
     runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
 
@@ -176,7 +244,7 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           provenance: false
           build-args: |
-            ADAPTER_VERSION=${{ github.ref_name }}
+            ADAPTER_VERSION=${{ needs.version.outputs.tag }}
           outputs: type=image,name=${{ matrix.adapter.image }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
@@ -197,7 +265,7 @@ jobs:
 
   merge:
     name: Manifest, provenance, release
-    needs: [prepare, build]
+    needs: [version, prepare, build]
     if: |
       always() &&
       needs.prepare.result == 'success' &&
@@ -211,6 +279,8 @@ jobs:
       sysiobacnet-digest: ${{ steps.collect.outputs.sysiobacnet-digest }}
       bip-router-digest: ${{ steps.collect.outputs.bip-router-digest }}
       bacnet-stack-router-digest: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
 
@@ -241,9 +311,9 @@ jobs:
         with:
           images: ghcr.io/otfabric/bacnet-interop-bacnet-stack
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Metadata — bacpypes3
@@ -253,9 +323,9 @@ jobs:
         with:
           images: ghcr.io/otfabric/bacnet-interop-bacpypes3
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Metadata — bacnet4j
@@ -265,9 +335,9 @@ jobs:
         with:
           images: ghcr.io/otfabric/bacnet-interop-bacnet4j
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Metadata — worldiety
@@ -277,9 +347,9 @@ jobs:
         with:
           images: ghcr.io/otfabric/bacnet-interop-worldiety
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Metadata — sysiobacnet
@@ -289,9 +359,9 @@ jobs:
         with:
           images: ghcr.io/otfabric/bacnet-interop-sysiobacnet
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Metadata — bip-router
@@ -301,9 +371,9 @@ jobs:
         with:
           images: ghcr.io/otfabric/bacnet-interop-bip-router
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Metadata — bacnet-stack-router
@@ -313,9 +383,9 @@ jobs:
         with:
           images: ghcr.io/otfabric/bacnet-interop-bacnet-stack-router
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Merge multi-arch manifests
@@ -346,7 +416,7 @@ jobs:
             esac
           }
 
-          version="${GITHUB_REF_NAME#v}"
+          version="${TAG#v}"
           digest_root="${RUNNER_TEMP}/digests"
 
           while IFS= read -r name; do
@@ -467,7 +537,7 @@ jobs:
           )
 
           manifest = {
-              "version": os.environ["GITHUB_REF_NAME"],
+              "version": os.environ["TAG"],
               "fixture_schema": "fixtures/schema/fixture.schema.json",
               "peers": peers,
               "topology": topology,
@@ -509,7 +579,7 @@ jobs:
             "bacnet-stack-router|${STACK_ROUTER_DIGEST}|BACNET_STACK_ROUTER_IMAGE"
           )
           {
-            scripts/release-notes.sh "${GITHUB_REF_NAME}"
+            scripts/release-notes.sh "${TAG}"
             echo
             echo "## Adapter images"
             echo
@@ -542,6 +612,8 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           body_path: ${{ runner.temp }}/release-body.md
           files: |
             manifest.json

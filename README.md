@@ -160,7 +160,9 @@ BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 1. Write the notes of the release in [RELEASE.md](RELEASE.md), set
    `adapter_version` in `adapters/inventory.yaml` and the version in the
    documents to the release, and commit to `main`.
-2. Push `main`. Then tag **that commit** `vX.Y.Z` and push the tag. Do not
+2. Push `main`. Then run the `Release` workflow on `main` from the Actions
+   tab and pick the bump (`patch` by default, `minor` or `major`) that gives
+   `vX.Y.Z`, or tag **that commit** `vX.Y.Z` and push the tag. Do not
    amend or rebase `main` afterwards: v0.8.0 and v0.9.0 were tagged on commits
    that were later rewritten, so their tags are not on `main`.
 3. The release workflow checks the notes and validates the fixtures, builds

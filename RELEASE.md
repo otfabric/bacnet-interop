@@ -6,7 +6,9 @@
    `adapters/inventory.yaml` and the version in the documents to it, in the
    same change. `make validate-fixtures` (and CI) fails when RELEASE.md has no
    notes for `adapter_version`.
-2. Push `main`. Then tag **that commit** `vX.Y.Z` and push the tag. Do not
+2. Push `main`. Then run the `Release` workflow on `main` from the Actions
+   tab and pick the bump (`patch` by default, `minor` or `major`) that gives
+   `vX.Y.Z`, or tag **that commit** `vX.Y.Z` and push the tag. Do not
    amend or rebase `main` afterwards: v0.8.0 and v0.9.0 were tagged on commits
    that were later rewritten, so their tags are not on `main`.
 3. The release workflow refuses a tag that is not on `main`, whose version
