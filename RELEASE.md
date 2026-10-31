@@ -29,10 +29,12 @@ Tags are immutable. A fix is a new version.
 
 ---
 
-## v0.11.0
+## v0.11.1
 
 **Date:** 2026-10-31
 **Previous release:** v0.10.0
+
+The tag v0.11.0 exists but was never released: the release workflow rejected it because `adapters/inventory.yaml` still said 0.10.0. Tags are immutable, so this release takes the next number.
 
 ### Added
 

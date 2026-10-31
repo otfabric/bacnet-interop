@@ -3,7 +3,7 @@
 # Assertions live in go-bacnet/interop; this file documents peer pins and evidence types.
 
 schema_version: "1"
-adapter_version: "0.10.0"
+adapter_version: "0.11.1"
 fixture: device-baseline-v2
 fixture_frozen: device-baseline-v1
 # Fixtures shipped by one adapter only (selected with DEVICE_FIXTURE_FILE / FIXTURE).

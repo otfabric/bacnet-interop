@@ -45,7 +45,7 @@ ghcr.io/otfabric/bacnet-interop-sysiobacnet@sha256:<digest>
 ## Readiness contract
 
 ```json
-{"event":"ready","adapter":"sysiobacnet","version":"0.10.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"4.0.0"}
+{"event":"ready","adapter":"sysiobacnet","version":"0.11.1","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"4.0.0"}
 ```
 
 `peer_version` is read from the loaded `BACnet.dll`, not from a build argument.
