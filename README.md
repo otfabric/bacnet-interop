@@ -19,7 +19,7 @@ by any BACnet client implementation.
 consumes these reference images to validate its own BACnet protocol
 implementation.
 
-**Latest images:** [v0.10.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.10.0)
+**Latest images:** [v0.11.1](https://github.com/otfabric/bacnet-interop/releases/tag/v0.11.1)
 ([what changed](#changes-in-v0100)).
 
 ## Peers
@@ -97,7 +97,7 @@ Every image writes JSON Lines to stdout. The first line is the ready event,
 written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.10.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.11.1","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
 `version` is the adapter release (a commit for a local build), `peer_version`
@@ -111,7 +111,7 @@ A consumer pins the images by digest (go-bacnet:
 
 ```bash
 # by tag, for a quick local run
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.10.0
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.11.1
 # by digest, for CI
 BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 ```

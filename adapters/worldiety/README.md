@@ -112,7 +112,7 @@ SMOKE_ONLY=worldiety make smoke
 ## Ready event
 
 ```json
-{"event":"ready","adapter":"worldiety","version":"0.10.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"3cb2aa80…"}
+{"event":"ready","adapter":"worldiety","version":"0.11.1","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"3cb2aa80…"}
 ```
 
 ## BBMD / router

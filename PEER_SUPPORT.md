@@ -4,7 +4,7 @@ Which independent BACnet stacks can execute which scenarios with the adapter
 images of this repository. Assertions and pass/fail decisions live in
 [`go-bacnet`](https://github.com/otfabric/go-bacnet) (`INTEROP.md`, `interop/`).
 
-**Published images:** [v0.10.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.10.0)
+**Published images:** [v0.11.1](https://github.com/otfabric/bacnet-interop/releases/tag/v0.11.1)
 · default device fixture: `device-baseline-v2`
 
 Cells marked ¹ are new in 0.10.0; everything else also holds for the v0.9.0

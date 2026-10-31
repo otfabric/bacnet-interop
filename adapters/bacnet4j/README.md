@@ -60,7 +60,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet4j@sha256:<digest>
 ## Readiness contract
 
 ```json
-{"event":"ready","adapter":"bacnet4j","version":"0.10.0","fixture":"device-baseline-v2","address":"<bind-ipv4>:47808","peer_version":"6.1.1"}
+{"event":"ready","adapter":"bacnet4j","version":"0.11.1","fixture":"device-baseline-v2","address":"<bind-ipv4>:47808","peer_version":"6.1.1"}
 ```
 
 ## Build
