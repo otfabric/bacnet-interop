@@ -31,17 +31,6 @@ Tags are immutable. A fix is a new version.
 
 ---
 
-## v0.11.2
-
-**Date:** 2026-11-01
-**Previous release:** v0.11.1
-
-### Changed
-
-- Interop diagnostics only: a container that exits before it is ready now shows its error output. The adapters, the container contract and the fixtures do not change.
-
----
-
 ## v0.11.3
 
 **Date:** 2026-11-01
