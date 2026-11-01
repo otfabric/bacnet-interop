@@ -31,14 +31,14 @@ Tags are immutable. A fix is a new version.
 
 ---
 
-## v0.11.2
+## v0.11.3
 
 **Date:** 2026-11-01
 **Previous release:** v0.11.1
 
 ### Changed
 
-- Policy 1.2: build output in `bin/` and `release/`, and shared CI at v3.3.0.
+- The `Release` workflow can be run by hand from the Actions tab with a patch, minor or major bump. The adapters, the container contract and the fixtures do not change. No v0.11.2 was published: its run failed on the version check and the tag has no release.
 
 ---
 
