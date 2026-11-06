@@ -22,6 +22,8 @@ need the 0.10.0 adapters. Both are released, and go-bacnet's
 | BACnet4J | 6.1.1 | 6.1.1 |
 | Worldiety | `3cb2aa80` | the same commit (HEAD of `main`) |
 | System.IO.BACnet | 4.0.0 | 4.0.0 (4.1.0 is a beta) |
+| cB-Sigma bacnet (device role) | `v0.2.0` | `v0.2.0` (2026-10-12) |
+| cB-Sigma bacnet-sim | `v0.1.0` | `v0.1.0` (2026-10-11) |
 
 Every pin is at the newest stable upstream. Two moved in v0.10.0 beside
 BACnet4J (6.1.0 → 6.1.1), both without an adapter change:
@@ -45,6 +47,10 @@ BACnet4J (6.1.0 → 6.1.1), both without an adapter change:
 
 ## Next
 
+- **cB-Sigma (v0.12.0):** go-bacnet's `interop/` has no cbsigma tests yet; the
+  scenarios of [PEER_SUPPORT.md](PEER_SUPPORT.md#cb-sigma-cbsigma) were run
+  from a local branch of go-bacnet and belong in its suite. BACnet/IPv6 and
+  BACnet/SC are out of scope (go-bacnet is IPv4 BACnet/IP only).
 - **System.IO.BACnet:** a global Who-Is to it through `bip-router` produces no
   I-Am (it works through `bacnet-stack-router`); not investigated. The
   linux/amd64 image was only partly exercised. CreateObject/DeleteObject,

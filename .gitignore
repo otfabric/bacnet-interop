@@ -52,3 +52,5 @@ coverage.out
 
 # Output of a bare `go build`, anchored so it can never hide a source folder
 /adapters/worldiety/cmd/device-server/device-server
+/adapters/cbsigma/cbsigma
+/adapters/cbsigma/device_server

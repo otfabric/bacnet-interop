@@ -9,8 +9,8 @@ BACnet object models, BBMD and routed-network scenarios, codec test
 vectors, and automated protocol compatibility testing.
 
 Reference implementations include BACnet Stack (C), BACpypes3
-(Python), BACnet4J (Java), System.IO.BACnet (C#), and Worldiety
-(Go).
+(Python), BACnet4J (Java), System.IO.BACnet (C#), Worldiety (Go) and
+cB-Sigma's bacnet and bacnet-sim (Go).
 
 The infrastructure is independently maintained and can be used
 by any BACnet client implementation.
@@ -19,8 +19,8 @@ by any BACnet client implementation.
 consumes these reference images to validate its own BACnet protocol
 implementation.
 
-**Latest images:** [v0.11.3](https://github.com/otfabric/bacnet-interop/releases/tag/v0.11.3)
-([what changed](#changes-in-v0100)).
+**Latest images:** [v0.12.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.12.0)
+([what changed](RELEASE.md#v0120)).
 
 ## Peers
 
@@ -31,6 +31,7 @@ implementation.
 | `bacnet-interop-bacnet4j` | BACnet4J 6.1.1 (Java) | Device oracle (+ BBMD) |
 | `bacnet-interop-worldiety` | worldiety/bacnet `3cb2aa80` (Go) | Native transport and APDU layer; the adapter supplies the object model |
 | `bacnet-interop-sysiobacnet` | System.IO.BACnet, NuGet `BACnet` 4.0.0 (C#) | Device oracle; the stack behind YABE (new in 0.10.0) |
+| `bacnet-interop-cbsigma` | cB-Sigma bacnet `v0.2.0` device role and bacnet-sim `v0.1.0` (Go) | Device oracle; the simulator (`CBSIGMA_ROLE=sim`) adds ReadRange, alarms, BBMD and segmentation fault switches (new in 0.12.0) |
 | `bacnet-interop-bacnet-stack-router` | bacnet-stack 1.6.1 `apps/router` (C) | Native BACnet/IP ↔ BACnet/IP router (new in 0.10.0) |
 | `bacnet-interop-bip-router` | none (Python, written for the tests) | Topology aid for routed scenarios; not evidence about any stack |
 
@@ -50,7 +51,7 @@ and `FIXTURE`:
 | Fixture | Adds | Served by |
 |---|---|---|
 | v1 | Device, Analog Value, Binary Value (frozen) | all device peers |
-| v2 | Trend Log (default) | all device peers (BACpypes3 skips the Trend Log) |
+| v2 | Trend Log (default) | all device peers (BACpypes3 skips the Trend Log; cbsigma serves ReadRange in its simulator role only) |
 | v3 | Notification Class, Event Enrollment, alarms | bacnet-stack, BACnet4J; System.IO.BACnet with an adapter-supplied alarm model |
 | v4 | File objects | bacnet-stack, BACnet4J, System.IO.BACnet |
 | v5 | Object lifecycle and list mutation | bacnet-stack, BACnet4J |
@@ -97,21 +98,21 @@ Every image writes JSON Lines to stdout. The first line is the ready event,
 written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.11.3","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.12.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
 `version` is the adapter release (a commit for a local build), `peer_version`
 the upstream stack. Some adapters then write
 `{"event":"operation","adapter":…,"operation":…,"result":…}` lines for requests
 that have no observable reply. Diagnostics go to stderr. The two routers add
-`networks` and `addresses` to the ready event.
+`networks` and `addresses` to the ready event, `cbsigma` its `role`.
 
 A consumer pins the images by digest (go-bacnet:
 `interop/bacnet-interop-pin.json`), taken from the release's `manifest.json`:
 
 ```bash
 # by tag, for a quick local run
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.11.3
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.12.0
 # by digest, for CI
 BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 ```
@@ -199,6 +200,7 @@ bacnet-interop/
     ├── bacnet4j/
     ├── worldiety/
     ├── sysiobacnet/
+    ├── cbsigma/           Go: go.mod (the pins), Dockerfile, *.go
     └── bip-router/
 ```
 

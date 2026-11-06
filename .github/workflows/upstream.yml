@@ -52,6 +52,8 @@ jobs:
           - stack: worldiety
             kind: commit
           - stack: sysiobacnet
+          - stack: cbsigma
+          - stack: cbsigma-sim
     steps:
       - uses: actions/checkout@v7
 
@@ -120,6 +122,9 @@ jobs:
               `bacnet4j.version` in `adapters/bacnet4j/pom.xml`.
             - **System.IO.BACnet:** `ARG SYSIOBACNET_VERSION` (both places) in its Dockerfile and
               `SysIoBacnetVersion` in `adapters/sysiobacnet/DeviceServer.csproj`.
+            - **cB-Sigma (cbsigma, cbsigma-sim):** `go get github.com/cB-Sigma/bacnet@<tag>`
+              (or `bacnet-sim`) and `go mod tidy` in `adapters/cbsigma`, then `ARG BACNET_VERSION` /
+              `BACNET_SIM_VERSION` in its Dockerfile and `versions.yaml`.
             - **Worldiety (commit):** `ARG WORLDIETY_COMMIT` in its Dockerfile, and
               `go get github.com/worldiety/bacnet@<commit> && go mod tidy` in `adapters/worldiety`.
             - Reproduce a candidate with `make candidate-<stack> CANDIDATE_VERSION=<latest>

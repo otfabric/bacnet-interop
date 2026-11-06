@@ -186,6 +186,13 @@ jobs:
               peer \
               'SYSIOBACNET_(VERSION|REF)='
           fi
+          if [ -f adapters/cbsigma/Dockerfile ]; then
+            add_adapter cbsigma \
+              adapters/cbsigma/Dockerfile \
+              ghcr.io/otfabric/bacnet-interop-cbsigma \
+              peer \
+              'BACNET_VERSION='
+          fi
           if [ -f adapters/bip-router/Dockerfile ]; then
             add_adapter bip-router \
               adapters/bip-router/Dockerfile \
@@ -277,6 +284,7 @@ jobs:
       bacnet4j-digest: ${{ steps.collect.outputs.bacnet4j-digest }}
       worldiety-digest: ${{ steps.collect.outputs.worldiety-digest }}
       sysiobacnet-digest: ${{ steps.collect.outputs.sysiobacnet-digest }}
+      cbsigma-digest: ${{ steps.collect.outputs.cbsigma-digest }}
       bip-router-digest: ${{ steps.collect.outputs.bip-router-digest }}
       bacnet-stack-router-digest: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
     env:
@@ -364,6 +372,18 @@ jobs:
             type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Metadata — cbsigma
+        if: hashFiles('adapters/cbsigma/Dockerfile') != ''
+        id: meta-cbsigma
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/otfabric/bacnet-interop-cbsigma
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Metadata — bip-router
         if: hashFiles('adapters/bip-router/Dockerfile') != ''
         id: meta-bip-router
@@ -398,6 +418,7 @@ jobs:
           META_B4J: ${{ steps.meta-bacnet4j.outputs.tags }}
           META_WORLD: ${{ steps.meta-worldiety.outputs.tags }}
           META_SYSIO: ${{ steps.meta-sysiobacnet.outputs.tags }}
+          META_CBSIGMA: ${{ steps.meta-cbsigma.outputs.tags }}
           META_BIP: ${{ steps.meta-bip-router.outputs.tags }}
           META_STACK_ROUTER: ${{ steps.meta-bacnet-stack-router.outputs.tags }}
         run: |
@@ -410,6 +431,7 @@ jobs:
               bacnet4j)     printf '%s' "$META_B4J" ;;
               worldiety)    printf '%s' "$META_WORLD" ;;
               sysiobacnet)  printf '%s' "$META_SYSIO" ;;
+              cbsigma)      printf '%s' "$META_CBSIGMA" ;;
               bip-router)   printf '%s' "$META_BIP" ;;
               bacnet-stack-router) printf '%s' "$META_STACK_ROUTER" ;;
               *)            return 1 ;;
@@ -463,6 +485,7 @@ jobs:
           B4J_DIGEST: ${{ steps.collect.outputs.bacnet4j-digest }}
           WORLD_DIGEST: ${{ steps.collect.outputs.worldiety-digest }}
           SYSIO_DIGEST: ${{ steps.collect.outputs.sysiobacnet-digest }}
+          CBSIGMA_DIGEST: ${{ steps.collect.outputs.cbsigma-digest }}
           BIP_DIGEST: ${{ steps.collect.outputs.bip-router-digest }}
           STACK_ROUTER_DIGEST: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
         run: |
@@ -477,6 +500,7 @@ jobs:
               "bacnet4j": os.environ.get("B4J_DIGEST") or None,
               "worldiety": os.environ.get("WORLD_DIGEST") or None,
               "sysiobacnet": os.environ.get("SYSIO_DIGEST") or None,
+              "cbsigma": os.environ.get("CBSIGMA_DIGEST") or None,
               "bip-router": os.environ.get("BIP_DIGEST") or None,
               "bacnet-stack-router": os.environ.get("STACK_ROUTER_DIGEST") or None,
           }
@@ -506,6 +530,9 @@ jobs:
                   "image": adapter["image"],
                   "digest": digests.get(adapter["name"]) or None,
               }
+              if adapter.get("kind") != "topology":
+                  # Every peer is an implementation independent of go-bacnet.
+                  entry["independent"] = True
               if adapter.get("kind") == "topology":
                   topology[adapter["name"]] = entry
               else:
@@ -517,8 +544,9 @@ jobs:
               ("bacnet4j", "ghcr.io/otfabric/bacnet-interop-bacnet4j"),
               ("worldiety", "ghcr.io/otfabric/bacnet-interop-worldiety"),
               ("sysiobacnet", "ghcr.io/otfabric/bacnet-interop-sysiobacnet"),
+              ("cbsigma", "ghcr.io/otfabric/bacnet-interop-cbsigma"),
           ):
-              peers.setdefault(name, {"pin": None, "image": image, "digest": None})
+              peers.setdefault(name, {"pin": None, "image": image, "digest": None, "independent": True})
           topology.setdefault(
               "bip-router",
               {
@@ -563,6 +591,7 @@ jobs:
           B4J_DIGEST: ${{ steps.collect.outputs.bacnet4j-digest }}
           WORLD_DIGEST: ${{ steps.collect.outputs.worldiety-digest }}
           SYSIO_DIGEST: ${{ steps.collect.outputs.sysiobacnet-digest }}
+          CBSIGMA_DIGEST: ${{ steps.collect.outputs.cbsigma-digest }}
           BIP_DIGEST: ${{ steps.collect.outputs.bip-router-digest }}
           STACK_ROUTER_DIGEST: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
         run: |
@@ -575,6 +604,7 @@ jobs:
             "bacnet4j|${B4J_DIGEST}|BACNET4J_IMAGE"
             "worldiety|${WORLD_DIGEST}|WORLDIETY_IMAGE"
             "sysiobacnet|${SYSIO_DIGEST}|SYSIOBACNET_IMAGE"
+            "cbsigma|${CBSIGMA_DIGEST}|CBSIGMA_IMAGE"
             "bip-router|${BIP_DIGEST}|BIP_ROUTER_IMAGE"
             "bacnet-stack-router|${STACK_ROUTER_DIGEST}|BACNET_STACK_ROUTER_IMAGE"
           )
@@ -593,7 +623,7 @@ jobs:
               echo "| \`${registry}/bacnet-interop-${name}:${VERSION}\` | \`${digest:-not published (Dockerfile pending)}\` |"
             done
             echo
-            echo "\`bip-router\` is a topology aid (not a peer oracle). \`bacnet-stack-router\` is upstream bacnet-stack \`apps/router\` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (\`sysiobacnet\`) the fifth."
+            echo "\`bip-router\` is a topology aid (not a peer oracle). \`bacnet-stack-router\` is upstream bacnet-stack \`apps/router\` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (\`sysiobacnet\`) the fifth, cB-Sigma (\`cbsigma\`, device role and simulator) the sixth."
             echo
             echo "## Pinning in consumer repositories"
             echo

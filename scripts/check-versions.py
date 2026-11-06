@@ -6,7 +6,8 @@ Checks, with the standard library only:
   - interop_version is the newest version in RELEASE.md;
   - every version/revision of an implementation occurs in its pinned_in files;
   - every sha256 in a Dockerfile or the Makefile is listed in versions.yaml,
-    and every base image digest listed there is used.
+    and every base image digest listed there is used;
+  - the cbsigma Dockerfile ARGs name the module versions of its go.mod.
 """
 import pathlib
 import re
@@ -41,6 +42,15 @@ for digest in sorted(used - digests):
     errors.append(f"{digest} is used by a build but not listed in versions.yaml")
 for digest in sorted(digests - used):
     errors.append(f"{digest} is listed in versions.yaml but no build uses it")
+
+gomod = (root / "adapters/cbsigma/go.mod").read_text()
+dockerfile = (root / "adapters/cbsigma/Dockerfile").read_text()
+for module, arg in (("bacnet", "BACNET_VERSION"), ("bacnet-sim", "BACNET_SIM_VERSION")):
+    required = re.search(rf"^\s*(?:require\s+)?github\.com/cB-Sigma/{module} (v\S+)$", gomod, re.M)
+    pinned = re.search(rf"^ARG {arg}=(\S+)$", dockerfile, re.M)
+    if not required or not pinned or required.group(1) != pinned.group(1):
+        errors.append(f"adapters/cbsigma: go.mod requires cB-Sigma/{module} {required and required.group(1)}, "
+                      f"the Dockerfile says {arg}={pinned and pinned.group(1)}")
 
 for error in errors:
     print(f"error: {error}", file=sys.stderr)
