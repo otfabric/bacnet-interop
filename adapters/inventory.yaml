@@ -128,6 +128,39 @@ adapters:
       reinitialize_device_warmstart: adapter-shim  # handler SimpleACK; no process restart
       segmented_confirmed_request_receive: unsupported  # rejects segmented confirmed requests
       peer_as_bbmd: native  # BACNET_BBMD=1
+    client_capabilities:  # unreleased; docs/CLIENT_DRIVER_CONTRACT.md; ClientDriver.java over LocalDevice
+      who_is_i_am: native  # WhoIsRequest; I-Am collected by iAmReceived
+      who_has_i_have: native  # WhoHasRequest; iHaveReceived
+      read_property: native
+      read_property_multiple: native
+      write_property: native
+      write_property_multiple: native
+      subscribe_cov: native  # initial notification via covNotificationReceived
+      read_range_by_position: native
+      device_communication_control: native
+      reinitialize_device: native
+      atomic_read_file_stream: native
+      atomic_write_file_stream: native
+      add_list_element: native
+      remove_list_element: native
+      create_object: native
+      delete_object: native
+      get_event_information: native
+      acknowledge_alarm: native
+      time_synchronization: native
+      unconfirmed_private_transfer: native
+      write_group: native  # WriteGroupRequest encoder (the stack cannot serve it)
+      foreign_device_registration: native  # IpNetwork.registerAsForeignDevice
+      read_bdt: unsupported  # IpNetwork serves BVLC table functions as a BBMD only
+      read_fdt: unsupported
+      write_bdt: unsupported
+      segmentation: native  # segmented ComplexACK reassembly and segmented requests (DefaultTransport)
+      subscribe_cov_property: native
+      subscribe_cov_property_multiple: adapter-shim  # request and error native; COVNotificationMultiple decoded by the stack but handle() throws NotImplementedException, seen in requestReceived. The error's firstFailedSubscription is dropped (decoded as a CHOICE): known-difference
+      get_alarm_summary: native
+      get_enrollment_summary: native
+      text_message: native  # confirmed and unconfirmed
+      confirmed_private_transfer: native
 
   - id: worldiety
     image: ghcr.io/otfabric/bacnet-interop-worldiety
