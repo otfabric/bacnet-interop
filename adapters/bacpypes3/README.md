@@ -2,7 +2,7 @@
 
 Containerized [BACpypes3](https://github.com/JoelBender/BACpypes3) peer for [`bacnet-interop`](../..).
 
-**Status:** device-server image available. Pin: `bacpypes3==0.0.110` (`BACPYPES3_VERSION` in Dockerfile).
+**Status:** device-server image available; client mode unreleased (see "Client mode" below). Pin: `bacpypes3==0.0.110` (`BACPYPES3_VERSION` in Dockerfile).
 
 ## Role
 
@@ -49,6 +49,7 @@ ghcr.io/otfabric/bacnet-interop-bacpypes3@sha256:<digest>
 | Device server (default) | `device_server.py` | Bind UDP, emit `event=ready`, serve fixture objects |
 | Peer-as-BBMD | `BACNET_BBMD=1` | Same server with BBMD + FDT; Read-BDT/FDT + Delete-FDT executable; Write-BDT NAK |
 | EventNotification emit | `BACNET_EMIT_EVENT=1` | Emit one UnconfirmedEventNotification after first ReadProperty |
+| Client mode (unreleased) | `client` as the first argument | Run the scenarios of a scenario file against a device under test (`client_driver.py`) |
 | Audit notification emit | `BACNET_EMIT_AUDIT=1` | Emit one Unconfirmed and one ConfirmedAuditNotification after first ReadProperty |
 
 ## Readiness contract
@@ -87,6 +88,87 @@ Environment overrides:
 | `BACNET_NETWORK` | Optional local BACnet network number |
 | `BACNET_DCC_PASSWORD` | DeviceCommunicationControl password (unset = upstream checks none) |
 | `ADAPTER_VERSION` / `BACPYPES3_VERSION` | Ready-event version fields |
+
+## Client mode (unreleased)
+
+`client` as the first argument runs the image as a client against a device
+under test ([CLIENT_DRIVER_CONTRACT.md](../../docs/CLIENT_DRIVER_CONTRACT.md)):
+
+```bash
+docker run --rm --network <net> bacnet-interop-bacpypes3:local client \
+  --target 10.89.0.10:47808 --device 1234 \
+  --scenarios /scenarios/server-baseline-v1.json
+```
+
+`client_driver.py` runs one upstream `Application` (0.0.110, not modified,
+device instance 4001, vendor 999) and sends each scenario's request as an
+upstream APDU class (`ReadPropertyRequest`, `AtomicWriteFileRequest`,
+`SubscribeCOVPropertyRequest`, `GetAlarmSummaryRequest`,
+`ConfirmedTextMessageRequest`, …) with `Application.request()`, or through
+the Application's own helpers (`who_is`, `who_has`,
+`read_property_multiple`). Answers are decoded by BACpypes3 (property values
+with its object model's datatypes, otherwise as application-tagged
+primitives) and compared with the scenario's `expect` as in the bacnet-stack
+driver. The image ships every published scenario file under `/scenarios`.
+Inputs: `--target`, `--device`, `--scenarios`, `--only`, `--broadcast`,
+`--bbmd`, `--fd-ttl`; defaults `BACNET_CLIENT_TIMEOUT_MS=3000` and
+`BACNET_CLIENT_RETRIES=1` (the local Device's APDU_Timeout and
+Number_Of_APDU_Retries). No dependency beyond the image's pin.
+
+- **Binding:** before the first confirmed request the driver sends a unicast
+  Who-Is to `--target` (`Application.who_is`), so BACpypes3 caches the
+  device's maximum APDU and segmentation. No I-Am, or an I-Am from another
+  address, is `infra-error` for every confirmed scenario. Discovery
+  scenarios broadcast (global broadcast, or a Who-Is to `--broadcast`) and
+  check that every I-Am came from `--target`.
+- **Addresses:** the client binds `<own IPv4>/<prefix>:47808`, so it hears
+  broadcast I-Ams. With `--bbmd` the network port is an upstream foreign
+  device (`IPMode.foreign`, `fdBBMDAddress`, `fdSubscriptionLifetime` =
+  `--fd-ttl`) on `<own IPv4>:47808`; the driver waits for the registration's
+  BVLC-Result before the first scenario. Who-Is is then sent as
+  Distribute-Broadcast-To-Network.
+- **BVLC table services** (Read-BDT, Read-FDT, Write-BDT) use upstream
+  `BVLLServiceElement` on a second, unregistered `NormalLinkLayer` on port
+  47809. In foreign mode BACpypes3 takes every BVLC-Result as its
+  registration result: a Write-BDT NAK never reaches the service element and
+  sets the registration status to 0x0010 (observed against the go-bacnet
+  BBMD).
+- **COV:** the adapter records COV notifications in its own `do_*`
+  handlers and acknowledges confirmed ones with a SimpleACK, because
+  upstream delivers them only to its subscription context manager, which
+  cancels the subscription when it exits; a scenario leaves the subscription
+  to the device (a later scenario cancels it). The notifications are decoded
+  by upstream. The driver waits up to max(2 s, timeout) for the initial one.
+- **Segmentation:** the local Device is `segmented-both` with 16 segments
+  (upstream defaults); BACpypes3 reassembles segmented ComplexACKs and
+  segments requests longer than the device's maximum APDU.
+- **Unconfirmed services** (TimeSynchronization, UTC, private transfer,
+  text message, WriteGroup) are sent unicast to `--target` and report
+  `sent`; the consumer checks what the device received.
+- **Undecodable answers:** BACpypes3 drops an Error or ComplexACK it cannot
+  decode, and the request then times out. The driver wraps the
+  ApplicationServiceAccessPoint's `sap_response`: it decodes a copy of each
+  Error and ComplexACK with the same upstream `APCISequence.decode`, records
+  a failure with the octets, and passes the original on unchanged. A
+  recorded failure ends the scenario at once: `known-difference` for the
+  cases in [PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode-unreleased)
+  (with the octets in `detail`), otherwise `fail` with
+  `observed.undecodable`.
+- **Names:** enumeration names are compared without case, spaces and
+  hyphens, because BACpypes3 derives them from camel case (error code 22 is
+  `property-is-not-alist`) and the scenarios give reject reasons in
+  bacnet-stack's text (`Undefined Enumeration`). `observed` keeps the
+  BACpypes3 name.
+- **Outcomes:** no answer after the timeout and retries (BACpypes3 Abort
+  no-response) is `infra-error`; an Error, Reject or Abort from the device
+  is compared with `expect`. **SubscribeCOVPropertyMultiple** is
+  `unsupported`: BACpypes3 0.0.110 has no request APDU for it and no
+  COV-multiple notification type.
+
+Run against the go-bacnet server (go-bacnet
+`interop/server_clients_test.go`), see
+[PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode-unreleased) for the
+results.
 
 ## Behaviour to know
 

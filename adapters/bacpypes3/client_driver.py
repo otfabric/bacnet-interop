@@ -53,6 +53,7 @@ from bacpypes3.apdu import (
     CreateObjectRequest,
     DeleteObjectRequest,
     DeviceCommunicationControlRequest,
+    ComplexAckPDU,
     ErrorPDU,
     ErrorRejectAbortNack,
     GetAlarmSummaryACK,
@@ -94,9 +95,10 @@ from bacpypes3.basetypes import (
     Destination,
     DeviceCommunicationControlRequestEnableDisable,
     EventState,
+    GetEnrollmentSummaryRequestAcknowledgmentFilterType,
+    GetEnrollmentSummaryRequestEventStateFilterType,
     EventTransitionBits,
     GroupChannelValue,
-    PropertyReference,
     PropertyValue,
     Range,
     RangeByPosition,
@@ -169,18 +171,34 @@ class KnownDifference(Exception):
 class Undecodable(Exception):
     """The DUT answered, but BACpypes3 could not decode the answer."""
 
-    def __init__(self, service: int, octets: str, error: str) -> None:
-        super().__init__(f"BACpypes3 could not decode the answer (service {service}, {error}): {octets}")
+    def __init__(self, pdu_type: int, service: int, octets: str, error: str) -> None:
+        super().__init__(f"BACpypes3 could not decode the answer (PDU type {pdu_type}, service {service}, "
+                         f"{error}): '{octets}'")
+        self.pdu_type = pdu_type
         self.service = service
         self.octets = octets
         self.error = error
 
 
-# Confirmed services whose error answer BACpypes3 0.0.110 cannot decode: its
-# ChangeListError (AddListElement 8, RemoveListElement 9) has no
-# service_choice, so ErrorSequence.__init__ raises AttributeError and the
-# ApplicationServiceAccessPoint drops the reply (PEER_SUPPORT.md).
-CHANGE_LIST_SERVICES = (8, 9)
+# Answers BACpypes3 0.0.110 cannot decode, by (PDU type, service choice);
+# the ApplicationServiceAccessPoint drops them and the request times out
+# (PEER_SUPPORT.md):
+# - the Error of AddListElement (8) and RemoveListElement (9): its
+#   ChangeListError has no service_choice, so ErrorSequence.__init__ raises
+#   AttributeError;
+# - the Error of SubscribeCOVProperty (28): 28 is not in BACpypes3's
+#   error_types, so the decoder raises "unrecognized service choice";
+# - an empty GetAlarmSummary-ACK (3) or GetEnrollmentSummary-ACK (4): the
+#   list is a required element of the Sequence, and an empty SEQUENCE OF
+#   has no octets to decode it from.
+CHANGE_LIST = "BACpypes3 0.0.110 cannot decode the ChangeList-Error the device answered (ChangeListError has no service_choice)"
+KNOWN_UNDECODABLE = {
+    (5, 8): CHANGE_LIST,
+    (5, 9): CHANGE_LIST,
+    (5, 28): "BACpypes3 0.0.110 cannot decode an Error of SubscribeCOVProperty (service choice 28 is not in its error_types)",
+    (3, 3): "BACpypes3 0.0.110 cannot decode an empty GetAlarmSummary-ACK (listOfAlarmSummaries is a required element)",
+    (3, 4): "BACpypes3 0.0.110 cannot decode an empty GetEnrollmentSummary-ACK (listOfEnrollmentSummaries is a required element)",
+}
 
 
 # --- the Application -------------------------------------------------------
@@ -206,26 +224,26 @@ class ClientApplication(Application):
     def observe_answers(self) -> None:
         """Record answers the ApplicationServiceAccessPoint cannot decode.
 
-        BACpypes3 drops an Error it cannot decode and the request then times
-        out. The wrapper decodes a copy of each Error with the same upstream
-        APCISequence.decode first, records a failure with the octets, and
-        hands the original on unchanged, so a dropped answer is told apart
-        from no answer.
+        BACpypes3 drops an Error or ComplexACK it cannot decode and the
+        request then times out. The wrapper decodes a copy of each with the
+        same upstream APCISequence.decode first, records a failure with the
+        octets, and hands the original on unchanged, so a dropped answer is
+        told apart from no answer.
         """
         asap = self.asap
         upstream = asap.sap_response
 
         async def sap_response(apdu: Any) -> None:
-            if isinstance(apdu, ErrorPDU) and not isinstance(apdu, APCISequence):
+            if isinstance(apdu, (ErrorPDU, ComplexAckPDU)) and not isinstance(apdu, APCISequence):
                 octets = bytes(apdu.pduData)
-                probe = ErrorPDU()
+                probe = type(apdu)()
                 probe.update(apdu)
                 probe.put_data(octets)
                 try:
                     APCISequence.decode(probe)
                 except Exception as err:  # noqa: BLE001 - recorded, not handled
                     self.undecodable[(hostport(apdu.pduSource), int(apdu.apduInvokeID))] = Undecodable(
-                        int(apdu.apduService), octets.hex(), f"{type(err).__name__}: {err}")
+                        int(apdu.apduType), int(apdu.apduService), octets.hex(), f"{type(err).__name__}: {err}")
             await upstream(apdu)
 
         asap.sap_response = sap_response
@@ -782,9 +800,10 @@ async def subscribe_cov(sc: dict[str, Any], env: Env) -> dict[str, Any]:
 
 async def subscribe_cov_property(sc: dict[str, Any], env: Env) -> dict[str, Any]:
     oid = objid(sc["object"])
-    ref = PropertyReference(propertyIdentifier=prop_id(sc["property"]))
-    if "array_index" in sc:
-        ref.propertyArrayIndex = sc["array_index"]
+    # The request's PropertyReference element casts from a name, a number or
+    # a (property, index) tuple only.
+    prop = sc["property"]
+    ref = (prop, sc["array_index"]) if "array_index" in sc else prop
     req = SubscribeCOVPropertyRequest(subscriberProcessIdentifier=sc["process_id"], monitoredObjectIdentifier=oid,
                                       monitoredPropertyIdentifier=ref)
     if not sc.get("cancel"):
@@ -802,6 +821,13 @@ async def subscribe_cov_property(sc: dict[str, Any], env: Env) -> dict[str, Any]
     if not sc.get("cancel"):
         got = await wait_cov(env, start, oid, sc["process_id"], env.listen_s)
     return {"subscribed": {"notification": got}}
+
+
+async def subscribe_cov_property_multiple(sc: dict[str, Any], env: Env) -> dict[str, Any]:
+    raise Unsupported(
+        "BACpypes3 0.0.110 has no SubscribeCOVPropertyMultiple request APDU and no "
+        "ConfirmedCOVNotificationMultiple/UnconfirmedCOVNotificationMultiple type, so its "
+        "Application cannot issue the request or decode the notification")
 
 
 def observed_record(rec: Any) -> dict[str, Any]:
@@ -857,14 +883,18 @@ async def reinitialize_device(sc: dict[str, Any], env: Env) -> dict[str, Any]:
 
 
 async def atomic_read_file(sc: dict[str, Any], env: Env) -> dict[str, Any]:
+    """Stream access from start; with count one request for count octets
+    (its ACK may be segmented), without it requests of FILE_CHUNK octets
+    until end-of-file."""
     data = b""
-    pos = 0
+    pos = sc.get("start", 0)
+    single = "count" in sc
     while True:
         req = AtomicReadFileRequest(
             fileIdentifier=objid(sc["object"]),
             accessMethod=AtomicReadFileRequestAccessMethodChoice(
                 streamAccess=AtomicReadFileRequestAccessMethodChoiceStreamAccess(
-                    fileStartPosition=pos, requestedOctetCount=FILE_CHUNK)))
+                    fileStartPosition=pos, requestedOctetCount=sc["count"] if single else FILE_CHUNK)))
         resp, a = await ack_or_answer(env, req)
         if a is not None:
             return a
@@ -873,7 +903,7 @@ async def atomic_read_file(sc: dict[str, Any], env: Env) -> dict[str, Any]:
         chunk = bytes(resp.accessMethod.streamAccess.fileData)
         data += chunk
         pos += len(chunk)
-        if resp.endOfFile or not chunk:
+        if single or resp.endOfFile or not chunk:
             break
     return {"octets_base64": base64.b64encode(data).decode()}
 
@@ -883,8 +913,16 @@ async def atomic_write_file(sc: dict[str, Any], env: Env) -> dict[str, Any]:
         fileIdentifier=objid(sc["object"]),
         accessMethod=AtomicWriteFileRequestAccessMethodChoice(
             streamAccess=AtomicWriteFileRequestAccessMethodChoiceStreamAccess(
-                fileStartPosition=0, fileData=OctetString(base64.b64decode(sc["data_base64"])))))
-    resp, a = await ack_or_answer(env, req)
+                fileStartPosition=sc.get("start", 0), fileData=OctetString(base64.b64decode(sc["data_base64"])))))
+    try:
+        resp, a = await ack_or_answer(env, req)
+    except Infra as exc:
+        size = len(base64.b64decode(sc["data_base64"]))
+        max_apdu = getattr(await env.app.device_info_cache.get_device_info(env.target), "max_apdu_length_accepted", None)
+        if max_apdu and size > max_apdu:
+            raise Infra(f"{exc}: the request ({size} octets of file data, more than the device's "
+                        f"max APDU {max_apdu}) was sent segmented and no SegmentACK or answer arrived") from exc
+        raise
     if a is not None:
         return a
     return {"ack": True}
@@ -894,14 +932,7 @@ async def list_element(sc: dict[str, Any], env: Env, cls: type) -> dict[str, Any
     elements = ListOf(Destination)([destination(d) for d in sc["elements"]])
     req = cls(objectIdentifier=objid(sc["object"]), propertyIdentifier=prop_id(sc["property"]),
               listOfElements=AnyValue(elements))
-    try:
-        return await simple(env, req)
-    except Undecodable as exc:
-        if exc.service in CHANGE_LIST_SERVICES:
-            raise KnownDifference(
-                "BACpypes3 0.0.110 cannot decode the ChangeList-Error the device answered "
-                f"(ChangeListError has no service_choice; {exc.error}): {exc.octets}") from exc
-        raise
+    return await simple(env, req)
 
 
 async def create_object(sc: dict[str, Any], env: Env) -> dict[str, Any]:
@@ -971,22 +1002,29 @@ async def get_alarm_summary(sc: dict[str, Any], env: Env) -> dict[str, Any]:
     if not isinstance(resp, GetAlarmSummaryACK):
         raise Infra(f"unexpected answer {type(resp).__name__}")
     return {"alarms": [{"object": f"{s.objectIdentifier[0]},{s.objectIdentifier[1]}",
-                        "event_state": str(s.alarmState)} for s in resp.listOfAlarmSummaries]}
+                        "alarm_state": str(s.alarmState)} for s in resp.listOfAlarmSummaries]}
 
 
 async def get_enrollment_summary(sc: dict[str, Any], env: Env) -> dict[str, Any]:
-    req = GetEnrollmentSummaryRequest(acknowledgmentFilter=sc.get("acknowledgment_filter", "all"))
+    # acknowledgmentFilter is required (clause 13.11); the scenarios filter
+    # on the event state only.
+    req = GetEnrollmentSummaryRequest(acknowledgmentFilter=GetEnrollmentSummaryRequestAcknowledgmentFilterType("all"))
     if "event_state_filter" in sc:
-        req.eventStateFilter = sc["event_state_filter"]
-    if "notification_class_filter" in sc:
-        req.notificationClassFilter = sc["notification_class_filter"]
+        req.eventStateFilter = GetEnrollmentSummaryRequestEventStateFilterType(sc["event_state_filter"])
     resp, a = await ack_or_answer(env, req)
     if a is not None:
         return a
     if not isinstance(resp, GetEnrollmentSummaryACK):
         raise Infra(f"unexpected answer {type(resp).__name__}")
-    return {"enrollments": [{"object": f"{s.objectIdentifier[0]},{s.objectIdentifier[1]}",
-                             "event_state": str(s.eventState)} for s in resp.listOfEnrollmentSummaries]}
+    out = []
+    for s in resp.listOfEnrollmentSummaries:
+        e: dict[str, Any] = {"object": f"{s.objectIdentifier[0]},{s.objectIdentifier[1]}",
+                             "event_state": str(s.eventState), "event_type": str(s.eventType),
+                             "priority": int(s.priority)}
+        if s.notificationClass is not None:
+            e["notification_class"] = int(s.notificationClass)
+        out.append(e)
+    return {"enrollments": out}
 
 
 def sent(operation: str) -> dict[str, Any]:
@@ -1132,6 +1170,7 @@ SERVICES: dict[str, Callable[[dict[str, Any], Env], Awaitable[dict[str, Any]]]] 
     "write-property-multiple": write_property_multiple,
     "subscribe-cov": subscribe_cov,
     "subscribe-cov-property": subscribe_cov_property,
+    "subscribe-cov-property-multiple": subscribe_cov_property_multiple,
     "read-range": read_range,
     "device-communication-control": device_communication_control,
     "reinitialize-device": reinitialize_device,
@@ -1229,6 +1268,10 @@ def compare(expect: dict[str, Any], observed: dict[str, Any]) -> bool:
         return sorted(got) == sorted(want)
     if key == "recipients":
         return norm_destinations(got) == norm_destinations(want)
+    if key == "enrollments":
+        # event_type and notification_class are compared when given.
+        return len(got) == len(want) and all(
+            all(norm_name(str(g.get(k))) == norm_name(str(w[k])) for k in w) for g, w in zip(got, want))
     return got == want
 
 
@@ -1274,9 +1317,14 @@ async def run(args: argparse.Namespace, doc: dict[str, Any], timeout_ms: int, re
             line["outcome"] = "pass" if compare(sc["expect"], observed) else "fail"
             line["observed"] = observed
         except Undecodable as exc:
-            line["outcome"] = "fail"
-            line["observed"] = {"undecodable": exc.octets}
-            line["detail"] = str(exc)
+            known = KNOWN_UNDECODABLE.get((exc.pdu_type, exc.service))
+            if known is not None:
+                line["outcome"] = "known-difference"
+                line["detail"] = f"{known}; {exc.error}; answer octets '{exc.octets}'"
+            else:
+                line["outcome"] = "fail"
+                line["observed"] = {"undecodable": exc.octets}
+                line["detail"] = str(exc)
         except Unsupported as exc:
             line["outcome"] = "unsupported"
             line["detail"] = str(exc)
