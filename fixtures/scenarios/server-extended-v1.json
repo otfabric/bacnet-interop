@@ -1,0 +1,347 @@
+{
+  "id": "server-extended-v1",
+  "description": "Segmentation, SubscribeCOVProperty(Multiple), GetAlarmSummary, GetEnrollmentSummary, text messages and ConfirmedPrivateTransfer against a server that serves device-server-v1: what the bacnet-stack tools cannot issue. Scenarios depend on the ones before them (FILE-STREAM-3 content, AV-2 event state).",
+  "requires_fixture": "device-server-v1",
+  "scenarios": [
+    {
+      "id": "arf.file3.segmented-reply",
+      "service": "atomic-read-file",
+      "object": "file,3",
+      "start": 0,
+      "count": 3000,
+      "description": "One request for the whole 3000-octet file: the AtomicReadFile-ACK exceeds the largest B/IP APDU (1476), so it arrives as a segmented ComplexACK (clause 5.2)",
+      "expect": {
+        "octets_base64": "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"
+      }
+    },
+    {
+      "id": "awf.file3.segmented-request",
+      "service": "atomic-write-file",
+      "object": "file,3",
+      "start": 0,
+      "data_base64": "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",
+      "description": "3000 octets in one AtomicWriteFile-Request: larger than the server's Max_APDU_Length_Accepted (1476), so the client segments the request (clause 5.2); the server accepts segmented requests",
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "arf.file3.after-write",
+      "service": "atomic-read-file",
+      "object": "file,3",
+      "start": 0,
+      "count": 3000,
+      "expect": {
+        "octets_base64": "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"
+      }
+    },
+    {
+      "id": "scovp.av1.pv.increment",
+      "service": "subscribe-cov-property",
+      "object": "analog-value,1",
+      "property": "present-value",
+      "cov_increment": 1.0,
+      "process_id": 9,
+      "confirmed": false,
+      "lifetime": 5,
+      "description": "The initial notification follows the acknowledgement (clause 13.15)",
+      "expect": {
+        "subscribed": {
+          "notification": true
+        }
+      }
+    },
+    {
+      "id": "scovp.av1.pv.cancel",
+      "service": "subscribe-cov-property",
+      "object": "analog-value,1",
+      "property": "present-value",
+      "process_id": 9,
+      "cancel": true,
+      "expect": {
+        "subscribed": {
+          "notification": false
+        }
+      }
+    },
+    {
+      "id": "scovp.unknown-object",
+      "service": "subscribe-cov-property",
+      "object": "analog-value,999",
+      "property": "present-value",
+      "process_id": 9,
+      "confirmed": false,
+      "lifetime": 5,
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "unknown-object"
+        }
+      }
+    },
+    {
+      "id": "scovp.unknown-property",
+      "service": "subscribe-cov-property",
+      "object": "analog-value,1",
+      "property": 9999,
+      "process_id": 9,
+      "confirmed": false,
+      "lifetime": 5,
+      "expect": {
+        "error": {
+          "class": "property",
+          "code": "unknown-property"
+        }
+      }
+    },
+    {
+      "id": "scovpm.av1-av2",
+      "service": "subscribe-cov-property-multiple",
+      "process_id": 10,
+      "confirmed": false,
+      "lifetime": 5,
+      "subscriptions": [
+        {
+          "object": "analog-value,1",
+          "properties": [
+            {
+              "property": "present-value",
+              "cov_increment": 1.0
+            }
+          ]
+        },
+        {
+          "object": "analog-value,2",
+          "properties": [
+            {
+              "property": "present-value",
+              "cov_increment": 1.0
+            }
+          ]
+        }
+      ],
+      "description": "The initial notification is a COVNotificationMultiple (clause 13.16)",
+      "expect": {
+        "subscribed": {
+          "notification": true
+        }
+      }
+    },
+    {
+      "id": "scovpm.cancel",
+      "service": "subscribe-cov-property-multiple",
+      "process_id": 10,
+      "cancel": true,
+      "subscriptions": [
+        {
+          "object": "analog-value,1",
+          "properties": [
+            {
+              "property": "present-value"
+            }
+          ]
+        },
+        {
+          "object": "analog-value,2",
+          "properties": [
+            {
+              "property": "present-value"
+            }
+          ]
+        }
+      ],
+      "description": "Without issueConfirmedNotifications and lifetime the request is a cancellation (clause 13.16)",
+      "expect": {
+        "subscribed": {
+          "notification": false
+        }
+      }
+    },
+    {
+      "id": "scovpm.unknown-object-second",
+      "service": "subscribe-cov-property-multiple",
+      "process_id": 11,
+      "confirmed": false,
+      "lifetime": 5,
+      "subscriptions": [
+        {
+          "object": "analog-value,1",
+          "properties": [
+            {
+              "property": "present-value"
+            }
+          ]
+        },
+        {
+          "object": "analog-value,999",
+          "properties": [
+            {
+              "property": "present-value"
+            }
+          ]
+        }
+      ],
+      "description": "SubscribeCOVPropertyMultiple-Error names the first failed subscription",
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "unknown-object",
+          "first_failed": {
+            "object": "analog-value,999",
+            "property": "present-value"
+          }
+        }
+      }
+    },
+    {
+      "id": "gas.normal",
+      "service": "get-alarm-summary",
+      "expect": {
+        "alarms": []
+      }
+    },
+    {
+      "id": "ges.normal",
+      "service": "get-enrollment-summary",
+      "description": "AV-2 is the only event-enrolled object (intrinsic out-of-range reporting, Notification Class 1)",
+      "expect": {
+        "enrollments": [
+          {
+            "object": "analog-value,2",
+            "event_state": "normal",
+            "event_type": "out-of-range",
+            "notification_class": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "ges.offnormal-filter.normal",
+      "service": "get-enrollment-summary",
+      "event_state_filter": "offnormal",
+      "expect": {
+        "enrollments": []
+      }
+    },
+    {
+      "id": "wp.av2.high",
+      "service": "write-property",
+      "object": "analog-value,2",
+      "property": "present-value",
+      "value": {
+        "type": "real",
+        "value": 90.0
+      },
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "gas.av2.high-limit",
+      "service": "get-alarm-summary",
+      "expect": {
+        "alarms": [
+          {
+            "object": "analog-value,2",
+            "alarm_state": "high-limit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ges.av2.high-limit",
+      "service": "get-enrollment-summary",
+      "expect": {
+        "enrollments": [
+          {
+            "object": "analog-value,2",
+            "event_state": "high-limit",
+            "event_type": "out-of-range",
+            "notification_class": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "ges.offnormal-filter.high-limit",
+      "service": "get-enrollment-summary",
+      "event_state_filter": "offnormal",
+      "description": "The offnormal filter keeps every off-normal state, high-limit included (clause 13.11)",
+      "expect": {
+        "enrollments": [
+          {
+            "object": "analog-value,2",
+            "event_state": "high-limit",
+            "event_type": "out-of-range",
+            "notification_class": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "wp.av2.normal",
+      "service": "write-property",
+      "object": "analog-value,2",
+      "property": "present-value",
+      "value": {
+        "type": "real",
+        "value": 50.0
+      },
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "gas.av2.after-normal",
+      "service": "get-alarm-summary",
+      "expect": {
+        "alarms": []
+      }
+    },
+    {
+      "id": "ctm.normal",
+      "service": "confirmed-text-message",
+      "message": "hello from the interop client",
+      "message_priority": "normal",
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "ctm.urgent",
+      "service": "confirmed-text-message",
+      "message": "urgent interop message",
+      "message_priority": "urgent",
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "utm.normal",
+      "service": "unconfirmed-text-message",
+      "message": "hello from the interop client",
+      "message_priority": "normal",
+      "expect": {
+        "sent": {
+          "operation": "unconfirmed-text-message"
+        }
+      }
+    },
+    {
+      "id": "cpt.vendor999",
+      "service": "confirmed-private-transfer",
+      "vendor_id": 999,
+      "service_number": 1,
+      "parameters": [
+        {
+          "type": "character-string",
+          "value": "hello"
+        }
+      ],
+      "description": "The server's hook returns no result block; the ConfirmedPrivateTransfer-ACK carries vendor and service number (clause 16.2)",
+      "expect": {
+        "ack": true
+      }
+    }
+  ]
+}

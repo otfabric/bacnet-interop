@@ -40,6 +40,7 @@
         "class": { "type": "string" },
         "code": { "type": "string" },
         "first_failed": {
+          "description": "WritePropertyMultiple-Error firstFailedWriteAttempt, or SubscribeCOVPropertyMultiple-Error firstFailedSubscription",
           "type": "object",
           "additionalProperties": false,
           "required": ["object", "property"],
@@ -126,7 +127,7 @@
           }
         },
         "subscribed": {
-          "description": "SubscribeCOV acknowledged; notification: at least one COV notification for the object arrived",
+          "description": "SubscribeCOV, SubscribeCOVProperty or SubscribeCOVPropertyMultiple acknowledged; notification: at least one COV notification for the subscription arrived",
           "type": "object",
           "additionalProperties": false,
           "required": ["notification"],
@@ -172,6 +173,34 @@
           "required": ["contains_self", "ttl"],
           "properties": { "contains_self": { "type": "boolean" }, "ttl": { "type": "integer" } }
         },
+        "alarms": {
+          "description": "GetAlarmSummary entries, in order",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["object", "alarm_state"],
+            "properties": {
+              "object": { "$ref": "#/$defs/objectRef" },
+              "alarm_state": { "enum": ["normal", "fault", "offnormal", "high-limit", "low-limit"] }
+            }
+          }
+        },
+        "enrollments": {
+          "description": "GetEnrollmentSummary entries, in order; event_type and notification_class are compared when given",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["object", "event_state"],
+            "properties": {
+              "object": { "$ref": "#/$defs/objectRef" },
+              "event_state": { "enum": ["normal", "fault", "offnormal", "high-limit", "low-limit"] },
+              "event_type": { "type": "string" },
+              "notification_class": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
         "bvlc_result": { "enum": ["successful-completion", "write-bdt-nak", "read-bdt-nak", "register-fd-nak", "read-fdt-nak", "delete-fdt-nak", "distribute-broadcast-nak"] }
       }
     },
@@ -188,7 +217,9 @@
             "atomic-read-file", "atomic-write-file", "add-list-element", "remove-list-element",
             "create-object", "delete-object", "get-event-information", "acknowledge-alarm",
             "time-synchronization", "utc-time-synchronization", "unconfirmed-private-transfer", "write-group",
-            "read-bdt", "read-fdt", "write-bdt"
+            "read-bdt", "read-fdt", "write-bdt",
+            "subscribe-cov-property", "subscribe-cov-property-multiple", "get-alarm-summary", "get-enrollment-summary",
+            "confirmed-text-message", "unconfirmed-text-message", "confirmed-private-transfer"
           ]
         },
         "description": { "type": "string" },
@@ -260,6 +291,39 @@
           "type": "array",
           "items": { "type": "string", "description": "HOST:PORT" }
         },
+        "start": { "description": "AtomicReadFile / AtomicWriteFile start position; -1 appends (AtomicWriteFile)", "type": "integer", "minimum": -1 },
+        "count": { "description": "AtomicReadFile requested octet count in one request; without it the client reads the whole file in requests of its choice", "type": "integer", "minimum": 0 },
+        "cov_increment": { "description": "SubscribeCOVProperty COV increment", "type": "number", "minimum": 0 },
+        "subscriptions": {
+          "description": "SubscribeCOVPropertyMultiple list of COV subscription specifications",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["object", "properties"],
+            "properties": {
+              "object": { "$ref": "#/$defs/objectRef" },
+              "properties": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["property"],
+                  "properties": {
+                    "property": { "$ref": "#/$defs/property" },
+                    "cov_increment": { "type": "number", "minimum": 0 },
+                    "timestamped": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "event_state_filter": { "description": "GetEnrollmentSummary eventStateFilter (clause 13.11)", "enum": ["offnormal", "fault", "normal", "all", "active"] },
+        "message": { "description": "Text message (clauses 16.5, 16.6)", "type": "string" },
+        "message_priority": { "enum": ["normal", "urgent"] },
         "expect": { "$ref": "#/$defs/expect" }
       },
       "allOf": [
@@ -278,7 +342,11 @@
         { "if": { "properties": { "service": { "const": "acknowledge-alarm" } } }, "then": { "required": ["object", "process_id", "event_state_acked", "time_stamp"] } },
         { "if": { "properties": { "service": { "const": "unconfirmed-private-transfer" } } }, "then": { "required": ["vendor_id", "service_number"] } },
         { "if": { "properties": { "service": { "const": "write-group" } } }, "then": { "required": ["group", "priority", "changes"] } },
-        { "if": { "properties": { "service": { "const": "write-bdt" } } }, "then": { "required": ["bdt"] } }
+        { "if": { "properties": { "service": { "const": "write-bdt" } } }, "then": { "required": ["bdt"] } },
+        { "if": { "properties": { "service": { "const": "subscribe-cov-property" } } }, "then": { "required": ["object", "property", "process_id"] } },
+        { "if": { "properties": { "service": { "const": "subscribe-cov-property-multiple" } } }, "then": { "required": ["subscriptions", "process_id"] } },
+        { "if": { "properties": { "service": { "enum": ["confirmed-text-message", "unconfirmed-text-message"] } } }, "then": { "required": ["message"] } },
+        { "if": { "properties": { "service": { "const": "confirmed-private-transfer" } } }, "then": { "required": ["vendor_id", "service_number"] } }
       ]
     }
   }
