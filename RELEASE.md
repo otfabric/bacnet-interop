@@ -31,6 +31,30 @@ Tags are immutable. A fix is a new version.
 
 ---
 
+## v0.12.0
+
+**Date:** 2026-11-06
+**Previous release:** v0.11.3
+
+Container contract 1.1: the bacnet-stack, BACnet4J and BACpypes3 images get a client mode, so a BACnet server can be tested by independent clients ([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)). Device mode, the fixtures of 1.0 and every other image are unchanged.
+
+### Added
+
+- Client mode: `client --target HOST:PORT --device N --scenarios FILE` runs a scenario file against a device under test and writes one `client-result-line-v1` JSON line per scenario. Options `--broadcast`, `--bbmd` and `--fd-ttl` (foreign-device registration); env `BACNET_CLIENT_TIMEOUT_MS` and `BACNET_CLIENT_RETRIES`.
+  - bacnet-stack 1.6.1: the upstream command-line tools, unmodified; built without segmentation.
+  - BACnet4J 6.1.1: upstream `LocalDevice` and `RemoteDevice` requests (`ClientDriver.java`).
+  - BACpypes3 0.0.110: the upstream `Application` (`client_driver.py`).
+- Scenario files `server-baseline-v1` (discovery, ReadProperty, ReadPropertyMultiple, WriteProperty, WritePropertyMultiple and their errors), `server-services-v1` (COV, ReadRange, DeviceCommunicationControl, ReinitializeDevice, files, lists, object creation and deletion, alarms, time synchronization, private transfer, WriteGroup), `server-bbmd-v1` (foreign-device registration, BDT, FDT) and `server-extended-v1` (segmented requests and replies, SubscribeCOVProperty and SubscribeCOVPropertyMultiple, GetAlarmSummary, GetEnrollmentSummary, text messages, ConfirmedPrivateTransfer), with their JSON Schemas.
+- Device fixture `device-server-v1` for a server under test (Notification Class with a recipient, Trend Log, stream and record files, creatable and deletable objects).
+- `client_capabilities` per image in `adapters/inventory.yaml`.
+- `make client-matrix` (in CI): every client image against the bacnet-stack device passes `server-baseline-v1`; the other device pairs are reported ([PEER_SUPPORT.md](PEER_SUPPORT.md#clients-against-the-device-images)).
+
+### Known differences
+
+The client behaviour of each stack that a consumer must allow for is in [PEER_SUPPORT.md](PEER_SUPPORT.md#client-mode): `bacrle` prints nothing for a RemoveListElement acknowledgement; BACnet4J decodes SubscribeCOVPropertyMultiple-Error as a CHOICE; BACpypes3 cannot decode a ChangeList-Error, an Error of SubscribeCOVProperty or an empty GetAlarmSummary or GetEnrollmentSummary ACK, has no SubscribeCOVPropertyMultiple, and sends segments 6 octets longer than the device's Max APDU.
+
+---
+
 ## v0.11.3
 
 **Date:** 2026-11-01

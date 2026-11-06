@@ -1,16 +1,16 @@
-# Client-driver contract (draft)
+# Client-driver contract
 
-Status: **draft for container contract 1.1; steps 1 and 2 of the order of
-work are implemented, and the bacnet-stack and BACnet4J parts of step 3**
-(unreleased): the scenario and result-line schemas, `server-baseline-v1`,
+Status: **part of container contract 1.1 (v0.12.0)**. Released: the
+scenario and result-line schemas, `server-baseline-v1`,
 `server-services-v1`, `server-bbmd-v1` and `server-extended-v1`, the
-`device-server-v1` fixture, and bacnet-stack and BACnet4J client mode. Today every other image
+`device-server-v1` fixture, and bacnet-stack, BACnet4J and BACpypes3 client
+mode. Not yet: the bacnet-js image (step 3). Today every other image
 runs a device or router only ([CONTAINER_CONTRACT.md](CONTAINER_CONTRACT.md));
 this adds a second mode in which an image runs its upstream stack as a
 **client** against a device under test (DUT), so that a server implementation
 (first consumer: the go-bacnet server, go-bacnet `docs/SERVER_SUPPORT.md`)
-can be tested by independent clients. `contract_version` stays 1.0 until a
-release ships client mode.
+can be tested by independent clients. `contract_version` is 1.1 from v0.12.0,
+the first release with client mode.
 
 Contract 1.0 stays valid: an image without client mode is unchanged.
 
@@ -19,8 +19,8 @@ Contract 1.0 stays valid: an image without client mode is unchanged.
 | Image | Client engine | Notes |
 |---|---|---|
 | bacnet-stack | Upstream command-line tools at the same pin: `bacwi`, `bacwh`, `bacrp`, `bacrpm`, `bacwp`, `bacwpm`, `bacscov`, `bacrr`, `bacdcc`, `bacrd`, `bacarf`, `bacawf`, `bacale`, `bacrle`, `bacco`, `bacdo`, `bacge`, `bacackalarm`, `bacts`, `bacupt`, `bacwg`, `bacrbdt`, `bacrfdt`, `bacwbdt` | First to implement; a wrapper turns tool output into result lines. Built without segmentation |
-| bacnet4j | `LocalDevice` + `RemoteDevice` requests (`ClientDriver.java`) | Implemented (unreleased). Segmentation, COV, COV-property (multiple), BBMD/FD; no client for the BVLC table functions |
-| bacpypes3 | Upstream `Application`: APDU classes sent with `Application.request()` and its `who_is`, `who_has`, `read_property_multiple` helpers | Implemented (unreleased). Segmentation, COV, SubscribeCOVProperty, alarm and enrollment summaries, text messages, ConfirmedPrivateTransfer, BBMD/FD. No SubscribeCOVPropertyMultiple |
+| bacnet4j | `LocalDevice` + `RemoteDevice` requests (`ClientDriver.java`) | Implemented. Segmentation, COV, COV-property (multiple), BBMD/FD; no client for the BVLC table functions |
+| bacpypes3 | Upstream `Application`: APDU classes sent with `Application.request()` and its `who_is`, `who_has`, `read_property_multiple` helpers | Implemented. Segmentation, COV, SubscribeCOVProperty, alarm and enrollment summaries, text messages, ConfirmedPrivateTransfer, BBMD/FD. No SubscribeCOVPropertyMultiple |
 | sysiobacnet | `BacnetClient` | Its native side |
 | worldiety | Typed `apdu.Client` | |
 | bacnet-js (new) | `@bacnet-js/client`, pinned npm version, MIT | New image; client mode only. Independent JavaScript lineage (node-bacstack) |
@@ -51,7 +51,7 @@ Each scenario is independent; the driver does not stop at the first failure.
 Scenarios run in file order, and a write scenario leaves its value behind, so
 a file that writes restores what later scenarios read.
 
-Implemented by bacnet-stack (unreleased): every input above (timeout
+Implemented by bacnet-stack: every input above (timeout
 default 3000 ms, 1 retry; passed to the tools as `BACNET_APDU_TIMEOUT` and
 `BACNET_APDU_RETRIES`).
 
@@ -72,7 +72,7 @@ I-Am came from `--target` and reports `infra-error` otherwise, and a request
 to a device that never answered Who-Is is `infra-error` as well. A tool that
 crashes is `infra-error`.
 
-Implemented by BACnet4J (unreleased): every input above, with the same
+Implemented by BACnet4J: every input above, with the same
 defaults (`DefaultTransport.setTimeout`, `setRetries`). The device is bound
 by a Who-Is sent to `--target` (an I-Am from another address, or none, is
 `infra-error`); `--broadcast` is where `who-is` and `who-has` go;
@@ -176,7 +176,7 @@ the output, not the exit code.
   with the same cell values (`native`, `adapter-shim`, `unsupported`).
 - `versions.yaml`: roles gain `client`; bacnet-js is added with its npm pin
   and licence.
-- `contract_version` becomes `1.1` when the first image ships client mode.
+- `contract_version` is `1.1` from v0.12.0, the first release with client mode.
 
 ## Order of work
 
@@ -215,7 +215,7 @@ Against the bacnet-stack device image, all 23 scenarios of
 result-line schema, and a device instance that does not exist gives
 `infra-error`.
 
-BACpypes3 client mode (unreleased) implements every input above (same
+BACpypes3 client mode implements every input above (same
 defaults) and runs all four scenario files against the go-bacnet server; the
 results and the BACpypes3 answers that count as `known-difference` are in
 PEER_SUPPORT.md.

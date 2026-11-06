@@ -55,7 +55,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet4j@sha256:<digest>
 | Mode | Entrypoint | Purpose |
 |---|---|---|
 | Device server (default) | `java -jar device_server.jar` | Bind UDP, emit `event=ready`, serve fixture objects |
-| Client (unreleased) | `client --target … --device … --scenarios …` | Run a scenario file against a device under test (see "Client mode" below) |
+| Client | `client --target … --device … --scenarios …` | Run a scenario file against a device under test (see "Client mode" below) |
 | Peer-as-BBMD | `BACNET_BBMD=1` | Same server with BBMD + BDT self-entry; Read/Write-BDT and Read/Delete-FDT executable |
 | EventNotification emit | `BACNET_EMIT_EVENT=1` | Emit one UnconfirmedEventNotification after first ReadProperty |
 | COVNotificationMultiple emit | `BACNET_EMIT_COV_MULTIPLE=1` | After each SubscribeCOVPropertyMultiple, send the requester an unconfirmed and a confirmed COVNotificationMultiple (see "COV-multiple" below) |
@@ -63,7 +63,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet4j@sha256:<digest>
 ## Readiness contract
 
 ```json
-{"event":"ready","adapter":"bacnet4j","version":"0.11.3","fixture":"device-baseline-v2","address":"<bind-ipv4>:47808","peer_version":"6.1.1"}
+{"event":"ready","adapter":"bacnet4j","version":"0.12.0","fixture":"device-baseline-v2","address":"<bind-ipv4>:47808","peer_version":"6.1.1"}
 ```
 
 ## Build
@@ -92,7 +92,7 @@ Environment overrides:
 | `BACNET_DCC_PASSWORD` | `LocalDevice` password, checked by upstream for DeviceCommunicationControl and ReinitializeDevice (unset = requests must carry no password) |
 | `ADAPTER_VERSION` / `BACNET4J_VERSION` | Ready-event version fields |
 
-## Client mode (unreleased)
+## Client mode
 
 `client` as the first argument runs the image as a client against a device
 under test ([CLIENT_DRIVER_CONTRACT.md](../../docs/CLIENT_DRIVER_CONTRACT.md)):
@@ -137,7 +137,7 @@ ships every scenario file under `/scenarios/`. Defaults:
   `IpNetwork` answers these as a BBMD and has no client for them.
 - **Known difference:** BACnet4J decodes SubscribeCOVPropertyMultiple-Error
   as a CHOICE and drops the first failed subscription
-  ([PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode-unreleased)).
+  ([PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode)).
 - **Unconfirmed services** (time synchronization, private transfer, text
   message, WriteGroup) are sent to `--target` and report `sent`; the
   consumer checks what the device received.

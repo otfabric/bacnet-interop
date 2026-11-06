@@ -4,7 +4,7 @@ Which independent BACnet stacks can execute which scenarios with the adapter
 images of this repository. Assertions and pass/fail decisions live in
 [`go-bacnet`](https://github.com/otfabric/go-bacnet) (`INTEROP.md`, `interop/`).
 
-**Published images:** [v0.11.3](https://github.com/otfabric/bacnet-interop/releases/tag/v0.11.3)
+**Published images:** [v0.12.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.12.0)
 · default device fixture: `device-baseline-v2`
 
 Cells marked ¹ are new in 0.10.0; everything else also holds for the v0.9.0
@@ -306,13 +306,43 @@ noticed.
 - **bacnet-stack 1.6.1** has no GetEnrollmentSummary, TextMessage,
   ConfirmedPrivateTransfer or COV-multiple.
 
-## Client mode (unreleased)
+## Client mode
 
 Peers acting as **clients** against a device under test
 ([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)):
 bacnet-stack (the upstream command-line tools), BACnet4J (the upstream
 `LocalDevice`) and BACpypes3 (its upstream Application), each at its pin,
 unmodified. The go-bacnet server is the first device under test.
+
+### Clients against the device images
+
+`make client-matrix` (in CI) runs `server-baseline-v1` with every client
+image against the device images, on `device-baseline-v2`. The scenario
+expectations record bacnet-stack's answers where the standard leaves the
+error open, so the bacnet-stack device is the gate: every client passes all
+23 scenarios against it. Against the other device images some scenarios
+differ; CI reports those pairs (`--all-devices`) without failing on them:
+
+| Client \ device | bacnet-stack | BACnet4J | BACpypes3 |
+|---|---|---|---|
+| bacnet-stack | 23 pass | 2 pass; no I-Am reaches the client, so the tools cannot bind | 20 pass |
+| BACnet4J | 23 pass | 16 pass | 20 pass |
+| BACpypes3 | 23 pass | 2 pass; no I-Am reaches the client, so it cannot bind | 20 pass |
+
+What the device images do differently:
+
+- **BACnet4J device** (as the adapter binds it, to the container's own
+  address): Who-Is and Who-Has get no I-Am or I-Have at the client, so the
+  clients that bind by Who-Is (bacnet-stack, BACpypes3) do not run the other
+  scenarios (`infra-error`). It accepts a WriteProperty and a
+  WritePropertyMultiple of a CharacterString to an Analog Value's
+  Present_Value (SimpleACK), and names error class property, not object, for
+  an unknown object in WritePropertyMultiple.
+- **BACpypes3 device:** a value of the wrong datatype gets Reject
+  invalid-tag instead of Error property/invalid-data-type (WriteProperty and
+  WritePropertyMultiple), and an unknown object in WritePropertyMultiple gets
+  a plain Error (`91 01 91 1f`, object/unknown-object) instead of a
+  WritePropertyMultiple-Error naming the first failed write.
 
 ### bacnet-stack
 
@@ -364,7 +394,7 @@ Known behaviour of the BACnet4J 6.1.1 client:
 BACpypes3 0.0.110 cannot decode some answers; its
 ApplicationServiceAccessPoint drops them and the request would time out. The
 driver detects the failed decode and reports `known-difference` with the
-answer's octets ([adapters/bacpypes3/README.md](adapters/bacpypes3/README.md#client-mode-unreleased)):
+answer's octets ([adapters/bacpypes3/README.md](adapters/bacpypes3/README.md#client-mode)):
 
 - **ChangeList-Error** (AddListElement, RemoveListElement): `ChangeListError`
   has no `service_choice`, so constructing it raises AttributeError
@@ -392,7 +422,6 @@ Other behaviour:
 - **Enumeration names** come from camel case (error code 22 is
   `property-is-not-alist`); the driver compares names without hyphens.
 
-Against the go-bacnet server (go-bacnet `interop/server_clients_test.go`,
-unreleased image): `server-baseline-v1` 23 of 23 pass; `server-services-v1`
+Against the go-bacnet server (go-bacnet `interop/server_clients_test.go`): `server-baseline-v1` 23 of 23 pass; `server-services-v1`
 35 pass, 1 known-difference; `server-bbmd-v1` 5 of 5 pass;
 `server-extended-v1` 15 pass, 5 known-difference, 3 unsupported.

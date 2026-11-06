@@ -2,7 +2,7 @@
 
 Containerized [BACpypes3](https://github.com/JoelBender/BACpypes3) peer for [`bacnet-interop`](../..).
 
-**Status:** device-server image available; client mode unreleased (see "Client mode" below). Pin: `bacpypes3==0.0.110` (`BACPYPES3_VERSION` in Dockerfile).
+**Status:** device-server image and client mode (see "Client mode" below). Pin: `bacpypes3==0.0.110` (`BACPYPES3_VERSION` in Dockerfile).
 
 ## Role
 
@@ -49,7 +49,7 @@ ghcr.io/otfabric/bacnet-interop-bacpypes3@sha256:<digest>
 | Device server (default) | `device_server.py` | Bind UDP, emit `event=ready`, serve fixture objects |
 | Peer-as-BBMD | `BACNET_BBMD=1` | Same server with BBMD + FDT; Read-BDT/FDT + Delete-FDT executable; Write-BDT NAK |
 | EventNotification emit | `BACNET_EMIT_EVENT=1` | Emit one UnconfirmedEventNotification after first ReadProperty |
-| Client mode (unreleased) | `client` as the first argument | Run the scenarios of a scenario file against a device under test (`client_driver.py`) |
+| Client mode | `client` as the first argument | Run the scenarios of a scenario file against a device under test (`client_driver.py`) |
 | Audit notification emit | `BACNET_EMIT_AUDIT=1` | Emit one Unconfirmed and one ConfirmedAuditNotification after first ReadProperty |
 
 ## Readiness contract
@@ -57,7 +57,7 @@ ghcr.io/otfabric/bacnet-interop-bacpypes3@sha256:<digest>
 Same stdout contract as the bacnet-stack adapter:
 
 ```json
-{"event":"ready","adapter":"bacpypes3","version":"0.11.3","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"0.0.110"}
+{"event":"ready","adapter":"bacpypes3","version":"0.12.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"0.0.110"}
 ```
 
 Consumers can swap peers by image name without changing wait logic.
@@ -89,7 +89,7 @@ Environment overrides:
 | `BACNET_DCC_PASSWORD` | DeviceCommunicationControl password (unset = upstream checks none) |
 | `ADAPTER_VERSION` / `BACPYPES3_VERSION` | Ready-event version fields |
 
-## Client mode (unreleased)
+## Client mode
 
 `client` as the first argument runs the image as a client against a device
 under test ([CLIENT_DRIVER_CONTRACT.md](../../docs/CLIENT_DRIVER_CONTRACT.md)):
@@ -151,7 +151,7 @@ Number_Of_APDU_Retries). No dependency beyond the image's pin.
   Error and ComplexACK with the same upstream `APCISequence.decode`, records
   a failure with the octets, and passes the original on unchanged. A
   recorded failure ends the scenario at once: `known-difference` for the
-  cases in [PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode-unreleased)
+  cases in [PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode)
   (with the octets in `detail`), otherwise `fail` with
   `observed.undecodable`.
 - **Names:** enumeration names are compared without case, spaces and
@@ -167,7 +167,7 @@ Number_Of_APDU_Retries). No dependency beyond the image's pin.
 
 Run against the go-bacnet server (go-bacnet
 `interop/server_clients_test.go`), see
-[PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode-unreleased) for the
+[PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode) for the
 results.
 
 ## Behaviour to know

@@ -75,7 +75,7 @@ Environment: `BACNET_IP_PORT`, `DEVICE_FIXTURE_FILE`, `FIXTURE`,
 `ADAPTER_VERSION`, `BACNET_STACK_VERSION`, plus the upstream BACnet/IP
 variables such as `BACNET_BDT_ADDR_N` for additional BDT peers.
 
-## Client mode (unreleased)
+## Client mode
 
 `client` as the first argument runs the image as a client against a device
 under test ([CLIENT_DRIVER_CONTRACT.md](../../docs/CLIENT_DRIVER_CONTRACT.md)):
@@ -114,7 +114,7 @@ pin and not modified, one process per scenario, and parses what they print:
   driver returns its octets base64-encoded.
 - **`bacscov`** waits for the lifetime before it exits; the scenarios use 5 s.
 - **`bacrle`** prints nothing (its handlers are registered for
-  AddListElement): `known-difference` ([PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode-unreleased)).
+  AddListElement): `known-difference` ([PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode)).
 - **`bacge`** cannot decode an empty list of event summaries.
 - **Unconfirmed services** (`bacts`, `bacupt`, `bacwg`) report `sent`; the
   consumer checks what the device received.
