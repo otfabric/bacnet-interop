@@ -1,0 +1,133 @@
+{
+  "fixture": "device-server-v1",
+  "description": "Object model a server under test serves for client-mode scenarios (docs/CLIENT_DRIVER_CONTRACT.md): commandable AV-1, an alarming AV-2, Notification Class, Trend Log, stream and record files, creatable Analog Values.",
+  "device_instance": 1234,
+  "device_name": "InteropDevice",
+  "port": 47808,
+  "objects": [
+    {
+      "type": "device",
+      "instance": 1234,
+      "object_name": "InteropDevice"
+    },
+    {
+      "type": "analog-value",
+      "instance": 1,
+      "object_name": "AV-1",
+      "present_value": 21.5,
+      "commandable": true,
+      "description": "Commandable; scenarios write and relinquish at priority 8."
+    },
+    {
+      "type": "analog-value",
+      "instance": 2,
+      "object_name": "AV-2",
+      "present_value": 50.0,
+      "description": "Writing 90 makes it high-limit off-normal.",
+      "intrinsic_reporting": {
+        "notification_class": 1,
+        "high_limit": 80.0,
+        "low_limit": 0.0,
+        "deadband": 1.0,
+        "time_delay": 0
+      }
+    },
+    {
+      "type": "binary-value",
+      "instance": 1,
+      "object_name": "BV-1",
+      "present_value": "inactive"
+    },
+    {
+      "type": "notification-class",
+      "instance": 1,
+      "object_name": "NC-1",
+      "description": "Empty Recipient_List; AddListElement and RemoveListElement scenarios change it."
+    },
+    {
+      "type": "trend-log",
+      "instance": 1,
+      "object_name": "TL-1",
+      "description": "Ten REAL records, every 15 minutes from 2009-01-01T00:00:00 (the shape bacnet-stack seeds its Trend Log with).",
+      "log_buffer": [
+        {
+          "timestamp": "2009-01-01T00:00:00",
+          "real": 0.0
+        },
+        {
+          "timestamp": "2009-01-01T00:15:00",
+          "real": 1.0
+        },
+        {
+          "timestamp": "2009-01-01T00:30:00",
+          "real": 2.0
+        },
+        {
+          "timestamp": "2009-01-01T00:45:00",
+          "real": 3.0
+        },
+        {
+          "timestamp": "2009-01-01T01:00:00",
+          "real": 4.0
+        },
+        {
+          "timestamp": "2009-01-01T01:15:00",
+          "real": 5.0
+        },
+        {
+          "timestamp": "2009-01-01T01:30:00",
+          "real": 6.0
+        },
+        {
+          "timestamp": "2009-01-01T01:45:00",
+          "real": 7.0
+        },
+        {
+          "timestamp": "2009-01-01T02:00:00",
+          "real": 8.0
+        },
+        {
+          "timestamp": "2009-01-01T02:15:00",
+          "real": 9.0
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "instance": 1,
+      "object_name": "FILE-STREAM-1",
+      "access_method": "stream",
+      "stream_data_base64": "aGVsbG8td29ybGQtc3RyZWFtLWZpbGUtZGF0YQ=="
+    },
+    {
+      "type": "file",
+      "instance": 2,
+      "object_name": "FILE-RECORD-2",
+      "access_method": "record",
+      "records": [
+        "record-0001",
+        "record-0002",
+        "record-0003"
+      ]
+    }
+  ],
+  "object_lifecycle": {
+    "creatable_types": [
+      "analog-value"
+    ],
+    "protected_objects": [
+      {
+        "type": "device",
+        "instance": 1234
+      }
+    ],
+    "allocated_instance_range": {
+      "minimum": 100,
+      "maximum": 199
+    }
+  },
+  "notes": [
+    "For servers under test, not for peer device images.",
+    "No password for DeviceCommunicationControl and ReinitializeDevice."
+  ]
+}

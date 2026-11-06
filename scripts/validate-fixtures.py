@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_SCHEMA = ROOT / "fixtures" / "schema" / "fixture.schema.json"
 MANIFEST_SCHEMA = ROOT / "fixtures" / "schema" / "manifest.schema.json"
 DEVICE_SCHEMA = ROOT / "fixtures" / "schema" / "device.schema.json"
+SCENARIOS_SCHEMA = ROOT / "fixtures" / "schema" / "client-scenarios.schema.json"
+RESULT_LINE_SCHEMA = ROOT / "schemas" / "client-result-line-v1.schema.json"
 MANIFEST = ROOT / "fixtures" / "manifest.json"
 HEX_RE = re.compile(r"^[0-9a-f]*$")
 
@@ -45,6 +47,42 @@ def resolved_under_fixtures(rel: str) -> bool:
         return False
 
 
+def validate_scenarios(Validator) -> list[str]:
+    """Client-mode scenario files (docs/CLIENT_DRIVER_CONTRACT.md)."""
+    errors: list[str] = []
+    try:
+        scenario_schema = load_json(SCENARIOS_SCHEMA)
+        Validator.check_schema(scenario_schema)
+        Validator.check_schema(load_json(RESULT_LINE_SCHEMA))
+    except Exception as exc:  # noqa: BLE001
+        return [f"client schemas: {exc}"]
+    validator = Validator(scenario_schema)
+    for path in sorted((ROOT / "fixtures" / "scenarios").glob("*.json")):
+        rel = str(path.relative_to(ROOT)).replace("\\", "/")
+        try:
+            doc = load_json(path)
+        except json.JSONDecodeError as exc:
+            errors.append(f"{rel}: invalid JSON: {exc}")
+            continue
+        for err in sorted(validator.iter_errors(doc), key=lambda e: list(e.path)):
+            loc = "/".join(str(p) for p in err.path) or "(root)"
+            errors.append(f"{rel} {loc}: {err.message}")
+        if not isinstance(doc, dict):
+            continue
+        if doc.get("id") != path.stem:
+            errors.append(f"{rel}: id {doc.get('id')!r} != file name {path.stem!r}")
+        req = doc.get("requires_fixture")
+        if isinstance(req, str) and not (ROOT / "fixtures" / "device" / f"{req}.json").is_file():
+            errors.append(f"{rel}: requires_fixture {req} has no fixtures/device/{req}.json")
+        seen: set[str] = set()
+        for sc in doc.get("scenarios") or []:
+            sid = sc.get("id") if isinstance(sc, dict) else None
+            if sid in seen:
+                errors.append(f"{rel}: duplicate scenario id {sid}")
+            seen.add(sid)
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
     Validator = try_import_validator()
@@ -55,7 +93,7 @@ def main() -> int:
         )
         return 1
 
-    for path in (FIXTURE_SCHEMA, MANIFEST_SCHEMA, DEVICE_SCHEMA, MANIFEST):
+    for path in (FIXTURE_SCHEMA, MANIFEST_SCHEMA, DEVICE_SCHEMA, SCENARIOS_SCHEMA, RESULT_LINE_SCHEMA, MANIFEST):
         if not path.is_file():
             errors.append(f"missing {path.relative_to(ROOT)}")
     if errors:
@@ -162,13 +200,15 @@ def main() -> int:
             loc = "/".join(str(p) for p in err.path) or "(root)"
             errors.append(f"{rel} {loc}: {err.message}")
 
+    errors.extend(validate_scenarios(Validator))
+
     if fixtures:
         for meta_path in ROOT.glob("fixtures/**/*.json"):
             rel = str(meta_path.relative_to(ROOT)).replace("\\", "/")
             if rel.endswith("manifest.json") or "/schema/" in rel:
                 continue
             # Live adapter / topology models (not codec goldens).
-            if "/device/" in rel or "/topology/" in rel or "/bbmd/" in rel:
+            if "/device/" in rel or "/topology/" in rel or "/bbmd/" in rel or "/scenarios/" in rel:
                 continue
             if meta_path.name.endswith(".semantic.json"):
                 continue

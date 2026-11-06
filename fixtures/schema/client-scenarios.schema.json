@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/otfabric/bacnet-interop/fixtures/schema/client-scenarios.schema.json",
+  "title": "bacnet-interop client-mode scenario file",
+  "description": "Requests an image in client mode sends to a device under test, and what each must observe (docs/CLIENT_DRIVER_CONTRACT.md). The device under test serves the device fixture named by requires_fixture. Scenarios run in file order.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "description", "requires_fixture", "scenarios"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+    "description": { "type": "string", "minLength": 1 },
+    "requires_fixture": { "type": "string", "pattern": "^device-(baseline|server)-v[0-9]+$" },
+    "requires_bbmd": { "description": "The device under test is a BBMD and the client registers with it as a foreign device (--bbmd)", "type": "boolean" },
+    "scenarios": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/scenario" } }
+  },
+  "$defs": {
+    "objectRef": {
+      "description": "object-type name and instance, e.g. analog-value,1",
+      "type": "string",
+      "pattern": "^[a-z][a-z-]*,[0-9]+$"
+    },
+    "property": {
+      "description": "Property name, or a number for one the client has no name for",
+      "type": ["string", "integer"]
+    },
+    "value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["null", "boolean", "unsigned", "signed", "real", "character-string", "enumerated", "object-identifier", "date-time", "list"] },
+        "value": {}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "code"],
+      "properties": {
+        "class": { "type": "string" },
+        "code": { "type": "string" },
+        "first_failed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["object", "property"],
+          "properties": { "object": { "$ref": "#/$defs/objectRef" }, "property": { "$ref": "#/$defs/property" } }
+        },
+        "first_failed_element": { "description": "ChangeList-Error element number (AddListElement, RemoveListElement)", "type": "integer", "minimum": 0 }
+      }
+    },
+    "write": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object", "property", "value"],
+      "properties": {
+        "object": { "$ref": "#/$defs/objectRef" },
+        "property": { "$ref": "#/$defs/property" },
+        "priority": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "value": { "$ref": "#/$defs/value" }
+      }
+    },
+    "destination": {
+      "description": "BACnetDestination (clause 21) of a Notification Class Recipient_List",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valid_days", "from_time", "to_time", "recipient", "process_id", "confirmed", "transitions"],
+      "properties": {
+        "valid_days": { "description": "1 Monday .. 7 Sunday", "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 7 } },
+        "from_time": { "type": "string", "pattern": "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}\\.[0-9]{2}$" },
+        "to_time": { "type": "string", "pattern": "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}\\.[0-9]{2}$" },
+        "recipient": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 1,
+          "properties": { "device": { "type": "integer", "minimum": 0, "maximum": 4194303 } }
+        },
+        "process_id": { "type": "integer", "minimum": 0 },
+        "confirmed": { "type": "boolean" },
+        "transitions": { "type": "array", "items": { "enum": ["to-offnormal", "to-fault", "to-normal"] } }
+      }
+    },
+    "logRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "value"],
+      "properties": {
+        "timestamp": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$" },
+        "value": { "$ref": "#/$defs/value" }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "value": { "$ref": "#/$defs/value" },
+        "values": {
+          "description": "ReadPropertyMultiple results in request order",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["object", "property"],
+            "properties": {
+              "object": { "$ref": "#/$defs/objectRef" },
+              "property": { "$ref": "#/$defs/property" },
+              "value": { "$ref": "#/$defs/value" },
+              "error": { "$ref": "#/$defs/error" }
+            }
+          }
+        },
+        "ack": { "const": true },
+        "error": { "$ref": "#/$defs/error" },
+        "reject": { "type": "string" },
+        "abort": { "type": "string" },
+        "i-am": { "description": "Device instances that answered", "type": "array", "items": { "type": "integer" } },
+        "i-have": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["device", "object"],
+            "properties": { "device": { "type": "integer" }, "object": { "$ref": "#/$defs/objectRef" } }
+          }
+        },
+        "subscribed": {
+          "description": "SubscribeCOV acknowledged; notification: at least one COV notification for the object arrived",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["notification"],
+          "properties": { "notification": { "type": "boolean" } }
+        },
+        "records": { "description": "ReadRange log records in order", "type": "array", "items": { "$ref": "#/$defs/logRecord" } },
+        "created": { "$ref": "#/$defs/objectRef" },
+        "events": {
+          "description": "GetEventInformation summaries, in order",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["object", "event_state"],
+            "properties": {
+              "object": { "$ref": "#/$defs/objectRef" },
+              "event_state": { "enum": ["normal", "fault", "offnormal", "high-limit", "low-limit"] }
+            }
+          }
+        },
+        "octets_base64": { "description": "AtomicReadFile content", "type": "string" },
+        "recipients": { "description": "Recipient_List as read back", "type": "array", "items": { "$ref": "#/$defs/destination" } },
+        "sent": {
+          "description": "An unconfirmed request was sent. The consumer checks that the device under test reports operation",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operation"],
+          "properties": { "operation": { "type": "string" } }
+        },
+        "bdt": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address", "mask"],
+            "properties": { "address": { "type": "string" }, "mask": { "type": "string" } }
+          }
+        },
+        "fdt": {
+          "description": "Read-FDT-Ack: contains_self is the client's own address with this TTL",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contains_self", "ttl"],
+          "properties": { "contains_self": { "type": "boolean" }, "ttl": { "type": "integer" } }
+        },
+        "bvlc_result": { "enum": ["successful-completion", "write-bdt-nak", "read-bdt-nak", "register-fd-nak", "read-fdt-nak", "delete-fdt-nak", "distribute-broadcast-nak"] }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "service", "expect"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]*$" },
+        "service": {
+          "enum": [
+            "who-is", "who-has", "read-property", "read-property-multiple", "write-property", "write-property-multiple",
+            "subscribe-cov", "read-range", "device-communication-control", "reinitialize-device",
+            "atomic-read-file", "atomic-write-file", "add-list-element", "remove-list-element",
+            "create-object", "delete-object", "get-event-information", "acknowledge-alarm",
+            "time-synchronization", "utc-time-synchronization", "unconfirmed-private-transfer", "write-group",
+            "read-bdt", "read-fdt", "write-bdt"
+          ]
+        },
+        "description": { "type": "string" },
+        "low": { "type": "integer", "minimum": 0, "maximum": 4194303 },
+        "high": { "type": "integer", "minimum": 0, "maximum": 4194303 },
+        "name": { "type": "string" },
+        "object": { "$ref": "#/$defs/objectRef" },
+        "object_type": { "type": "string", "pattern": "^[a-z][a-z-]*$" },
+        "instance": { "type": "integer", "minimum": 0, "maximum": 4194302 },
+        "property": { "$ref": "#/$defs/property" },
+        "array_index": { "type": "integer", "minimum": 0 },
+        "priority": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "value": { "$ref": "#/$defs/value" },
+        "reads": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["object", "properties"],
+            "properties": {
+              "object": { "$ref": "#/$defs/objectRef" },
+              "properties": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/property" } }
+            }
+          }
+        },
+        "writes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/write" } },
+        "process_id": { "type": "integer", "minimum": 0 },
+        "confirmed": { "type": "boolean" },
+        "lifetime": { "type": "integer", "minimum": 1 },
+        "cancel": { "type": "boolean" },
+        "range": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["by"],
+          "properties": {
+            "by": { "enum": ["position", "sequence", "all"] },
+            "index": { "type": "integer" },
+            "count": { "type": "integer" }
+          }
+        },
+        "state": { "description": "DCC: enable, disable, disable-initiation. ReinitializeDevice: the state number (clause 16.4)", "type": ["string", "integer"] },
+        "duration": { "description": "DCC time duration in minutes", "type": "integer", "minimum": 0 },
+        "password": { "type": "string" },
+        "data_base64": { "type": "string" },
+        "elements": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/destination" } },
+        "event_state_acked": { "enum": ["normal", "fault", "offnormal", "high-limit", "low-limit"] },
+        "time_stamp": { "description": "Event time stamp to acknowledge: \"event\" uses the object's Event_Time_Stamps entry for event_state_acked, or a date-time YYYY-MM-DDTHH:MM:SS", "type": "string" },
+        "vendor_id": { "type": "integer", "minimum": 0 },
+        "service_number": { "type": "integer", "minimum": 0 },
+        "parameters": { "type": "array", "items": { "$ref": "#/$defs/value" } },
+        "group": { "type": "integer", "minimum": 1 },
+        "inhibit": { "type": "boolean" },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["channel", "value"],
+            "properties": {
+              "channel": { "type": "integer", "minimum": 0, "maximum": 65535 },
+              "overriding_priority": { "type": "integer", "minimum": 0, "maximum": 16 },
+              "value": { "$ref": "#/$defs/value" }
+            }
+          }
+        },
+        "bdt": {
+          "type": "array",
+          "items": { "type": "string", "description": "HOST:PORT" }
+        },
+        "expect": { "$ref": "#/$defs/expect" }
+      },
+      "allOf": [
+        { "if": { "properties": { "service": { "const": "read-property" } } }, "then": { "required": ["object", "property"] } },
+        { "if": { "properties": { "service": { "const": "write-property" } } }, "then": { "required": ["object", "property", "value"] } },
+        { "if": { "properties": { "service": { "const": "read-property-multiple" } } }, "then": { "required": ["reads"] } },
+        { "if": { "properties": { "service": { "const": "write-property-multiple" } } }, "then": { "required": ["writes"] } },
+        { "if": { "properties": { "service": { "const": "subscribe-cov" } } }, "then": { "required": ["object", "process_id"] } },
+        { "if": { "properties": { "service": { "const": "read-range" } } }, "then": { "required": ["object", "property", "range"] } },
+        { "if": { "properties": { "service": { "enum": ["device-communication-control", "reinitialize-device"] } } }, "then": { "required": ["state"] } },
+        { "if": { "properties": { "service": { "const": "atomic-read-file" } } }, "then": { "required": ["object"] } },
+        { "if": { "properties": { "service": { "const": "atomic-write-file" } } }, "then": { "required": ["object", "data_base64"] } },
+        { "if": { "properties": { "service": { "enum": ["add-list-element", "remove-list-element"] } } }, "then": { "required": ["object", "property", "elements"] } },
+        { "if": { "properties": { "service": { "const": "create-object" } } }, "then": { "required": ["object_type"] } },
+        { "if": { "properties": { "service": { "const": "delete-object" } } }, "then": { "required": ["object"] } },
+        { "if": { "properties": { "service": { "const": "acknowledge-alarm" } } }, "then": { "required": ["object", "process_id", "event_state_acked", "time_stamp"] } },
+        { "if": { "properties": { "service": { "const": "unconfirmed-private-transfer" } } }, "then": { "required": ["vendor_id", "service_number"] } },
+        { "if": { "properties": { "service": { "const": "write-group" } } }, "then": { "required": ["group", "priority", "changes"] } },
+        { "if": { "properties": { "service": { "const": "write-bdt" } } }, "then": { "required": ["bdt"] } }
+      ]
+    }
+  }
+}

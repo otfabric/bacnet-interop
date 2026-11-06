@@ -305,3 +305,31 @@ noticed.
   audit or VT.
 - **bacnet-stack 1.6.1** has no GetEnrollmentSummary, TextMessage,
   ConfirmedPrivateTransfer or COV-multiple.
+
+## Client mode (unreleased)
+
+Peers acting as **clients** against a device under test
+([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)). Only
+bacnet-stack has a client mode so far: the upstream command-line tools at the
+same pin, unmodified. The go-bacnet server is the first device under test.
+
+Known behaviour of the tools:
+
+- **`bacrle`** (RemoveListElement) registers its reply handlers for
+  AddListElement (apps/remove-list-element/main.c), so it prints nothing for
+  the acknowledgement or an error. The scenario result is `known-difference`;
+  `server-services-v1` checks the removal by reading Recipient_List back.
+- **`bacge`** (GetEventInformation) cannot decode a reply with an empty list
+  of event summaries ("Decode of Ack returned length -1"), also from a
+  bacnet-stack device. The scenarios read a non-empty list only.
+- **`bacscov`** waits for the subscription lifetime before it exits, so the
+  scenarios use short lifetimes (5 s).
+- **Invoke IDs** are reused across tool runs, from the same source
+  address. A device that answers a repeated invoke ID from a cache instead
+  of executing it (clause 5.4.5 makes it a new request after the response)
+  answers a second DeleteObject with the first one's result.
+- **Foreign-device registration:** a tool started with `BACNET_BBMD_*`
+  prints its own Register-Foreign-Device result, so the BVLC table tools run
+  without registering.
+- **No segmentation:** the tools are built without it, so segmented
+  transactions have no bacnet-stack client evidence.

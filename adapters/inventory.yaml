@@ -40,6 +40,38 @@ adapters:
       reinitialize_device_warmstart: native
       segmented_confirmed_request_receive: unsupported
       peer_as_bbmd: native  # BBMD_ENABLED in device_server; BDT self-seed + Accept-FD
+    client_capabilities:  # unreleased; docs/CLIENT_DRIVER_CONTRACT.md
+      who_is_i_am: native  # bacwi
+      who_has_i_have: native  # bacwh
+      read_property: native  # bacrp
+      read_property_multiple: native  # bacrpm
+      write_property: native  # bacwp
+      write_property_multiple: native  # bacwpm
+      subscribe_cov: native  # bacscov; initial notification checked
+      read_range_by_position: native  # bacrr
+      device_communication_control: native  # bacdcc
+      reinitialize_device: native  # bacrd
+      atomic_read_file_stream: native  # bacarf
+      atomic_write_file_stream: native  # bacawf
+      add_list_element: native  # bacale
+      remove_list_element: native  # bacrle sends it, but registers its reply handlers for AddListElement and prints nothing (apps/remove-list-element/main.c); scenario result known-difference, removal checked by read-back
+      create_object: native  # bacco
+      delete_object: native  # bacdo
+      get_event_information: native  # bacge; an empty list fails to decode in the tool
+      acknowledge_alarm: native  # bacackalarm
+      time_synchronization: native  # bacts, bacts --utc
+      unconfirmed_private_transfer: native  # bacupt
+      write_group: native  # bacwg
+      foreign_device_registration: native  # --bbmd/--fd-ttl via BACNET_BBMD_* (dlenv.c)
+      read_bdt: native  # bacrbdt
+      read_fdt: native  # bacrfdt
+      write_bdt: native  # bacwbdt
+      segmentation: unsupported  # tools built without segmentation
+      subscribe_cov_property: unsupported  # no tool
+      get_alarm_summary: unsupported  # no tool
+      get_enrollment_summary: unsupported  # no tool
+      text_message: unsupported  # no tool
+      confirmed_private_transfer: unsupported  # no tool
 
   - id: bacpypes3
     image: ghcr.io/otfabric/bacnet-interop-bacpypes3

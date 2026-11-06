@@ -75,6 +75,56 @@ Environment: `BACNET_IP_PORT`, `DEVICE_FIXTURE_FILE`, `FIXTURE`,
 `ADAPTER_VERSION`, `BACNET_STACK_VERSION`, plus the upstream BACnet/IP
 variables such as `BACNET_BDT_ADDR_N` for additional BDT peers.
 
+## Client mode (unreleased)
+
+`client` as the first argument runs the image as a client against a device
+under test ([CLIENT_DRIVER_CONTRACT.md](../../docs/CLIENT_DRIVER_CONTRACT.md)):
+
+```bash
+docker run --rm --network <net> bacnet-interop-bacnet-stack:local client \
+  --target 10.89.0.10:47808 --device 1234 \
+  --scenarios /scenarios/server-baseline-v1.json
+```
+
+`client_driver.py` runs the upstream tools, built from `apps/` at the same
+pin and not modified, one process per scenario, and parses what they print:
+`bacwi`, `bacwh`, `bacrp`, `bacrpm`, `bacwp`, `bacwpm`, `bacscov`, `bacrr`,
+`bacdcc`, `bacrd`, `bacarf`, `bacawf`, `bacale`, `bacrle`, `bacco`, `bacdo`,
+`bacge`, `bacackalarm`, `bacts`, `bacupt`, `bacwg`, `bacrbdt`, `bacrfdt` and
+`bacwbdt`. Defaults: `BACNET_CLIENT_TIMEOUT_MS=3000`,
+`BACNET_CLIENT_RETRIES=1`.
+
+- **Binding:** the tools bind to the device by Who-Is. Their `--mac` option
+  is not used for confirmed services: bound that way, `bacrp` at the pin got
+  TSM Timeout against a device that answered by Who-Is. The DUT must
+  therefore be on the container's network or behind the BBMD given with
+  `--bbmd`; the driver checks that the I-Am came from `--target`.
+- **`--broadcast ADDR`** is passed to `bacwi --mac` for `who-is` scenarios.
+- **`--bbmd HOST:PORT`, `--fd-ttl S`** set `BACNET_BBMD_ADDRESS`,
+  `BACNET_BBMD_PORT` and `BACNET_BBMD_TIMETOLIVE` (dlenv.c), so each service
+  tool registers as a foreign device and broadcasts through the BBMD. The
+  BVLC table tools run without them: a registering tool prints its own
+  registration result.
+- **Outcomes:** `Error: APDU Timeout` (not bound) is `infra-error`;
+  `Error: TSM Timeout` after binding is a `fail` with `observed.timeout`. A
+  tool that crashes is `infra-error`.
+- **Name mapping:** `bacwpm`, `bacrr` and `bacdo` take numbers; the driver
+  maps the names the scenarios use.
+- **`bacarf`** runs in a scratch directory and writes the file there; the
+  driver returns its octets base64-encoded.
+- **`bacscov`** waits for the lifetime before it exits; the scenarios use 5 s.
+- **`bacrle`** prints nothing (its handlers are registered for
+  AddListElement): `known-difference` ([PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode-unreleased)).
+- **`bacge`** cannot decode an empty list of event summaries.
+- **Unconfirmed services** (`bacts`, `bacupt`, `bacwg`) report `sent`; the
+  consumer checks what the device received.
+- **No segmentation:** the tools are built without it.
+
+Cross-check: against this image in device mode, all 23 scenarios of
+`server-baseline-v1` pass. `server-services-v1` and `server-bbmd-v1` need
+`device-server-v1`, which this image does not serve; they were run against
+the go-bacnet server.
+
 ## Behaviour to know
 
 - **Broadcasts:** the stack receives the subnet-directed broadcast only. A
