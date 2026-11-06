@@ -47,9 +47,9 @@ BACnet4J (6.1.0 → 6.1.1), both without an adapter change:
 
 ## Next
 
-- **cB-Sigma (v0.13.0):** go-bacnet's `interop/` has no cbsigma tests yet; the
-  scenarios of [PEER_SUPPORT.md](PEER_SUPPORT.md#cb-sigma-cbsigma) were run
-  from a local branch of go-bacnet and belong in its suite. BACnet/IPv6 and
+- **cB-Sigma (v0.13.0):** client mode (contract 1.1) is not wired for it, and
+  `make client-matrix` does not run the reference clients against its
+  device; cB-Sigma's bacnet has a client that could serve. BACnet/IPv6 and
   BACnet/SC are out of scope (go-bacnet is IPv4 BACnet/IP only).
 - **System.IO.BACnet:** a global Who-Is to it through `bip-router` produces no
   I-Am (it works through `bacnet-stack-router`); not investigated. The

@@ -191,11 +191,9 @@ Apache-2.0, written from ANSI/ASHRAE 135-2024 and sharing one codec):
 [bacnet-sim](https://github.com/cB-Sigma/bacnet-sim) `v0.1.0`. Environment and
 behaviour: [adapters/cbsigma/README.md](adapters/cbsigma/README.md).
 
-go-bacnet's `interop/` has no cbsigma tests yet. The cells below come from
-go-bacnet `305e4a6` (v0.4.x, main) with a local test file run against the
-`cbsigma` image of this release candidate on linux/arm64 (Docker Desktop),
-three times, every run green. Until those tests are in go-bacnet, treat the
-column as the evidence of that run, not of go-bacnet's CI.
+The cells are asserted by go-bacnet's `interop/cbsigma_test.go`
+([go-bacnet#12](https://github.com/otfabric/go-bacnet/pull/12)) against the
+v0.13.0 image, with go-bacnet v0.6.0.
 
 | Scenario | device | sim |
 |---|:---:|:---:|
@@ -212,8 +210,9 @@ column as the evidence of that run, not of go-bacnet's CI.
 | COV subscribe / notify / cancel | ✅ | ✅ |
 | ReadRange byPosition, bySequenceNumber, byTime, paged | — | ✅ |
 | ReadRange bySequenceNumber refused (`CBSIGMA_REJECT_SEQ=1`) | — | ✅ services/optional-functionality-not-supported |
-| Segmented ReadRange answer (`CBSIGMA_MAX_APDU=128`, window 4 and 1) | — | ✅ |
-| A segment left out once (`CBSIGMA_DROP_SEG=2`) | — | ⚠ never resent: the client aborts (tsm-timeout) after its segment timeout, the next request succeeds |
+| Segmented ReadRange answer (`CBSIGMA_MAX_APDU=128`), client receive window 1 and 4 | — | ✅ |
+| Segmented RPM answer, client receive window 1, 2, 4 and 16 | ✅ | not exercised |
+| A segment left out once (`CBSIGMA_DROP_SEG=2` or `3`) | — | ⚠ inside a window the client NAKs and the simulator resends (✅ at window 4); at the end of a window (always at window 1) the simulator never resends on its own and the client aborts (tsm-timeout); the next request succeeds |
 | A segmented answer stopped (`CBSIGMA_STALL_SEG=2`) | — | ✅ the client aborts (tsm-timeout), the next request succeeds |
 | RPM / WPM rejected (`CBSIGMA_REJECT_RPM=1`, `CBSIGMA_REJECT_WPM=1`) | — | ✅ Reject unrecognized-service |
 | GetAlarmSummary, GetEventInformation (`CBSIGMA_EVENTS=1`) | — | A (the adapter encodes the answer) |
@@ -230,11 +229,11 @@ column as the evidence of that run, not of go-bacnet's CI.
 BACnet/IPv6 and BACnet/SC are out of scope because go-bacnet is a BACnet/IP
 (IPv4) client; cB-Sigma's bacnet has both, so this is not an upstream gap.
 
-Found with this peer, in go-bacnet (reported, not fixed here): with
-`client.WithSegmentWindow(n)`, n > 1, go-bacnet sends no Segment-ACK for the
-first segment of a segmented answer and every segmented answer times out;
-BACpypes3 0.0.110 shows the same. go-bacnet's default receive window (1) is
-not affected and is what the cells above used.
+Found with this peer: with `client.WithSegmentWindow(n)`, n > 1, go-bacnet
+up to v0.5.x sent no Segment-ACK for the first segment of a segmented answer,
+so every segmented answer timed out (BACpypes3 0.0.110 showed the same).
+Fixed in go-bacnet v0.6.0; its `TestSegmentedAnswerWithReceiveWindow` keeps
+it fixed against cbsigma and BACpypes3.
 
 ## Transport and network
 
