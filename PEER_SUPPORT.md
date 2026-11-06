@@ -309,10 +309,12 @@ noticed.
 ## Client mode (unreleased)
 
 Peers acting as **clients** against a device under test
-([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)).
-bacnet-stack (the upstream command-line tools) and BACnet4J (the upstream
-`LocalDevice`) have a client mode, both at their pins, unmodified. The
-go-bacnet server is the first device under test.
+([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)):
+bacnet-stack (the upstream command-line tools), BACnet4J (the upstream
+`LocalDevice`) and BACpypes3 (its upstream Application), each at its pin,
+unmodified. The go-bacnet server is the first device under test.
+
+### bacnet-stack
 
 Known behaviour of the bacnet-stack tools:
 
@@ -335,6 +337,8 @@ Known behaviour of the bacnet-stack tools:
 - **No segmentation:** the tools are built without it, so segmented
   transactions have no bacnet-stack client evidence.
 
+### BACnet4J
+
 Known behaviour of the BACnet4J 6.1.1 client:
 
 - **SubscribeCOVPropertyMultiple-Error** is decoded as a CHOICE of
@@ -354,3 +358,41 @@ Known behaviour of the BACnet4J 6.1.1 client:
   (`IpNetwork` serves them as a BBMD only): `unsupported`.
 - **Segmentation:** both directions work; `server-extended-v1` reads and
   writes a 3000-octet file in one request each.
+
+### BACpypes3
+
+BACpypes3 0.0.110 cannot decode some answers; its
+ApplicationServiceAccessPoint drops them and the request would time out. The
+driver detects the failed decode and reports `known-difference` with the
+answer's octets ([adapters/bacpypes3/README.md](adapters/bacpypes3/README.md#client-mode-unreleased)):
+
+- **ChangeList-Error** (AddListElement, RemoveListElement): `ChangeListError`
+  has no `service_choice`, so constructing it raises AttributeError
+  (`ale.unknown-object`).
+- **Error of SubscribeCOVProperty:** service choice 28 is not in its
+  `error_types` ("unrecognized service choice: 28";
+  `scovp.unknown-object`, `scovp.unknown-property`).
+- **Empty GetAlarmSummary-ACK and GetEnrollmentSummary-ACK:** the list is a
+  required element and an empty SEQUENCE OF has no octets
+  (`gas.normal`, `gas.av2.after-normal`, `ges.offnormal-filter.normal`).
+
+Other behaviour:
+
+- **SubscribeCOVPropertyMultiple** is `unsupported`: no request APDU and no
+  COV-multiple notification type.
+- **Foreign mode** takes every BVLC-Result as a registration result: a
+  Write-BDT NAK never reaches `BVLLServiceElement` and sets the registration
+  status to 0x0010. The BVLC table services run from an unregistered link
+  layer.
+- **Oversized segments:** a segmented request carries Max APDU octets of
+  service data after the 6-octet segment header, so each segment is 1482
+  octets for a device that accepts 1476. A device that bounds an APDU by
+  its Max_APDU_Length_Accepted drops them; the go-bacnet server accepts
+  them.
+- **Enumeration names** come from camel case (error code 22 is
+  `property-is-not-alist`); the driver compares names without hyphens.
+
+Against the go-bacnet server (go-bacnet `interop/server_clients_test.go`,
+unreleased image): `server-baseline-v1` 23 of 23 pass; `server-services-v1`
+35 pass, 1 known-difference; `server-bbmd-v1` 5 of 5 pass;
+`server-extended-v1` 15 pass, 5 known-difference, 3 unsupported.

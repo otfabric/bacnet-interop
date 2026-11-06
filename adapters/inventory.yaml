@@ -99,6 +99,40 @@ adapters:
       reinitialize_device_warmstart: adapter-shim  # SimpleACK; no process restart
       segmented_confirmed_request_receive: native
       peer_as_bbmd: native  # BACNET_BBMD=1
+    client_capabilities:  # unreleased; docs/CLIENT_DRIVER_CONTRACT.md; upstream Application, APDU classes
+      who_is_i_am: native  # Application.who_is
+      who_has_i_have: native  # Application.who_has
+      read_property: native  # ReadPropertyRequest
+      read_property_multiple: native  # Application.read_property_multiple
+      write_property: native  # WritePropertyRequest
+      write_property_multiple: native  # WritePropertyMultipleRequest; WritePropertyMultipleError decoded
+      subscribe_cov: native  # SubscribeCOVRequest; notifications decoded upstream, recorded by adapter do_* handlers
+      subscribe_cov_property: native  # SubscribeCOVPropertyRequest; its Error is not decodable (service 28 not in error_types): known-difference
+      subscribe_cov_property_multiple: unsupported  # no request APDU, no COV-multiple notification type
+      read_range_by_position: native  # ReadRangeRequest, LogRecord list
+      device_communication_control: native
+      reinitialize_device: native
+      atomic_read_file_stream: native
+      atomic_write_file_stream: native
+      add_list_element: native  # ChangeList-Error not decodable (ChangeListError has no service_choice): known-difference
+      remove_list_element: native  # as add_list_element
+      create_object: native  # CreateObjectError decoded
+      delete_object: native
+      get_event_information: native
+      acknowledge_alarm: native
+      get_alarm_summary: native  # an empty GetAlarmSummary-ACK is not decodable: known-difference
+      get_enrollment_summary: native  # an empty GetEnrollmentSummary-ACK is not decodable: known-difference
+      text_message: native  # Confirmed and UnconfirmedTextMessageRequest
+      confirmed_private_transfer: native
+      time_synchronization: native
+      unconfirmed_private_transfer: native
+      write_group: native
+      foreign_device_registration: native  # IPMode.foreign network port, --bbmd/--fd-ttl
+      read_bdt: native  # BVLLServiceElement on an unregistered NormalLinkLayer (foreign mode takes every BVLC-Result as registration)
+      read_fdt: native  # as read_bdt
+      write_bdt: native  # as read_bdt
+      segmentation: native  # segmented-both: segmented ComplexACK and segmented request
+      undecodable_answer_detection: adapter-shim  # sap_response wrapper decodes a copy of each Error/ComplexACK and records failures
 
   - id: bacnet4j
     image: ghcr.io/otfabric/bacnet-interop-bacnet4j
