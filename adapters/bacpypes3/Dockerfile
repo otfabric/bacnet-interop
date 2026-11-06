@@ -1,4 +1,4 @@
-# bacnet-interop BACpypes3 adapter (device server).
+# bacnet-interop BACpypes3 adapter (device server and client mode).
 #
 # Build from repository root:
 #   docker buildx build --platform=linux/amd64 \
@@ -40,6 +40,10 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
 COPY adapters/bacpypes3/device_server.py /usr/local/bin/device_server.py
+COPY adapters/bacpypes3/client_driver.py /usr/local/bin/client_driver.py
+COPY adapters/bacpypes3/entrypoint.sh /usr/local/bin/entrypoint.sh
+# Client mode (docs/CLIENT_DRIVER_CONTRACT.md): the published scenario files.
+COPY fixtures/scenarios/ /scenarios/
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
 COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
 COPY fixtures/device/device-baseline-v3.json /fixtures/device/device-baseline-v3.json
@@ -49,10 +53,12 @@ COPY fixtures/device/device-baseline-v6.json /fixtures/device/device-baseline-v6
 COPY fixtures/device/device-baseline-v7.json /fixtures/device/device-baseline-v7.json
 COPY fixtures/device/device-baseline-v8.json /fixtures/device/device-baseline-v8.json
 
-RUN chmod 755 /usr/local/bin/device_server.py
+RUN chmod 755 /usr/local/bin/device_server.py /usr/local/bin/client_driver.py /usr/local/bin/entrypoint.sh
 
 USER adapter
 EXPOSE 47808/udp
 
-ENTRYPOINT ["python3", "/usr/local/bin/device_server.py"]
+# "client" as the first argument selects client mode; the device server is the
+# default.
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []

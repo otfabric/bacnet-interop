@@ -1,0 +1,64 @@
+{
+  "id": "server-bbmd-v1",
+  "description": "Foreign-device registration and BBMD management against a server that is its own BBMD; run with --bbmd.",
+  "requires_fixture": "device-server-v1",
+  "requires_bbmd": true,
+  "scenarios": [
+    {
+      "id": "who-is.via-bbmd",
+      "service": "who-is",
+      "low": 1234,
+      "high": 1234,
+      "description": "Sent as Distribute-Broadcast-To-Network, which the BBMD accepts from registered foreign devices only",
+      "expect": {
+        "i-am": [
+          1234
+        ]
+      }
+    },
+    {
+      "id": "rp.device.object-name",
+      "service": "read-property",
+      "object": "device,1234",
+      "property": "object-name",
+      "expect": {
+        "value": {
+          "type": "character-string",
+          "value": "InteropDevice"
+        }
+      }
+    },
+    {
+      "id": "read-fdt.contains-client",
+      "service": "read-fdt",
+      "expect": {
+        "fdt": {
+          "contains_self": true,
+          "ttl": 60
+        }
+      }
+    },
+    {
+      "id": "read-bdt",
+      "service": "read-bdt",
+      "expect": {
+        "bdt": [
+          {
+            "address": "bbmd",
+            "mask": "255.255.255.255"
+          }
+        ]
+      }
+    },
+    {
+      "id": "write-bdt.nak",
+      "service": "write-bdt",
+      "bdt": [
+        "bbmd"
+      ],
+      "expect": {
+        "bvlc_result": "write-bdt-nak"
+      }
+    }
+  ]
+}

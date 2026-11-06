@@ -3,7 +3,7 @@
 # Assertions live in go-bacnet/interop; this file documents peer pins and evidence types.
 
 schema_version: "1"
-adapter_version: "0.12.0"
+adapter_version: "0.13.0"
 fixture: device-baseline-v2
 fixture_frozen: device-baseline-v1
 # Fixtures shipped by one adapter only (selected with DEVICE_FIXTURE_FILE / FIXTURE).
@@ -40,6 +40,38 @@ adapters:
       reinitialize_device_warmstart: native
       segmented_confirmed_request_receive: unsupported
       peer_as_bbmd: native  # BBMD_ENABLED in device_server; BDT self-seed + Accept-FD
+    client_capabilities:  # docs/CLIENT_DRIVER_CONTRACT.md
+      who_is_i_am: native  # bacwi
+      who_has_i_have: native  # bacwh
+      read_property: native  # bacrp
+      read_property_multiple: native  # bacrpm
+      write_property: native  # bacwp
+      write_property_multiple: native  # bacwpm
+      subscribe_cov: native  # bacscov; initial notification checked
+      read_range_by_position: native  # bacrr
+      device_communication_control: native  # bacdcc
+      reinitialize_device: native  # bacrd
+      atomic_read_file_stream: native  # bacarf
+      atomic_write_file_stream: native  # bacawf
+      add_list_element: native  # bacale
+      remove_list_element: native  # bacrle sends it, but registers its reply handlers for AddListElement and prints nothing (apps/remove-list-element/main.c); scenario result known-difference, removal checked by read-back
+      create_object: native  # bacco
+      delete_object: native  # bacdo
+      get_event_information: native  # bacge; an empty list fails to decode in the tool
+      acknowledge_alarm: native  # bacackalarm
+      time_synchronization: native  # bacts, bacts --utc
+      unconfirmed_private_transfer: native  # bacupt
+      write_group: native  # bacwg
+      foreign_device_registration: native  # --bbmd/--fd-ttl via BACNET_BBMD_* (dlenv.c)
+      read_bdt: native  # bacrbdt
+      read_fdt: native  # bacrfdt
+      write_bdt: native  # bacwbdt
+      segmentation: unsupported  # tools built without segmentation
+      subscribe_cov_property: unsupported  # no tool
+      get_alarm_summary: unsupported  # no tool
+      get_enrollment_summary: unsupported  # no tool
+      text_message: unsupported  # no tool
+      confirmed_private_transfer: unsupported  # no tool
 
   - id: bacpypes3
     image: ghcr.io/otfabric/bacnet-interop-bacpypes3
@@ -67,6 +99,40 @@ adapters:
       reinitialize_device_warmstart: adapter-shim  # SimpleACK; no process restart
       segmented_confirmed_request_receive: native
       peer_as_bbmd: native  # BACNET_BBMD=1
+    client_capabilities:  # docs/CLIENT_DRIVER_CONTRACT.md; upstream Application, APDU classes
+      who_is_i_am: native  # Application.who_is
+      who_has_i_have: native  # Application.who_has
+      read_property: native  # ReadPropertyRequest
+      read_property_multiple: native  # Application.read_property_multiple
+      write_property: native  # WritePropertyRequest
+      write_property_multiple: native  # WritePropertyMultipleRequest; WritePropertyMultipleError decoded
+      subscribe_cov: native  # SubscribeCOVRequest; notifications decoded upstream, recorded by adapter do_* handlers
+      subscribe_cov_property: native  # SubscribeCOVPropertyRequest; its Error is not decodable (service 28 not in error_types): known-difference
+      subscribe_cov_property_multiple: unsupported  # no request APDU, no COV-multiple notification type
+      read_range_by_position: native  # ReadRangeRequest, LogRecord list
+      device_communication_control: native
+      reinitialize_device: native
+      atomic_read_file_stream: native
+      atomic_write_file_stream: native
+      add_list_element: native  # ChangeList-Error not decodable (ChangeListError has no service_choice): known-difference
+      remove_list_element: native  # as add_list_element
+      create_object: native  # CreateObjectError decoded
+      delete_object: native
+      get_event_information: native
+      acknowledge_alarm: native
+      get_alarm_summary: native  # an empty GetAlarmSummary-ACK is not decodable: known-difference
+      get_enrollment_summary: native  # an empty GetEnrollmentSummary-ACK is not decodable: known-difference
+      text_message: native  # Confirmed and UnconfirmedTextMessageRequest
+      confirmed_private_transfer: native
+      time_synchronization: native
+      unconfirmed_private_transfer: native
+      write_group: native
+      foreign_device_registration: native  # IPMode.foreign network port, --bbmd/--fd-ttl
+      read_bdt: native  # BVLLServiceElement on an unregistered NormalLinkLayer (foreign mode takes every BVLC-Result as registration)
+      read_fdt: native  # as read_bdt
+      write_bdt: native  # as read_bdt
+      segmentation: native  # segmented-both: segmented ComplexACK and segmented request
+      undecodable_answer_detection: adapter-shim  # sap_response wrapper decodes a copy of each Error/ComplexACK and records failures
 
   - id: bacnet4j
     image: ghcr.io/otfabric/bacnet-interop-bacnet4j
@@ -96,6 +162,39 @@ adapters:
       reinitialize_device_warmstart: adapter-shim  # handler SimpleACK; no process restart
       segmented_confirmed_request_receive: unsupported  # rejects segmented confirmed requests
       peer_as_bbmd: native  # BACNET_BBMD=1
+    client_capabilities:  # docs/CLIENT_DRIVER_CONTRACT.md; ClientDriver.java over LocalDevice
+      who_is_i_am: native  # WhoIsRequest; I-Am collected by iAmReceived
+      who_has_i_have: native  # WhoHasRequest; iHaveReceived
+      read_property: native
+      read_property_multiple: native
+      write_property: native
+      write_property_multiple: native
+      subscribe_cov: native  # initial notification via covNotificationReceived
+      read_range_by_position: native
+      device_communication_control: native
+      reinitialize_device: native
+      atomic_read_file_stream: native
+      atomic_write_file_stream: native
+      add_list_element: native
+      remove_list_element: native
+      create_object: native
+      delete_object: native
+      get_event_information: native
+      acknowledge_alarm: native
+      time_synchronization: native
+      unconfirmed_private_transfer: native
+      write_group: native  # WriteGroupRequest encoder (the stack cannot serve it)
+      foreign_device_registration: native  # IpNetwork.registerAsForeignDevice
+      read_bdt: unsupported  # IpNetwork serves BVLC table functions as a BBMD only
+      read_fdt: unsupported
+      write_bdt: unsupported
+      segmentation: native  # segmented ComplexACK reassembly and segmented requests (DefaultTransport)
+      subscribe_cov_property: native
+      subscribe_cov_property_multiple: adapter-shim  # request and error native; COVNotificationMultiple decoded by the stack but handle() throws NotImplementedException, seen in requestReceived. The error's firstFailedSubscription is dropped (decoded as a CHOICE): known-difference
+      get_alarm_summary: native
+      get_enrollment_summary: native
+      text_message: native  # confirmed and unconfirmed
+      confirmed_private_transfer: native
 
   - id: worldiety
     image: ghcr.io/otfabric/bacnet-interop-worldiety
@@ -179,7 +278,7 @@ adapters:
     upstream_version: "bacnet v0.2.0, bacnet-sim v0.1.0"
     upstream_commit: "43314a7b2979e86e55b759fbc6b32a587dcc1a37 (bacnet), 8ca57e10b4feea721c75a995fd3668af4a037b39 (bacnet-sim)"
     role: peer-oracle
-    since: "0.12.0"
+    since: "0.13.0"
     roles: [device, sim]  # CBSIGMA_ROLE; device is the default
     evidence:
       bvlc: native

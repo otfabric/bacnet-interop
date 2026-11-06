@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/otfabric/bacnet-interop/schemas/client-result-line-v1.schema.json",
+  "title": "bacnet-interop client-mode output line v1",
+  "description": "One JSON line an image writes to stdout in client mode (docs/CLIENT_DRIVER_CONTRACT.md): ready first, one result per scenario, done last.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "mode", "adapter", "version", "peer_version", "scenarios"],
+      "properties": {
+        "event": { "const": "ready" },
+        "mode": { "const": "client" },
+        "adapter": { "type": "string" },
+        "version": { "type": "string" },
+        "peer_version": { "type": "string" },
+        "scenarios": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "scenario", "service", "outcome", "durationMs"],
+      "properties": {
+        "event": { "const": "result" },
+        "scenario": { "type": "string" },
+        "service": { "type": "string" },
+        "outcome": { "enum": ["pass", "fail", "unsupported", "not-tested", "known-difference", "infra-error"] },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "observed": { "description": "What the peer's client decoded, in the shape of the scenario's expect" },
+        "detail": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "summary"],
+      "properties": {
+        "event": { "const": "done" },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pass", "fail", "unsupported", "not-tested", "known-difference", "infra-error"],
+          "properties": {
+            "pass": { "type": "integer", "minimum": 0 },
+            "fail": { "type": "integer", "minimum": 0 },
+            "unsupported": { "type": "integer", "minimum": 0 },
+            "not-tested": { "type": "integer", "minimum": 0 },
+            "known-difference": { "type": "integer", "minimum": 0 },
+            "infra-error": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  ]
+}

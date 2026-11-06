@@ -1,0 +1,65 @@
+{
+  "id": "server-baseline-v1",
+  "description": "Discovery, ReadProperty, ReadPropertyMultiple, WriteProperty and WritePropertyMultiple with their error cases, against a device serving device-baseline-v2. Each scenario stands alone; none reads a value another one writes.",
+  "requires_fixture": "device-baseline-v2",
+  "scenarios": [
+    { "id": "who-is.range", "service": "who-is", "low": 1234, "high": 1234, "expect": { "i-am": [1234] } },
+    { "id": "who-is.outside-range", "service": "who-is", "low": 5000, "high": 5000, "expect": { "i-am": [] } },
+    { "id": "who-is.global", "service": "who-is", "expect": { "i-am": [1234] } },
+    { "id": "who-has.name", "service": "who-has", "name": "AV-1", "expect": { "i-have": [{ "device": 1234, "object": "analog-value,1" }] } },
+    { "id": "who-has.object", "service": "who-has", "object": "analog-value,1", "expect": { "i-have": [{ "device": 1234, "object": "analog-value,1" }] } },
+    { "id": "who-has.unknown-name", "service": "who-has", "name": "NoSuchName", "expect": { "i-have": [] } },
+
+    { "id": "rp.device.object-name", "service": "read-property", "object": "device,1234", "property": "object-name",
+      "expect": { "value": { "type": "character-string", "value": "InteropDevice" } } },
+    { "id": "rp.av1.object-name", "service": "read-property", "object": "analog-value,1", "property": "object-name",
+      "expect": { "value": { "type": "character-string", "value": "AV-1" } } },
+    { "id": "rp.av1.object-type", "service": "read-property", "object": "analog-value,1", "property": "object-type",
+      "expect": { "value": { "type": "enumerated", "value": "analog-value" } } },
+    { "id": "rp.av1.object-identifier", "service": "read-property", "object": "analog-value,1", "property": "object-identifier",
+      "expect": { "value": { "type": "object-identifier", "value": "analog-value,1" } } },
+    { "id": "rp.bv1.present-value", "service": "read-property", "object": "binary-value,1", "property": "present-value",
+      "expect": { "value": { "type": "enumerated", "value": "inactive" } } },
+    { "id": "rp.unknown-object", "service": "read-property", "object": "analog-value,999", "property": "present-value",
+      "expect": { "error": { "class": "object", "code": "unknown-object" } } },
+    { "id": "rp.unknown-property", "service": "read-property", "object": "analog-value,1", "property": 9999,
+      "expect": { "error": { "class": "property", "code": "unknown-property" } } },
+    { "id": "rp.not-an-array", "service": "read-property", "object": "analog-value,1", "property": "present-value", "array_index": 1,
+      "expect": { "error": { "class": "property", "code": "property-is-not-an-array" } } },
+
+    { "id": "rpm.av1.name-and-type", "service": "read-property-multiple",
+      "reads": [{ "object": "analog-value,1", "properties": ["object-name", "object-type"] }],
+      "expect": { "values": [
+        { "object": "analog-value,1", "property": "object-name", "value": { "type": "character-string", "value": "AV-1" } },
+        { "object": "analog-value,1", "property": "object-type", "value": { "type": "enumerated", "value": "analog-value" } }
+      ] } },
+    { "id": "rpm.unknown-object", "service": "read-property-multiple",
+      "reads": [{ "object": "analog-value,1", "properties": ["object-name"] }, { "object": "analog-value,999", "properties": ["object-name"] }],
+      "expect": { "values": [
+        { "object": "analog-value,1", "property": "object-name", "value": { "type": "character-string", "value": "AV-1" } },
+        { "object": "analog-value,999", "property": "object-name", "error": { "class": "object", "code": "unknown-object" } }
+      ] } },
+
+    { "id": "wp.av1.pv.priority8", "service": "write-property", "object": "analog-value,1", "property": "present-value", "priority": 8,
+      "value": { "type": "real", "value": 42.0 }, "expect": { "ack": true } },
+    { "id": "wp.av1.pv.relinquish8", "service": "write-property", "object": "analog-value,1", "property": "present-value", "priority": 8,
+      "value": { "type": "null" }, "expect": { "ack": true } },
+    { "id": "wp.av1.pv.wrong-type", "service": "write-property", "object": "analog-value,1", "property": "present-value", "priority": 8,
+      "value": { "type": "character-string", "value": "hello" }, "expect": { "error": { "class": "property", "code": "invalid-data-type" } } },
+    { "id": "wp.unknown-object", "service": "write-property", "object": "analog-value,999", "property": "present-value", "priority": 8,
+      "value": { "type": "real", "value": 1.0 }, "expect": { "error": { "class": "object", "code": "unknown-object" } } },
+
+    { "id": "wpm.av1.pv.priority8", "service": "write-property-multiple",
+      "writes": [{ "object": "analog-value,1", "property": "present-value", "priority": 8, "value": { "type": "real", "value": 43.0 } }],
+      "expect": { "ack": true } },
+    { "id": "wpm.unknown-object-second", "service": "write-property-multiple",
+      "writes": [
+        { "object": "analog-value,1", "property": "present-value", "priority": 8, "value": { "type": "real", "value": 44.0 } },
+        { "object": "analog-value,999", "property": "present-value", "priority": 8, "value": { "type": "real", "value": 1.0 } }
+      ],
+      "expect": { "error": { "class": "object", "code": "unknown-object", "first_failed": { "object": "analog-value,999", "property": "present-value" } } } },
+    { "id": "wpm.wrong-type", "service": "write-property-multiple",
+      "writes": [{ "object": "analog-value,1", "property": "present-value", "priority": 8, "value": { "type": "character-string", "value": "nope" } }],
+      "expect": { "error": { "class": "property", "code": "invalid-data-type", "first_failed": { "object": "analog-value,1", "property": "present-value" } } } }
+  ]
+}

@@ -1,0 +1,610 @@
+{
+  "id": "server-services-v1",
+  "description": "COV, ReadRange, device management, files, lists, object lifecycle, events and unconfirmed services against a server that serves device-server-v1. Scenarios depend on the ones before them (file content, Recipient_List, AV-2 event state).",
+  "requires_fixture": "device-server-v1",
+  "scenarios": [
+    {
+      "id": "cov.av1.subscribe-unconfirmed",
+      "service": "subscribe-cov",
+      "object": "analog-value,1",
+      "process_id": 7,
+      "confirmed": false,
+      "lifetime": 5,
+      "description": "The initial notification follows the acknowledgement (clause 13.1); bacscov listens for the lifetime",
+      "expect": {
+        "subscribed": {
+          "notification": true
+        }
+      }
+    },
+    {
+      "id": "cov.av1.subscribe-confirmed",
+      "service": "subscribe-cov",
+      "object": "analog-value,1",
+      "process_id": 8,
+      "confirmed": true,
+      "lifetime": 5,
+      "expect": {
+        "subscribed": {
+          "notification": false
+        }
+      }
+    },
+    {
+      "id": "cov.av1.cancel",
+      "service": "subscribe-cov",
+      "object": "analog-value,1",
+      "process_id": 7,
+      "cancel": true,
+      "expect": {
+        "subscribed": {
+          "notification": false
+        }
+      }
+    },
+    {
+      "id": "cov.unknown-object",
+      "service": "subscribe-cov",
+      "object": "analog-value,999",
+      "process_id": 7,
+      "confirmed": false,
+      "lifetime": 5,
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "unknown-object"
+        }
+      }
+    },
+    {
+      "id": "rr.tl1.by-position",
+      "service": "read-range",
+      "object": "trend-log,1",
+      "property": "log-buffer",
+      "range": {
+        "by": "position",
+        "index": 1,
+        "count": 10
+      },
+      "expect": {
+        "records": [
+          {
+            "timestamp": "2009-01-01T00:00:00",
+            "value": {
+              "type": "real",
+              "value": 0.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T00:15:00",
+            "value": {
+              "type": "real",
+              "value": 1.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T00:30:00",
+            "value": {
+              "type": "real",
+              "value": 2.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T00:45:00",
+            "value": {
+              "type": "real",
+              "value": 3.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T01:00:00",
+            "value": {
+              "type": "real",
+              "value": 4.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T01:15:00",
+            "value": {
+              "type": "real",
+              "value": 5.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T01:30:00",
+            "value": {
+              "type": "real",
+              "value": 6.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T01:45:00",
+            "value": {
+              "type": "real",
+              "value": 7.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T02:00:00",
+            "value": {
+              "type": "real",
+              "value": 8.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T02:15:00",
+            "value": {
+              "type": "real",
+              "value": 9.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "rr.tl1.by-position-middle",
+      "service": "read-range",
+      "object": "trend-log,1",
+      "property": "log-buffer",
+      "range": {
+        "by": "position",
+        "index": 4,
+        "count": 3
+      },
+      "expect": {
+        "records": [
+          {
+            "timestamp": "2009-01-01T00:45:00",
+            "value": {
+              "type": "real",
+              "value": 3.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T01:00:00",
+            "value": {
+              "type": "real",
+              "value": 4.0
+            }
+          },
+          {
+            "timestamp": "2009-01-01T01:15:00",
+            "value": {
+              "type": "real",
+              "value": 5.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "rr.av1.not-a-list",
+      "service": "read-range",
+      "object": "analog-value,1",
+      "property": "present-value",
+      "range": {
+        "by": "position",
+        "index": 1,
+        "count": 1
+      },
+      "expect": {
+        "error": {
+          "class": "services",
+          "code": "property-is-not-a-list"
+        }
+      }
+    },
+    {
+      "id": "dcc.disable-initiation",
+      "service": "device-communication-control",
+      "state": "disable-initiation",
+      "duration": 1,
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "dcc.enable",
+      "service": "device-communication-control",
+      "state": "enable",
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "dcc.disable",
+      "service": "device-communication-control",
+      "state": "disable",
+      "duration": 1,
+      "description": "DISABLE is refused from protocol revision 20 (clause 16.1)",
+      "expect": {
+        "error": {
+          "class": "services",
+          "code": "service-request-denied"
+        }
+      }
+    },
+    {
+      "id": "reinit.warmstart",
+      "service": "reinitialize-device",
+      "state": 1,
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "reinit.undefined-state",
+      "service": "reinitialize-device",
+      "state": 9,
+      "expect": {
+        "reject": "Undefined Enumeration"
+      }
+    },
+    {
+      "id": "arf.file1",
+      "service": "atomic-read-file",
+      "object": "file,1",
+      "expect": {
+        "octets_base64": "aGVsbG8td29ybGQtc3RyZWFtLWZpbGUtZGF0YQ=="
+      }
+    },
+    {
+      "id": "awf.file1",
+      "service": "atomic-write-file",
+      "object": "file,1",
+      "data_base64": "SEVMTE8=",
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "arf.file1.after-write",
+      "service": "atomic-read-file",
+      "object": "file,1",
+      "expect": {
+        "octets_base64": "SEVMTE8td29ybGQtc3RyZWFtLWZpbGUtZGF0YQ=="
+      }
+    },
+    {
+      "id": "arf.record-file2",
+      "service": "atomic-read-file",
+      "object": "file,2",
+      "description": "bacarf reads with stream access",
+      "expect": {
+        "error": {
+          "class": "services",
+          "code": "invalid-file-access-method"
+        }
+      }
+    },
+    {
+      "id": "arf.unknown-object",
+      "service": "atomic-read-file",
+      "object": "file,99",
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "unknown-object"
+        }
+      }
+    },
+    {
+      "id": "ale.nc1",
+      "service": "add-list-element",
+      "object": "notification-class,1",
+      "property": "recipient-list",
+      "elements": [
+        {
+          "valid_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "from_time": "0:00:00.00",
+          "to_time": "23:59:59.99",
+          "recipient": {
+            "device": 4000
+          },
+          "process_id": 7,
+          "confirmed": false,
+          "transitions": [
+            "to-offnormal",
+            "to-fault",
+            "to-normal"
+          ]
+        }
+      ],
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "rp.nc1.recipient-list",
+      "service": "read-property",
+      "object": "notification-class,1",
+      "property": "recipient-list",
+      "expect": {
+        "recipients": [
+          {
+            "valid_days": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "from_time": "0:00:00.00",
+            "to_time": "23:59:59.99",
+            "recipient": {
+              "device": 4000
+            },
+            "process_id": 7,
+            "confirmed": false,
+            "transitions": [
+              "to-offnormal",
+              "to-fault",
+              "to-normal"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ale.unknown-object",
+      "service": "add-list-element",
+      "object": "notification-class,99",
+      "property": "recipient-list",
+      "elements": [
+        {
+          "valid_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "from_time": "0:00:00.00",
+          "to_time": "23:59:59.99",
+          "recipient": {
+            "device": 4000
+          },
+          "process_id": 7,
+          "confirmed": false,
+          "transitions": [
+            "to-offnormal",
+            "to-fault",
+            "to-normal"
+          ]
+        }
+      ],
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "unknown-object",
+          "first_failed_element": 0
+        }
+      }
+    },
+    {
+      "id": "rle.nc1",
+      "service": "remove-list-element",
+      "object": "notification-class,1",
+      "property": "recipient-list",
+      "elements": [
+        {
+          "valid_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "from_time": "0:00:00.00",
+          "to_time": "23:59:59.99",
+          "recipient": {
+            "device": 4000
+          },
+          "process_id": 7,
+          "confirmed": false,
+          "transitions": [
+            "to-offnormal",
+            "to-fault",
+            "to-normal"
+          ]
+        }
+      ],
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "rp.nc1.recipient-list.after-remove",
+      "service": "read-property",
+      "object": "notification-class,1",
+      "property": "recipient-list",
+      "expect": {
+        "recipients": []
+      }
+    },
+    {
+      "id": "co.av150",
+      "service": "create-object",
+      "object_type": "analog-value",
+      "instance": 150,
+      "expect": {
+        "created": "analog-value,150"
+      }
+    },
+    {
+      "id": "do.av150",
+      "service": "delete-object",
+      "object": "analog-value,150",
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "do.av150.again",
+      "service": "delete-object",
+      "object": "analog-value,150",
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "unknown-object"
+        }
+      }
+    },
+    {
+      "id": "do.device",
+      "service": "delete-object",
+      "object": "device,1234",
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "object-deletion-not-permitted"
+        }
+      }
+    },
+    {
+      "id": "co.not-creatable",
+      "service": "create-object",
+      "object_type": "binary-value",
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "dynamic-creation-not-supported"
+        }
+      }
+    },
+    {
+      "id": "wp.av2.high",
+      "service": "write-property",
+      "object": "analog-value,2",
+      "property": "present-value",
+      "value": {
+        "type": "real",
+        "value": 90.0
+      },
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "ge.av2.high-limit",
+      "service": "get-event-information",
+      "expect": {
+        "events": [
+          {
+            "object": "analog-value,2",
+            "event_state": "high-limit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ack.av2",
+      "service": "acknowledge-alarm",
+      "object": "analog-value,2",
+      "process_id": 7,
+      "event_state_acked": "high-limit",
+      "time_stamp": "event",
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "ack.av1.no-alarm",
+      "service": "acknowledge-alarm",
+      "object": "analog-value,1",
+      "process_id": 7,
+      "event_state_acked": "high-limit",
+      "time_stamp": "2009-01-01T00:00:00",
+      "expect": {
+        "error": {
+          "class": "object",
+          "code": "no-alarm-configured"
+        }
+      }
+    },
+    {
+      "id": "wp.av2.normal",
+      "service": "write-property",
+      "object": "analog-value,2",
+      "property": "present-value",
+      "value": {
+        "type": "real",
+        "value": 50.0
+      },
+      "expect": {
+        "ack": true
+      }
+    },
+    {
+      "id": "ts.local",
+      "service": "time-synchronization",
+      "expect": {
+        "sent": {
+          "operation": "time-synchronization"
+        }
+      }
+    },
+    {
+      "id": "ts.utc",
+      "service": "utc-time-synchronization",
+      "expect": {
+        "sent": {
+          "operation": "utc-time-synchronization"
+        }
+      }
+    },
+    {
+      "id": "upt.vendor999",
+      "service": "unconfirmed-private-transfer",
+      "vendor_id": 999,
+      "service_number": 1,
+      "parameters": [
+        {
+          "type": "character-string",
+          "value": "hello"
+        }
+      ],
+      "expect": {
+        "sent": {
+          "operation": "unconfirmed-private-transfer"
+        }
+      }
+    },
+    {
+      "id": "wg.group1",
+      "service": "write-group",
+      "group": 1,
+      "priority": 8,
+      "inhibit": true,
+      "changes": [
+        {
+          "channel": 1,
+          "overriding_priority": 0,
+          "value": {
+            "type": "real",
+            "value": 1.0
+          }
+        }
+      ],
+      "expect": {
+        "sent": {
+          "operation": "write-group"
+        }
+      }
+    }
+  ]
+}

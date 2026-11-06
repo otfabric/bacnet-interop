@@ -51,6 +51,13 @@ jobs:
           BACNET_STACK_ROUTER_IMAGE: bacnet-interop-bacnet-stack-router:local
           BACNET_STACK_ROUTER_REQUIRED: "1"
 
+      - name: Client mode against the bacnet-stack device (server-baseline-v1)
+        run: make client-matrix CLIENT_MATRIX_FLAGS=--all-devices
+        env:
+          BACNET_STACK_IMAGE: bacnet-interop-bacnet-stack:local
+          BACPYPES3_IMAGE: bacnet-interop-bacpypes3:local
+          BACNET4J_IMAGE: bacnet-interop-bacnet4j:local
+
       - name: Results (interop-result-v1)
         if: always()
         run: |

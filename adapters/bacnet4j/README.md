@@ -37,6 +37,8 @@ image under its upstream license; distribution must preserve that license.
 | Path | Purpose |
 |---|---|
 | `src/main/java/.../DeviceServer.java` | Load fixture, bind UDP, emit `event=ready`, serve |
+| `src/main/java/.../ClientDriver.java` | Client mode: run a scenario file against a device under test |
+| `entrypoint.sh` | `client` selects client mode; anything else is device mode |
 | `pom.xml` | Maven build; shaded runnable jar |
 | `Dockerfile` | Multi-stage: Maven package → JRE runtime |
 
@@ -53,6 +55,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet4j@sha256:<digest>
 | Mode | Entrypoint | Purpose |
 |---|---|---|
 | Device server (default) | `java -jar device_server.jar` | Bind UDP, emit `event=ready`, serve fixture objects |
+| Client | `client --target … --device … --scenarios …` | Run a scenario file against a device under test (see "Client mode" below) |
 | Peer-as-BBMD | `BACNET_BBMD=1` | Same server with BBMD + BDT self-entry; Read/Write-BDT and Read/Delete-FDT executable |
 | EventNotification emit | `BACNET_EMIT_EVENT=1` | Emit one UnconfirmedEventNotification after first ReadProperty |
 | COVNotificationMultiple emit | `BACNET_EMIT_COV_MULTIPLE=1` | After each SubscribeCOVPropertyMultiple, send the requester an unconfirmed and a confirmed COVNotificationMultiple (see "COV-multiple" below) |
@@ -60,7 +63,7 @@ ghcr.io/otfabric/bacnet-interop-bacnet4j@sha256:<digest>
 ## Readiness contract
 
 ```json
-{"event":"ready","adapter":"bacnet4j","version":"0.11.3","fixture":"device-baseline-v2","address":"<bind-ipv4>:47808","peer_version":"6.1.1"}
+{"event":"ready","adapter":"bacnet4j","version":"0.13.0","fixture":"device-baseline-v2","address":"<bind-ipv4>:47808","peer_version":"6.1.1"}
 ```
 
 ## Build
@@ -88,6 +91,65 @@ Environment overrides:
 | `BACNET_NETWORK` | Optional local BACnet network number |
 | `BACNET_DCC_PASSWORD` | `LocalDevice` password, checked by upstream for DeviceCommunicationControl and ReinitializeDevice (unset = requests must carry no password) |
 | `ADAPTER_VERSION` / `BACNET4J_VERSION` | Ready-event version fields |
+
+## Client mode
+
+`client` as the first argument runs the image as a client against a device
+under test ([CLIENT_DRIVER_CONTRACT.md](../../docs/CLIENT_DRIVER_CONTRACT.md)):
+
+```bash
+docker run --rm --network <net> bacnet-interop-bacnet4j:local client \
+  --target 10.89.0.10:47808 --device 1234 \
+  --scenarios /scenarios/server-extended-v1.json
+```
+
+`ClientDriver.java` builds each request from BACnet4J's own service classes
+and sends it through the upstream `LocalDevice` and `DefaultTransport` at
+the same pin, unmodified; `observed` is what BACnet4J decoded. The image
+ships every scenario file under `/scenarios/`. Defaults:
+`BACNET_CLIENT_TIMEOUT_MS=3000` (`DefaultTransport.setTimeout`),
+`BACNET_CLIENT_RETRIES=1`; the client's own device instance is 4001
+(`BACNET_CLIENT_DEVICE`).
+
+- **Binding:** a Who-Is for `--device` sent to `--target`; the I-Am gives
+  the address, Max_APDU_Length_Accepted and segmentation that BACnet4J uses
+  for every confirmed request. An I-Am from another address is
+  `infra-error`, as is no I-Am or no reply before the timeout. The socket is
+  bound to 0.0.0.0:47808, because a socket bound to the unicast address does
+  not receive a broadcast I-Am.
+- **Discovery:** `who-is` and `who-has` scenarios broadcast (or send to
+  `--broadcast ADDR`) and collect answers for the timeout; the client's own
+  I-Am and I-Have are left out.
+- **`--bbmd HOST:PORT`, `--fd-ttl S`:** `IpNetwork.registerAsForeignDevice`
+  before the first scenario; broadcasts then go to the BBMD as
+  Distribute-Broadcast-To-Network. A failed registration makes every
+  scenario `infra-error`.
+- **Segmentation:** BACnet4J segments a request larger than the device's
+  Max_APDU_Length_Accepted and reassembles segmented ComplexACKs
+  (`server-extended-v1` `arf.file3.*`, `awf.file3.segmented-request`).
+- **COV:** SubscribeCOV and SubscribeCOVProperty notifications arrive
+  through `covNotificationReceived`. COVNotificationMultiple is decoded by
+  BACnet4J, but its `handle()` throws `NotImplementedException`; the driver
+  sees the decoded request in `requestReceived`, which `DefaultTransport`
+  fires before `handle()` (**adapter-shim**). The scenarios use unconfirmed
+  notifications for it, since a confirmed one is rejected by the stack.
+- **Unsupported:** `read-bdt`, `read-fdt`, `write-bdt`: BACnet4J's
+  `IpNetwork` answers these as a BBMD and has no client for them.
+- **Known difference:** BACnet4J decodes SubscribeCOVPropertyMultiple-Error
+  as a CHOICE and drops the first failed subscription
+  ([PEER_SUPPORT.md](../../PEER_SUPPORT.md#client-mode)).
+- **Unconfirmed services** (time synchronization, private transfer, text
+  message, WriteGroup) are sent to `--target` and report `sent`; the
+  consumer checks what the device received.
+- **Rejects and aborts** report BACnet4J's reason name (`undefined-enumeration`);
+  the comparison ignores case, spaces and dashes, so the scenario's
+  `Undefined Enumeration` matches.
+
+Cross-check: against the bacnet-stack image in device mode, all 23
+scenarios of `server-baseline-v1` pass. Against the go-bacnet server
+(go-bacnet `interop/server_clients_test.go`): `server-baseline-v1` 23 of 23,
+`server-services-v1` 36 of 36, `server-bbmd-v1` 2 pass and 3 unsupported,
+`server-extended-v1` 22 pass and 1 known difference.
 
 ## Behaviour to know
 

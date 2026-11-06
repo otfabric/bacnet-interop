@@ -47,7 +47,7 @@ BACnet4J (6.1.0 → 6.1.1), both without an adapter change:
 
 ## Next
 
-- **cB-Sigma (v0.12.0):** go-bacnet's `interop/` has no cbsigma tests yet; the
+- **cB-Sigma (v0.13.0):** go-bacnet's `interop/` has no cbsigma tests yet; the
   scenarios of [PEER_SUPPORT.md](PEER_SUPPORT.md#cb-sigma-cbsigma) were run
   from a local branch of go-bacnet and belong in its suite. BACnet/IPv6 and
   BACnet/SC are out of scope (go-bacnet is IPv4 BACnet/IP only).
@@ -77,3 +77,12 @@ BACnet4J (6.1.0 → 6.1.1), both without an adapter change:
   there is codec evidence for all but AuthRequest
   ([PEER_SUPPORT.md](PEER_SUPPORT.md)); a stack that really subscribes, logs
   or opens a session is still missing.
+- **Client-driver mode** (contract 1.1, v0.12.0): images run their stack as a
+  client against a device under test, for the go-bacnet server. Done:
+  scenario and result-line schemas; `server-baseline-v1`,
+  `server-services-v1`, `server-bbmd-v1` and `server-extended-v1`
+  (segmentation, SubscribeCOVProperty(Multiple), GetAlarmSummary,
+  GetEnrollmentSummary, text messages, ConfirmedPrivateTransfer); the
+  `device-server-v1` fixture; bacnet-stack, BACnet4J and BACpypes3 client
+  modes; `make client-matrix` in CI. Next: sysiobacnet, worldiety and a new
+  bacnet-js image ([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)).
