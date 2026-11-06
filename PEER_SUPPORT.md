@@ -4,7 +4,7 @@ Which independent BACnet stacks can execute which scenarios with the adapter
 images of this repository. Assertions and pass/fail decisions live in
 [`go-bacnet`](https://github.com/otfabric/go-bacnet) (`INTEROP.md`, `interop/`).
 
-**Published images:** [v0.12.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.12.0)
+**Published images:** [v0.13.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.13.0)
 · default device fixture: `device-baseline-v2`
 
 Cells marked ¹ are new in 0.10.0; everything else also holds for the v0.9.0
@@ -38,6 +38,7 @@ and is.
 | Worldiety | `3cb2aa80` | Go | Native transport and APDU layer; fixture object model |
 | System.IO.BACnet ¹ | NuGet `BACnet` 4.0.0 | C# | Device oracle; the stack behind YABE |
 | bacnet-stack-router ¹ | bacnet-stack 1.6.1 `apps/router` | C | Native BACnet/IP ↔ BACnet/IP router |
+| cB-Sigma (`cbsigma`) | bacnet `v0.2.0` (device role), bacnet-sim `v0.1.0` | Go | Device oracle; simulator with fault switches (new in 0.13.0, [below](#cb-sigma-cbsigma)) |
 | bip-router | topology-router-v1 | Python | Dual-homed BIP↔BIP topology aid |
 
 > **Worldiety:** supplies the native BACnet/IP, NPDU and APDU runtime. The
@@ -180,6 +181,60 @@ Notes on individual cells:
   frozen at upstream's seed since 0.10.0 (1000 records, sequence numbers
   9001–10000, one every 15 minutes from 2009-01-01 00:00:00, values 0–999);
   the 0.9.0 image served the same records. See the adapter README.
+
+## cB-Sigma (`cbsigma`)
+
+New in 0.13.0. One image, two upstream codes, both by cB-Sigma (Go,
+Apache-2.0, written from ANSI/ASHRAE 135-2024 and sharing one codec):
+`CBSIGMA_ROLE=device` (default) is the `device` package of
+[bacnet](https://github.com/cB-Sigma/bacnet) `v0.2.0`, `CBSIGMA_ROLE=sim`
+[bacnet-sim](https://github.com/cB-Sigma/bacnet-sim) `v0.1.0`. Environment and
+behaviour: [adapters/cbsigma/README.md](adapters/cbsigma/README.md).
+
+go-bacnet's `interop/` has no cbsigma tests yet. The cells below come from
+go-bacnet `305e4a6` (v0.4.x, main) with a local test file run against the
+`cbsigma` image of this release candidate on linux/arm64 (Docker Desktop),
+three times, every run green. Until those tests are in go-bacnet, treat the
+column as the evidence of that run, not of go-bacnet's CI.
+
+| Scenario | device | sim |
+|---|:---:|:---:|
+| Who-Is / I-Am (unicast) | ✅ | ✅ |
+| Who-Has by name → I-Have | ✅ | — (answers only its demo object) |
+| ReadProperty: Device object-name, object-list | ✅ | — (no Device object: object/unknown-object) |
+| ReadProperty; unknown object / unknown property errors | ✅ | ✅ |
+| ReadPropertyMultiple with a per-property error | ✅ | ✅ |
+| ReadPropertyMultiple, segmented answer (client Max APDU 50) | ✅ | not exercised |
+| WriteProperty at a priority, relinquish with NULL | ✅ | ✅ (write) |
+| WriteProperty to object-name → property/write-access-denied | ✅ | not exercised |
+| WritePropertyMultiple | ✅ | ✅ |
+| Segmented confirmed request (client segments for a 50-octet peer) | ✅ | ✅ |
+| COV subscribe / notify / cancel | ✅ | ✅ |
+| ReadRange byPosition, bySequenceNumber, byTime, paged | — | ✅ |
+| ReadRange bySequenceNumber refused (`CBSIGMA_REJECT_SEQ=1`) | — | ✅ services/optional-functionality-not-supported |
+| Segmented ReadRange answer (`CBSIGMA_MAX_APDU=128`, window 4 and 1) | — | ✅ |
+| A segment left out once (`CBSIGMA_DROP_SEG=2`) | — | ⚠ never resent: the client aborts (tsm-timeout) after its segment timeout, the next request succeeds |
+| A segmented answer stopped (`CBSIGMA_STALL_SEG=2`) | — | ✅ the client aborts (tsm-timeout), the next request succeeds |
+| RPM / WPM rejected (`CBSIGMA_REJECT_RPM=1`, `CBSIGMA_REJECT_WPM=1`) | — | ✅ Reject unrecognized-service |
+| GetAlarmSummary, GetEventInformation (`CBSIGMA_EVENTS=1`) | — | A (the adapter encodes the answer) |
+| GetAlarmSummary empty, GetEventInformation rejected (default) | — | ✅ |
+| AcknowledgeAlarm | — | ✅ |
+| Foreign-device registration, Who-Is via Distribute-Broadcast-To-Network, ReadProperty as FD (`BACNET_BBMD=1`) | — | ✅ |
+| Register-Foreign-Device NAK (`CBSIGMA_FD_NAK=1`) | — | ✅ the client stays unregistered |
+| ReinitializeDevice; DCC with a wrong password → security/password-failure | — | ✅ |
+| Time synchronization, UTC time synchronization, UnconfirmedTextMessage, UnconfirmedPrivateTransfer (operation lines) | — | ✅ |
+| ConfirmedTextMessage | — | ✅ Reject unrecognized-service |
+| Read-BDT / Read-FDT, files, WriteGroup, Forwarded-NPDU replies (`CBSIGMA_FORWARD=1`) | — | not exercised |
+| BACnet/IPv6, BACnet/SC | out of scope | out of scope |
+
+BACnet/IPv6 and BACnet/SC are out of scope because go-bacnet is a BACnet/IP
+(IPv4) client; cB-Sigma's bacnet has both, so this is not an upstream gap.
+
+Found with this peer, in go-bacnet (reported, not fixed here): with
+`client.WithSegmentWindow(n)`, n > 1, go-bacnet sends no Segment-ACK for the
+first segment of a segmented answer and every segmented answer times out;
+BACpypes3 0.0.110 shows the same. go-bacnet's default receive window (1) is
+not affected and is what the cells above used.
 
 ## Transport and network
 

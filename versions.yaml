@@ -3,9 +3,11 @@
 # scripts/check-versions.py (make validate-fixtures) fails when this file
 # disagrees with them. Capabilities per peer: adapters/inventory.yaml.
 # Dockerfiles pin upstream by commit or by exact package version; no source
-# archive hash is recorded.
+# archive hash is recorded. adapters/cbsigma/go.mod (with go.sum) is the source
+# of truth for the two cB-Sigma modules; scripts/check-versions.py fails when
+# its Dockerfile ARGs or this file disagree with it.
 
-interop_version: "0.12.0"      # equals adapter_version in adapters/inventory.yaml
+interop_version: "0.13.0"      # equals adapter_version in adapters/inventory.yaml
 contract_version: "1.1"        # docs/CONTAINER_CONTRACT.md
 
 protocol:
@@ -73,6 +75,34 @@ implementations:
     published: true
     pinned_in:
       - adapters/worldiety/Dockerfile
+  cbsigma:
+    upstream: "cB-Sigma bacnet (device role)"
+    repository: "https://github.com/cB-Sigma/bacnet"
+    module: "github.com/cB-Sigma/bacnet"
+    version: "v0.2.0"                                    # tag; also links cB-Sigma/tlsx v0.6.0, coder/websocket v1.8.15
+    upstream_commit: "43314a7b2979e86e55b759fbc6b32a587dcc1a37"
+    license: "Apache-2.0"
+    language: "Go"
+    independent_engine: true
+    roles: [device]                                      # CBSIGMA_ROLE=device (default)
+    published: true
+    pinned_in:
+      - adapters/cbsigma/go.mod
+      - adapters/cbsigma/Dockerfile
+  cbsigma-sim:
+    upstream: "cB-Sigma bacnet-sim (simulated device)"
+    repository: "https://github.com/cB-Sigma/bacnet-sim"
+    module: "github.com/cB-Sigma/bacnet-sim"
+    version: "v0.1.0"                                    # tag; built on cB-Sigma/bacnet (v0.2.0 above by MVS)
+    upstream_commit: "8ca57e10b4feea721c75a995fd3668af4a037b39"
+    license: "Apache-2.0"
+    language: "Go"
+    independent_engine: true
+    roles: [device, bbmd]                                # CBSIGMA_ROLE=sim, in the cbsigma image
+    published: true
+    pinned_in:
+      - adapters/cbsigma/go.mod
+      - adapters/cbsigma/Dockerfile
   bip-router:
     upstream: "none (written for the tests, a topology aid)"
     version: "topology-router-v1"
@@ -89,3 +119,4 @@ base_images:
   dotnet_sdk: "mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317"
   dotnet_runtime: "mcr.microsoft.com/dotnet/runtime:10.0@sha256:b89586dc17781f25531909993658aa8161205ae38b8cec8847df4a8221a403d5"
   golang: "docker.io/library/golang:1.26-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb"
+  golang_1_27: "docker.io/library/golang:1.27.2-trixie@sha256:e58d6f83b3416618d8bcac2b3dde1b7f7e3c4a77d25e88637f8bbae81536c48d"   # cbsigma (the modules need Go 1.27.1)

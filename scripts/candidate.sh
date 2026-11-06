@@ -12,9 +12,12 @@
 #     bacnet4j      <Maven version>
 #     worldiety     <any> <commit of worldiety/bacnet>   (needs Go)
 #     sysiobacnet   <NuGet version>
+#     cbsigma       <tag of cB-Sigma/bacnet>       (the bacnet-sim pin stays)
+#     cbsigma-sim   <tag of cB-Sigma/bacnet-sim>   (the bacnet pin stays)
 #
 # The release pins stay as they are: bacpypes3 requirements.txt and worldiety
-# go.mod/go.sum are edited for the build and restored afterwards. Images are
+# go.mod/go.sum are edited for the build and restored afterwards; the cbsigma
+# Dockerfile resolves a candidate tag itself (go get in the build). Images are
 # tagged bacnet-interop-<image>:candidate.
 
 set -euo pipefail
@@ -84,6 +87,14 @@ case "${stack}" in
     sysiobacnet)
         build sysiobacnet --build-arg "SYSIOBACNET_VERSION=${version}"
         export SMOKE_ONLY=sysiobacnet SYSIOBACNET_IMAGE=bacnet-interop-sysiobacnet:candidate
+        ;;
+    cbsigma)
+        build cbsigma --build-arg "BACNET_VERSION=${version}"
+        export SMOKE_ONLY=cbsigma CBSIGMA_IMAGE=bacnet-interop-cbsigma:candidate
+        ;;
+    cbsigma-sim)
+        build cbsigma --build-arg "BACNET_SIM_VERSION=${version}"
+        export SMOKE_ONLY=cbsigma CBSIGMA_IMAGE=bacnet-interop-cbsigma:candidate
         ;;
     *)
         echo "candidate.sh: unknown stack '${stack}'" >&2

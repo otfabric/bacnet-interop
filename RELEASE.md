@@ -31,6 +31,28 @@ Tags are immutable. A fix is a new version.
 
 ---
 
+## v0.13.0
+
+**Date:** 2026-11-06
+**Previous release:** v0.12.0
+
+### Added
+
+- **New peer `cbsigma`** (`ghcr.io/otfabric/bacnet-interop-cbsigma`): cB-Sigma's Apache-2.0 Go modules, pinned by tag in `adapters/cbsigma/go.mod` — [bacnet](https://github.com/cB-Sigma/bacnet) `v0.2.0` (its `device` package, the default role) and [bacnet-sim](https://github.com/cB-Sigma/bacnet-sim) `v0.1.0` (`CBSIGMA_ROLE=sim`). The device role serves the fixture with a Device object, object-list and names; the simulator adds ReadRange on the seeded Trend Log, GetAlarmSummary/GetEventInformation/AcknowledgeAlarm (`CBSIGMA_EVENTS=1`), BBMD mode with foreign-device registration (`BACNET_BBMD=1`, `CBSIGMA_FD_NAK=1`) and switches that drop or stall a segment of a segmented answer or reject RPM, WPM or ReadRange by sequence number. Both roles segment answers (`CBSIGMA_MAX_APDU`, `CBSIGMA_WINDOW`) and reassemble segmented requests. Independent of go-bacnet (`independent_engine: true`). What was run against it and what it does not do: [PEER_SUPPORT.md](PEER_SUPPORT.md#cb-sigma-cbsigma) and [adapters/cbsigma/README.md](adapters/cbsigma/README.md).
+- The `cbsigma` image carries the LICENSE and NOTICE of every linked Go module under `/licenses/`.
+- `manifest.json` marks every peer `"independent": true`.
+- Upstream check and `make candidate-cbsigma` / `candidate-cbsigma-sim` for the two cB-Sigma modules; `scripts/check-versions.py` fails when the Dockerfile ARGs disagree with `adapters/cbsigma/go.mod`.
+
+### Not in scope
+
+- BACnet/IPv6 and BACnet/SC: cB-Sigma's bacnet has both, but go-bacnet is a BACnet/IP (IPv4) client, so the image serves BACnet/IP only. This is a scope decision, not an upstream limitation.
+
+### Unchanged
+
+- The other images, the fixtures and the device fixtures and the container contract (1.1); `cbsigma` adds `role` to its ready event and has no client mode.
+
+---
+
 ## v0.12.0
 
 **Date:** 2026-11-06

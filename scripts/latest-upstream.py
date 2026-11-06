@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compares the upstream pin of one stack with the latest upstream.
 
-    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet
+    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim
 
 Prints key=value lines (the format of $GITHUB_OUTPUT), for the Upstream
 workflow and for `make candidate-<stack>`:
@@ -15,7 +15,9 @@ workflow and for `make candidate-<stack>`:
 Only stable X.Y.Z releases count: alpha, beta, rc and snapshot versions are
 never "latest". bacnet-stack follows its bacnet-stack-X.Y.Z release tags (not
 master). Worldiety publishes no releases: its pin is a commit of upstream
-HEAD. Commits are shown with 12 digits. Nothing is modified.
+HEAD. cB-Sigma's two modules (bacnet, bacnet-sim) are pinned by their vX.Y.Z
+tags in adapters/cbsigma/go.mod, the source of truth (the Dockerfile ARGs
+repeat them). Commits are shown with 12 digits. Nothing is modified.
 """
 
 import json
@@ -116,12 +118,25 @@ def sysiobacnet():
     return pin, latest, "", latest != pin, "nuget.org (BACnet)"
 
 
+def cbsigma_module(module):
+    gomod = (ROOT / "adapters/cbsigma/go.mod").read_text()
+    match = re.search(rf"^\s*(?:require\s+)?github\.com/cB-Sigma/{module} (v\S+)$", gomod, re.M)
+    if not match:
+        raise SystemExit(f"adapters/cbsigma/go.mod does not require github.com/cB-Sigma/{module}")
+    pin = match.group(1)
+    tags = git_tags(f"https://github.com/cB-Sigma/{module}.git")
+    latest = newest(tags, "v")
+    return pin, latest, tags[latest], latest != pin, f"git tags of cB-Sigma/{module}"
+
+
 RESOLVERS = {
     "bacnet-stack": bacnet_stack,
     "bacpypes3": bacpypes3,
     "bacnet4j": bacnet4j,
     "worldiety": worldiety,
     "sysiobacnet": sysiobacnet,
+    "cbsigma": lambda: cbsigma_module("bacnet"),
+    "cbsigma-sim": lambda: cbsigma_module("bacnet-sim"),
 }
 
 
