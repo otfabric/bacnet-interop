@@ -1,4 +1,5 @@
-# bacnet-interop BACnet4J adapter (fixture-driven device server).
+# bacnet-interop BACnet4J adapter (fixture-driven device server; first
+# argument "client" runs client mode, docs/CLIENT_DRIVER_CONTRACT.md).
 #
 # Build from repository root:
 #   docker buildx build \
@@ -43,6 +44,8 @@ ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
     JAVA_TOOL_OPTIONS="-Dorg.slf4j.simpleLogger.defaultLogLevel=warn"
 
 COPY --from=build /tmp/device_server.jar /usr/local/lib/device_server.jar
+COPY adapters/bacnet4j/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY fixtures/scenarios/ /scenarios/
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
 COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
 COPY fixtures/device/device-baseline-v3.json /fixtures/device/device-baseline-v3.json
@@ -52,8 +55,10 @@ COPY fixtures/device/device-baseline-v6.json /fixtures/device/device-baseline-v6
 COPY fixtures/device/device-baseline-v7.json /fixtures/device/device-baseline-v7.json
 COPY fixtures/device/device-baseline-v8.json /fixtures/device/device-baseline-v8.json
 
+RUN chmod 755 /usr/local/bin/entrypoint.sh
+
 USER adapter
 EXPOSE 47808/udp
 
-ENTRYPOINT ["java", "-jar", "/usr/local/lib/device_server.jar"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []
