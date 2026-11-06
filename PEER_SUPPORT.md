@@ -309,11 +309,12 @@ noticed.
 ## Client mode (unreleased)
 
 Peers acting as **clients** against a device under test
-([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)). Only
-bacnet-stack has a client mode so far: the upstream command-line tools at the
-same pin, unmodified. The go-bacnet server is the first device under test.
+([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)).
+bacnet-stack (the upstream command-line tools) and BACnet4J (the upstream
+`LocalDevice`) have a client mode, both at their pins, unmodified. The
+go-bacnet server is the first device under test.
 
-Known behaviour of the tools:
+Known behaviour of the bacnet-stack tools:
 
 - **`bacrle`** (RemoveListElement) registers its reply handlers for
   AddListElement (apps/remove-list-element/main.c), so it prints nothing for
@@ -333,3 +334,23 @@ Known behaviour of the tools:
   without registering.
 - **No segmentation:** the tools are built without it, so segmented
   transactions have no bacnet-stack client evidence.
+
+Known behaviour of the BACnet4J 6.1.1 client:
+
+- **SubscribeCOVPropertyMultiple-Error** is decoded as a CHOICE of
+  errorType [0] or firstFailedSubscription [1]
+  (`SubscribeCovPropertyMultipleError.choiceOptions`); clause 21 defines a
+  SEQUENCE of both. BACnet4J keeps errorType and drops the first failed
+  subscription. When class and code match the scenario and only
+  `first_failed` is missing, the result is `known-difference`
+  (`server-extended-v1` `scovpm.unknown-object-second`); another class or
+  code is still a `fail`.
+- **COVNotificationMultiple:** decoded, but the stack's `handle()` throws
+  `NotImplementedException` (a confirmed one is answered with Reject
+  unrecognized-service). The driver reads the decoded request in
+  `requestReceived` (adapter-shim); the scenarios use unconfirmed
+  notifications.
+- **BVLC tables:** no client for Read-BDT, Read-FDT or Write-BDT
+  (`IpNetwork` serves them as a BBMD only): `unsupported`.
+- **Segmentation:** both directions work; `server-extended-v1` reads and
+  writes a 3000-octet file in one request each.

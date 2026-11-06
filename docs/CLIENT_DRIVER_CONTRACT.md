@@ -1,10 +1,10 @@
 # Client-driver contract (draft)
 
 Status: **draft for container contract 1.1; steps 1 and 2 of the order of
-work are implemented, and the bacnet-stack part of step 3** (unreleased):
-the scenario and result-line schemas, `server-baseline-v1`,
-`server-services-v1` and `server-bbmd-v1`, the `device-server-v1` fixture,
-and bacnet-stack client mode. Today every other image
+work are implemented, and the bacnet-stack and BACnet4J parts of step 3**
+(unreleased): the scenario and result-line schemas, `server-baseline-v1`,
+`server-services-v1`, `server-bbmd-v1` and `server-extended-v1`, the
+`device-server-v1` fixture, and bacnet-stack and BACnet4J client mode. Today every other image
 runs a device or router only ([CONTAINER_CONTRACT.md](CONTAINER_CONTRACT.md));
 this adds a second mode in which an image runs its upstream stack as a
 **client** against a device under test (DUT), so that a server implementation
@@ -19,7 +19,7 @@ Contract 1.0 stays valid: an image without client mode is unchanged.
 | Image | Client engine | Notes |
 |---|---|---|
 | bacnet-stack | Upstream command-line tools at the same pin: `bacwi`, `bacwh`, `bacrp`, `bacrpm`, `bacwp`, `bacwpm`, `bacscov`, `bacrr`, `bacdcc`, `bacrd`, `bacarf`, `bacawf`, `bacale`, `bacrle`, `bacco`, `bacdo`, `bacge`, `bacackalarm`, `bacts`, `bacupt`, `bacwg`, `bacrbdt`, `bacrfdt`, `bacwbdt` | First to implement; a wrapper turns tool output into result lines. Built without segmentation |
-| bacnet4j | `LocalDevice` + `RemoteDevice` requests | Segmentation, COV, BBMD/FD |
+| bacnet4j | `LocalDevice` + `RemoteDevice` requests (`ClientDriver.java`) | Implemented (unreleased). Segmentation, COV, COV-property (multiple), BBMD/FD; no client for the BVLC table functions |
 | bacpypes3 | Application client API | Segmentation, COV, BBMD/FD |
 | sysiobacnet | `BacnetClient` | Its native side |
 | worldiety | Typed `apdu.Client` | |
@@ -72,6 +72,13 @@ I-Am came from `--target` and reports `infra-error` otherwise, and a request
 to a device that never answered Who-Is is `infra-error` as well. A tool that
 crashes is `infra-error`.
 
+Implemented by BACnet4J (unreleased): every input above, with the same
+defaults (`DefaultTransport.setTimeout`, `setRetries`). The device is bound
+by a Who-Is sent to `--target` (an I-Am from another address, or none, is
+`infra-error`); `--broadcast` is where `who-is` and `who-has` go;
+`--bbmd`/`--fd-ttl` register the local device as a foreign device once,
+before the first scenario. See adapters/bacnet4j/README.md.
+
 ## Scenarios
 
 A versioned JSON file in `fixtures/scenarios/`, validated by
@@ -103,13 +110,22 @@ A versioned JSON file in `fixtures/scenarios/`, validated by
   Trend Log with a seeded buffer, a stream and a record File, and
   CreateObject for Analog Value instances 100..199.
 - `requires_bbmd` marks a file whose scenarios need `--bbmd`.
+- `server-extended-v1` covers what the bacnet-stack tools cannot issue:
+  a segmented AtomicReadFile-ACK and a segmented AtomicWriteFile request
+  (`FILE-STREAM-3`, 3000 octets, in `device-server-v1`),
+  SubscribeCOVProperty and SubscribeCOVPropertyMultiple, GetAlarmSummary,
+  GetEnrollmentSummary, Confirmed/UnconfirmedTextMessage and
+  ConfirmedPrivateTransfer.
 - `expect` is one of `value`, `values` (RPM), `ack`, `error` (with
   `first_failed_element` for list services), `reject`, `abort`, `i-am`,
   `i-have`, `subscribed` (with `notification` when the initial COV
   notification must arrive), `records` (ReadRange), `created`, `events`
-  (GetEventInformation), `octets_base64` (AtomicReadFile), `recipients`,
+  (GetEventInformation), `alarms` (GetAlarmSummary), `enrollments`
+(GetEnrollmentSummary; `event_type` and `notification_class` compared when
+given), `octets_base64` (AtomicReadFile), `recipients`,
   `sent` (an unconfirmed request; the consumer checks what arrived, named by
-  `operation`), `bdt`, `fdt` and `bvlc_result`
+  `operation`), `bdt`, `fdt` and `bvlc_result`. `error.first_failed` is the
+  WritePropertyMultiple or SubscribeCOVPropertyMultiple first failure
   ([fixtures/schema/client-scenarios.schema.json](../fixtures/schema/client-scenarios.schema.json)).
   A BDT entry for the BBMD itself is written `"bbmd"`, because a scenario
   file cannot know its address.
@@ -187,3 +203,14 @@ pass and `rle.nc1` is `known-difference` (`bacrle` prints nothing for the
 acknowledgement, see PEER_SUPPORT.md); `server-bbmd-v1` 5 of 5 pass. These
 files were not run against the bacnet-stack device image, which does not
 serve `device-server-v1`.
+
+BACnet4J client mode was run against the go-bacnet server with all four
+files: `server-baseline-v1` 23 of 23 pass, `server-services-v1` 36 of 36,
+`server-bbmd-v1` 2 pass and 3 `unsupported` (Read-BDT, Read-FDT,
+Write-BDT: no BACnet4J client), `server-extended-v1` 22 of 23 pass and
+`scovpm.unknown-object-second` is `known-difference` (BACnet4J decodes
+SubscribeCOVPropertyMultiple-Error as a CHOICE, see PEER_SUPPORT.md).
+Against the bacnet-stack device image, all 23 scenarios of
+`server-baseline-v1` pass, every emitted line validates against the
+result-line schema, and a device instance that does not exist gives
+`infra-error`.
