@@ -71,3 +71,12 @@ BACnet4J (6.1.0 → 6.1.1), both without an adapter change:
   there is codec evidence for all but AuthRequest
   ([PEER_SUPPORT.md](PEER_SUPPORT.md)); a stack that really subscribes, logs
   or opens a session is still missing.
+- **Client-driver mode** (contract 1.1, v0.12.0): images run their stack as a
+  client against a device under test, for the go-bacnet server. Done:
+  scenario and result-line schemas; `server-baseline-v1`,
+  `server-services-v1`, `server-bbmd-v1` and `server-extended-v1`
+  (segmentation, SubscribeCOVProperty(Multiple), GetAlarmSummary,
+  GetEnrollmentSummary, text messages, ConfirmedPrivateTransfer); the
+  `device-server-v1` fixture; bacnet-stack, BACnet4J and BACpypes3 client
+  modes; `make client-matrix` in CI. Next: sysiobacnet, worldiety and a new
+  bacnet-js image ([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)).

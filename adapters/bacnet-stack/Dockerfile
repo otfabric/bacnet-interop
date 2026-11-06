@@ -43,6 +43,17 @@ COPY adapters/bacnet-stack/Makefile /src/adapter/Makefile
 RUN make -C /src/adapter BACNET_STACK_ROOT=/src/bacnet-stack \
     && test -x /src/adapter/device_server
 
+# Client mode (docs/CLIENT_DRIVER_CONTRACT.md): the upstream command-line
+# tools at the same pin, unmodified, built after device_server so that their
+# libbacnet build does not affect it.
+# Some apps have no phony target in apps/Makefile (their directories satisfy
+# it), so every tool is built through the per-directory rule.
+ARG CLIENT_APPS="readprop readpropm writeprop writepropm whois whohas scov readrange dcc reinit readfile writefile add-list-element remove-list-element create-object delete-object getevent ack-alarm timesync uptransfer writegroup readbdt readfdt writebdt"
+ARG CLIENT_TOOLS="bacrp bacrpm bacwp bacwpm bacwi bacwh bacscov bacrr bacdcc bacrd bacarf bacawf bacale bacrle bacco bacdo bacge bacackalarm bacts bacupt bacwg bacrbdt bacrfdt bacwbdt"
+RUN for app in $CLIENT_APPS; do make -C /src/bacnet-stack/apps BACDL=bip "$app.all" || exit 1; done \
+    && mkdir -p /src/tools \
+    && for tool in $CLIENT_TOOLS; do cp "/src/bacnet-stack/bin/$tool" /src/tools/ || exit 1; done
+
 # ---------------------------------------------------------------------------
 # Stage 2: minimal runtime image
 # ---------------------------------------------------------------------------
@@ -57,6 +68,9 @@ RUN --mount=type=tmpfs,target=/tmp \
     && adduser --system --uid 10001 --ingroup adapter --no-create-home adapter
 
 COPY --from=bacnet-stack-build /src/adapter/device_server /usr/local/bin/device_server
+COPY --from=bacnet-stack-build /src/tools/ /usr/local/bin/
+COPY adapters/bacnet-stack/client_driver.py /usr/local/bin/client_driver.py
+COPY fixtures/scenarios/ /scenarios/
 COPY adapters/bacnet-stack/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY adapters/bacnet-stack/run_server.py /usr/local/bin/run_server.py
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
@@ -69,7 +83,7 @@ COPY fixtures/device/device-baseline-v7.json /fixtures/device/device-baseline-v7
 COPY fixtures/device/device-baseline-v8.json /fixtures/device/device-baseline-v8.json
 COPY fixtures/device/device-baseline-v9.json /fixtures/device/device-baseline-v9.json
 
-RUN chmod 755 /usr/local/bin/entrypoint.sh /usr/local/bin/device_server /usr/local/bin/run_server.py
+RUN chmod 755 /usr/local/bin/entrypoint.sh /usr/local/bin/device_server /usr/local/bin/run_server.py /usr/local/bin/client_driver.py
 
 ARG ADAPTER_VERSION=dev
 ARG BACNET_STACK_VERSION=bacnet-stack-1.6.1

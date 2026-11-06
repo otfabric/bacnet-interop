@@ -1,4 +1,4 @@
-.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-sysiobacnet build-bip-router build-bacnet-stack-router smoke ci FORCE
+.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-sysiobacnet build-bip-router build-bacnet-stack-router smoke client-matrix ci FORCE
 
 SCHEMA              := fixtures/schema/fixture.schema.json
 MANIFEST            := fixtures/manifest.json
@@ -131,6 +131,9 @@ build-bacnet-stack-router: ## Build native bacnet-stack BACnet/IP router image (
 
 smoke: ## Smoke-test adapter ready events
 	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) SYSIOBACNET_IMAGE=$(SYSIOBACNET_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) BACNET_STACK_ROUTER_IMAGE=$(BACNET_STACK_ROUTER_IMAGE) ./scripts/smoke-test.sh
+
+client-matrix: ## Run every client-mode image against the bacnet-stack device (server-baseline-v1); CLIENT_MATRIX_FLAGS=--all-devices adds the other devices
+	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) python3 scripts/client-matrix.py $(CLIENT_MATRIX_FLAGS)
 
 # ---------------------------------------------------------------------------
 # Upstream candidates

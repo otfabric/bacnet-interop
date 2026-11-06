@@ -4,7 +4,7 @@ Which independent BACnet stacks can execute which scenarios with the adapter
 images of this repository. Assertions and pass/fail decisions live in
 [`go-bacnet`](https://github.com/otfabric/go-bacnet) (`INTEROP.md`, `interop/`).
 
-**Published images:** [v0.11.3](https://github.com/otfabric/bacnet-interop/releases/tag/v0.11.3)
+**Published images:** [v0.12.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.12.0)
 · default device fixture: `device-baseline-v2`
 
 Cells marked ¹ are new in 0.10.0; everything else also holds for the v0.9.0
@@ -305,3 +305,123 @@ noticed.
   audit or VT.
 - **bacnet-stack 1.6.1** has no GetEnrollmentSummary, TextMessage,
   ConfirmedPrivateTransfer or COV-multiple.
+
+## Client mode
+
+Peers acting as **clients** against a device under test
+([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)):
+bacnet-stack (the upstream command-line tools), BACnet4J (the upstream
+`LocalDevice`) and BACpypes3 (its upstream Application), each at its pin,
+unmodified. The go-bacnet server is the first device under test.
+
+### Clients against the device images
+
+`make client-matrix` (in CI) runs `server-baseline-v1` with every client
+image against the device images, on `device-baseline-v2`. The scenario
+expectations record bacnet-stack's answers where the standard leaves the
+error open, so the bacnet-stack device is the gate: every client passes all
+23 scenarios against it. Against the other device images some scenarios
+differ; CI reports those pairs (`--all-devices`) without failing on them:
+
+| Client \ device | bacnet-stack | BACnet4J | BACpypes3 |
+|---|---|---|---|
+| bacnet-stack | 23 pass | 2 pass; no I-Am reaches the client, so the tools cannot bind | 20 pass |
+| BACnet4J | 23 pass | 16 pass | 20 pass |
+| BACpypes3 | 23 pass | 2 pass; no I-Am reaches the client, so it cannot bind | 20 pass |
+
+What the device images do differently:
+
+- **BACnet4J device** (as the adapter binds it, to the container's own
+  address): Who-Is and Who-Has get no I-Am or I-Have at the client, so the
+  clients that bind by Who-Is (bacnet-stack, BACpypes3) do not run the other
+  scenarios (`infra-error`). It accepts a WriteProperty and a
+  WritePropertyMultiple of a CharacterString to an Analog Value's
+  Present_Value (SimpleACK), and names error class property, not object, for
+  an unknown object in WritePropertyMultiple.
+- **BACpypes3 device:** a value of the wrong datatype gets Reject
+  invalid-tag instead of Error property/invalid-data-type (WriteProperty and
+  WritePropertyMultiple), and an unknown object in WritePropertyMultiple gets
+  a plain Error (`91 01 91 1f`, object/unknown-object) instead of a
+  WritePropertyMultiple-Error naming the first failed write.
+
+### bacnet-stack
+
+Known behaviour of the bacnet-stack tools:
+
+- **`bacrle`** (RemoveListElement) registers its reply handlers for
+  AddListElement (apps/remove-list-element/main.c), so it prints nothing for
+  the acknowledgement or an error. The scenario result is `known-difference`;
+  `server-services-v1` checks the removal by reading Recipient_List back.
+- **`bacge`** (GetEventInformation) cannot decode a reply with an empty list
+  of event summaries ("Decode of Ack returned length -1"), also from a
+  bacnet-stack device. The scenarios read a non-empty list only.
+- **`bacscov`** waits for the subscription lifetime before it exits, so the
+  scenarios use short lifetimes (5 s).
+- **Invoke IDs** are reused across tool runs, from the same source
+  address. A device that answers a repeated invoke ID from a cache instead
+  of executing it (clause 5.4.5 makes it a new request after the response)
+  answers a second DeleteObject with the first one's result.
+- **Foreign-device registration:** a tool started with `BACNET_BBMD_*`
+  prints its own Register-Foreign-Device result, so the BVLC table tools run
+  without registering.
+- **No segmentation:** the tools are built without it, so segmented
+  transactions have no bacnet-stack client evidence.
+
+### BACnet4J
+
+Known behaviour of the BACnet4J 6.1.1 client:
+
+- **SubscribeCOVPropertyMultiple-Error** is decoded as a CHOICE of
+  errorType [0] or firstFailedSubscription [1]
+  (`SubscribeCovPropertyMultipleError.choiceOptions`); clause 21 defines a
+  SEQUENCE of both. BACnet4J keeps errorType and drops the first failed
+  subscription. When class and code match the scenario and only
+  `first_failed` is missing, the result is `known-difference`
+  (`server-extended-v1` `scovpm.unknown-object-second`); another class or
+  code is still a `fail`.
+- **COVNotificationMultiple:** decoded, but the stack's `handle()` throws
+  `NotImplementedException` (a confirmed one is answered with Reject
+  unrecognized-service). The driver reads the decoded request in
+  `requestReceived` (adapter-shim); the scenarios use unconfirmed
+  notifications.
+- **BVLC tables:** no client for Read-BDT, Read-FDT or Write-BDT
+  (`IpNetwork` serves them as a BBMD only): `unsupported`.
+- **Segmentation:** both directions work; `server-extended-v1` reads and
+  writes a 3000-octet file in one request each.
+
+### BACpypes3
+
+BACpypes3 0.0.110 cannot decode some answers; its
+ApplicationServiceAccessPoint drops them and the request would time out. The
+driver detects the failed decode and reports `known-difference` with the
+answer's octets ([adapters/bacpypes3/README.md](adapters/bacpypes3/README.md#client-mode)):
+
+- **ChangeList-Error** (AddListElement, RemoveListElement): `ChangeListError`
+  has no `service_choice`, so constructing it raises AttributeError
+  (`ale.unknown-object`).
+- **Error of SubscribeCOVProperty:** service choice 28 is not in its
+  `error_types` ("unrecognized service choice: 28";
+  `scovp.unknown-object`, `scovp.unknown-property`).
+- **Empty GetAlarmSummary-ACK and GetEnrollmentSummary-ACK:** the list is a
+  required element and an empty SEQUENCE OF has no octets
+  (`gas.normal`, `gas.av2.after-normal`, `ges.offnormal-filter.normal`).
+
+Other behaviour:
+
+- **SubscribeCOVPropertyMultiple** is `unsupported`: no request APDU and no
+  COV-multiple notification type.
+- **Foreign mode** takes every BVLC-Result as a registration result: a
+  Write-BDT NAK never reaches `BVLLServiceElement` and sets the registration
+  status to 0x0010. The BVLC table services run from an unregistered link
+  layer.
+- **Oversized segments:** a segmented request carries Max APDU octets of
+  service data after the 6-octet segment header, so each segment is 1482
+  octets for a device that accepts 1476. A device that bounds an APDU by
+  its Max_APDU_Length_Accepted drops them; the go-bacnet server accepts
+  them.
+- **Enumeration names** come from camel case (error code 22 is
+  `property-is-not-alist`); the driver compares names without hyphens.
+
+Against the go-bacnet server (go-bacnet `interop/server_clients_test.go`): `server-baseline-v1` 23 of 23 pass; `server-services-v1`
+35 pass, 1 known-difference; `server-bbmd-v1` 5 of 5 pass;
+`server-extended-v1` 15 pass, 5 known-difference, 3 unsupported.
