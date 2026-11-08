@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compares the upstream pin of one stack with the latest upstream.
 
-    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim
+    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim|bacnet-js
 
 Prints key=value lines (the format of $GITHUB_OUTPUT), for the Upstream
 workflow and for `make candidate-<stack>`:
@@ -17,7 +17,9 @@ never "latest". bacnet-stack follows its bacnet-stack-X.Y.Z release tags (not
 master). Worldiety publishes no releases: its pin is a commit of upstream
 HEAD. cB-Sigma's two modules (bacnet, bacnet-sim) are pinned by their vX.Y.Z
 tags in adapters/cbsigma/go.mod, the source of truth (the Dockerfile ARGs
-repeat them). Commits are shown with 12 digits. Nothing is modified.
+repeat them). bacnet-js follows the npm registry versions of @bacnet-js/client;
+its pin is adapters/bacnet-js/package.json (with package-lock.json). Commits
+are shown with 12 digits. Nothing is modified.
 """
 
 import json
@@ -129,6 +131,18 @@ def cbsigma_module(module):
     return pin, latest, tags[latest], latest != pin, f"git tags of cB-Sigma/{module}"
 
 
+def bacnet_js():
+    package = json.loads((ROOT / "adapters/bacnet-js/package.json").read_text())
+    pin = package.get("dependencies", {}).get("@bacnet-js/client")
+    if not pin:
+        raise SystemExit("adapters/bacnet-js/package.json has no @bacnet-js/client dependency")
+    # Pre-releases (X.Y.Z-beta.N) and deprecated versions are not "latest".
+    versions = json.loads(fetch("https://registry.npmjs.org/@bacnet-js%2Fclient"))["versions"]
+    live = [v for v, meta in versions.items() if not meta.get("deprecated")]
+    latest = newest(live)
+    return pin, latest, "", latest != pin, "npm registry (@bacnet-js/client)"
+
+
 RESOLVERS = {
     "bacnet-stack": bacnet_stack,
     "bacpypes3": bacpypes3,
@@ -137,6 +151,7 @@ RESOLVERS = {
     "sysiobacnet": sysiobacnet,
     "cbsigma": lambda: cbsigma_module("bacnet"),
     "cbsigma-sim": lambda: cbsigma_module("bacnet-sim"),
+    "bacnet-js": bacnet_js,
 }
 
 

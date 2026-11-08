@@ -18,7 +18,7 @@ reason recorded in PEER_SUPPORT.md; any other failure, a listed scenario
 that now passes, or a run with no `pass` at all fails the matrix.
 
 Usage:
-    BACNET_STACK_IMAGE=... BACNET4J_IMAGE=... BACPYPES3_IMAGE=... \\
+    BACNET_STACK_IMAGE=... BACNET4J_IMAGE=... BACPYPES3_IMAGE=... BACNET_JS_IMAGE=... \\
         scripts/client-matrix.py [--scenarios server-baseline-v1]
 """
 
@@ -37,6 +37,7 @@ CLIENTS = {
     "bacnet-stack": "BACNET_STACK_IMAGE",
     "bacnet4j": "BACNET4J_IMAGE",
     "bacpypes3": "BACPYPES3_IMAGE",
+    "bacnet-js": "BACNET_JS_IMAGE",
 }
 DEVICES = dict(CLIENTS)
 GATE_DEVICE = "bacnet-stack"

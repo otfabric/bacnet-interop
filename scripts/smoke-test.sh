@@ -17,7 +17,7 @@
 #
 # Env:
 #   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,worldiety,sysiobacnet,cbsigma,
-#                  bip-router,bacnet-stack-router
+#                  bacnet-js,bip-router,bacnet-stack-router
 #                  (empty = all present images; missing peers fail unless filtered)
 #   SMOKE_WHOIS    1 (default) run directed Who-Is→I-Am probe on default-mode peers
 #                  0 skip protocol probe
@@ -40,6 +40,7 @@ BACNET4J_IMAGE="${BACNET4J_IMAGE:-bacnet-interop-bacnet4j:local}"
 WORLDIETY_IMAGE="${WORLDIETY_IMAGE:-bacnet-interop-worldiety:local}"
 SYSIOBACNET_IMAGE="${SYSIOBACNET_IMAGE:-bacnet-interop-sysiobacnet:local}"
 CBSIGMA_IMAGE="${CBSIGMA_IMAGE:-bacnet-interop-cbsigma:local}"
+BACNET_JS_IMAGE="${BACNET_JS_IMAGE:-bacnet-interop-bacnet-js:local}"
 BIP_ROUTER_IMAGE="${BIP_ROUTER_IMAGE:-bacnet-interop-bip-router:local}"
 BACNET_STACK_ROUTER_IMAGE="${BACNET_STACK_ROUTER_IMAGE:-bacnet-interop-bacnet-stack-router:local}"
 SMOKE_ONLY="${SMOKE_ONLY:-}"
@@ -379,6 +380,14 @@ if want_adapter cbsigma; then
         fail "image missing: ${CBSIGMA_IMAGE}"
     fi
 fi
+if want_adapter bacnet-js; then
+    at image.present "" bacnet-js
+    if image_exists "$BACNET_JS_IMAGE"; then
+        pass "image present: ${BACNET_JS_IMAGE}"
+    else
+        fail "image missing: ${BACNET_JS_IMAGE}"
+    fi
+fi
 if want_adapter bip-router; then
     at image.present "" bip-router
     if image_exists "$BIP_ROUTER_IMAGE"; then
@@ -517,6 +526,39 @@ if want_adapter cbsigma && image_exists "$CBSIGMA_IMAGE"; then
     run_start_server ready whois "$CBSIGMA_IMAGE" 47890 -e CBSIGMA_ROLE=sim -e BACNET_BBMD=1
     check_ready_event "cbsigma sim BBMD device server" "$ready" "cbsigma" "device-baseline-v2"
     check_whois "cbsigma sim BBMD device server" "$whois"
+fi
+
+if want_adapter bacnet-js && image_exists "$BACNET_JS_IMAGE"; then
+    ADAPTER=bacnet-js
+    info ""
+    info "=== bacnet-js ==="
+    check_fixture_file "$BACNET_JS_IMAGE" /fixtures/device/device-baseline-v2.json
+    check_fixture_file "$BACNET_JS_IMAGE" /fixtures/device/device-server-v1.json
+    check_fixture_file "$BACNET_JS_IMAGE" /scenarios/server-baseline-v1.json
+    check_binary "$BACNET_JS_IMAGE" node
+    at files.licenses "" "${ADAPTER}"
+    if docker run --rm --entrypoint sh "$BACNET_JS_IMAGE" -c "test -f /licenses/@bacnet-js/client/LICENSE && test -f /licenses/debug/LICENSE && test -f /licenses/ms/license.md && test -f /licenses/iconv-lite/LICENSE && test -f /licenses/safer-buffer/LICENSE" >/dev/null 2>&1; then
+        pass "upstream licences in ${BACNET_JS_IMAGE}"
+    else
+        fail "upstream licences MISSING in ${BACNET_JS_IMAGE}"
+    fi
+    # Client mode: a usage error exits 2 (docs/CLIENT_DRIVER_CONTRACT.md).
+    at client.usage-error "" "${ADAPTER}"
+    rc=0
+    docker run --rm "$BACNET_JS_IMAGE" client --device 1234 --scenarios /scenarios/server-baseline-v1.json --fd-ttl 0 >/dev/null 2>&1 || rc=$?
+    if [ "$rc" -eq 2 ]; then
+        pass "client mode: usage error exits 2 in ${BACNET_JS_IMAGE}"
+    else
+        fail "client mode: usage error exited ${rc}, not 2, in ${BACNET_JS_IMAGE}"
+    fi
+    ready=""; whois=""
+    run_start_server ready whois "$BACNET_JS_IMAGE" 47891
+    check_ready_event "bacnet-js device server" "$ready" "bacnet-js" "device-baseline-v2"
+    check_whois "bacnet-js device server" "$whois"
+    ready=""; whois=""
+    run_start_server ready whois "$BACNET_JS_IMAGE" 47892 -e FIXTURE=device-server-v1 -e DEVICE_FIXTURE_FILE=/fixtures/device/device-server-v1.json
+    check_ready_event "bacnet-js device server (device-server-v1)" "$ready" "bacnet-js" "device-server-v1"
+    check_whois "bacnet-js device server (device-server-v1)" "$whois"
 fi
 
 if want_adapter bip-router && image_exists "$BIP_ROUTER_IMAGE"; then
