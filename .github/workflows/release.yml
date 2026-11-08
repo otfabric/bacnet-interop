@@ -165,6 +165,14 @@ jobs:
               peer \
               'BACPYPES3_(VERSION|REF)='
           fi
+          # Legacy BACpypes (PyPI bacpypes 0.x), not BACpypes3.
+          if [ -f adapters/bacpypes/Dockerfile ]; then
+            add_adapter bacpypes \
+              adapters/bacpypes/Dockerfile \
+              ghcr.io/otfabric/bacnet-interop-bacpypes \
+              peer \
+              '^ARG BACPYPES_VERSION='
+          fi
           if [ -f adapters/bacnet4j/Dockerfile ]; then
             add_adapter bacnet4j \
               adapters/bacnet4j/Dockerfile \
@@ -288,6 +296,7 @@ jobs:
     outputs:
       bacnet-stack-digest: ${{ steps.collect.outputs.bacnet-stack-digest }}
       bacpypes3-digest: ${{ steps.collect.outputs.bacpypes3-digest }}
+      bacpypes-digest: ${{ steps.collect.outputs.bacpypes-digest }}
       bacnet4j-digest: ${{ steps.collect.outputs.bacnet4j-digest }}
       worldiety-digest: ${{ steps.collect.outputs.worldiety-digest }}
       sysiobacnet-digest: ${{ steps.collect.outputs.sysiobacnet-digest }}
@@ -338,6 +347,18 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/otfabric/bacnet-interop-bacpypes3
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Metadata — bacpypes (legacy)
+        if: hashFiles('adapters/bacpypes/Dockerfile') != ''
+        id: meta-bacpypes
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/otfabric/bacnet-interop-bacpypes
           tags: |
             type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
@@ -435,6 +456,7 @@ jobs:
           ADAPTERS_JSON: ${{ needs.prepare.outputs.adapters }}
           META_STACK: ${{ steps.meta-bacnet-stack.outputs.tags }}
           META_BACP: ${{ steps.meta-bacpypes3.outputs.tags }}
+          META_BACPYPES_LEGACY: ${{ steps.meta-bacpypes.outputs.tags }}
           META_B4J: ${{ steps.meta-bacnet4j.outputs.tags }}
           META_WORLD: ${{ steps.meta-worldiety.outputs.tags }}
           META_SYSIO: ${{ steps.meta-sysiobacnet.outputs.tags }}
@@ -449,6 +471,7 @@ jobs:
             case "$1" in
               bacnet-stack) printf '%s' "$META_STACK" ;;
               bacpypes3)    printf '%s' "$META_BACP" ;;
+              bacpypes)     printf '%s' "$META_BACPYPES_LEGACY" ;;
               bacnet4j)     printf '%s' "$META_B4J" ;;
               worldiety)    printf '%s' "$META_WORLD" ;;
               sysiobacnet)  printf '%s' "$META_SYSIO" ;;
@@ -504,6 +527,7 @@ jobs:
           ADAPTERS_JSON: ${{ needs.prepare.outputs.adapters }}
           STACK_DIGEST: ${{ steps.collect.outputs.bacnet-stack-digest }}
           BACP_DIGEST: ${{ steps.collect.outputs.bacpypes3-digest }}
+          BACPYPES_LEGACY_DIGEST: ${{ steps.collect.outputs.bacpypes-digest }}
           B4J_DIGEST: ${{ steps.collect.outputs.bacnet4j-digest }}
           WORLD_DIGEST: ${{ steps.collect.outputs.worldiety-digest }}
           SYSIO_DIGEST: ${{ steps.collect.outputs.sysiobacnet-digest }}
@@ -520,6 +544,7 @@ jobs:
           digests = {
               "bacnet-stack": os.environ.get("STACK_DIGEST") or None,
               "bacpypes3": os.environ.get("BACP_DIGEST") or None,
+              "bacpypes": os.environ.get("BACPYPES_LEGACY_DIGEST") or None,
               "bacnet4j": os.environ.get("B4J_DIGEST") or None,
               "worldiety": os.environ.get("WORLD_DIGEST") or None,
               "sysiobacnet": os.environ.get("SYSIO_DIGEST") or None,
@@ -565,6 +590,7 @@ jobs:
           for name, image in (
               ("bacnet-stack", "ghcr.io/otfabric/bacnet-interop-bacnet-stack"),
               ("bacpypes3", "ghcr.io/otfabric/bacnet-interop-bacpypes3"),
+              ("bacpypes", "ghcr.io/otfabric/bacnet-interop-bacpypes"),
               ("bacnet4j", "ghcr.io/otfabric/bacnet-interop-bacnet4j"),
               ("worldiety", "ghcr.io/otfabric/bacnet-interop-worldiety"),
               ("sysiobacnet", "ghcr.io/otfabric/bacnet-interop-sysiobacnet"),
@@ -613,6 +639,7 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
           STACK_DIGEST: ${{ steps.collect.outputs.bacnet-stack-digest }}
           BACP_DIGEST: ${{ steps.collect.outputs.bacpypes3-digest }}
+          BACPYPES_LEGACY_DIGEST: ${{ steps.collect.outputs.bacpypes-digest }}
           B4J_DIGEST: ${{ steps.collect.outputs.bacnet4j-digest }}
           WORLD_DIGEST: ${{ steps.collect.outputs.worldiety-digest }}
           SYSIO_DIGEST: ${{ steps.collect.outputs.sysiobacnet-digest }}
@@ -627,6 +654,7 @@ jobs:
           images=(
             "bacnet-stack|${STACK_DIGEST}|BACNET_STACK_IMAGE"
             "bacpypes3|${BACP_DIGEST}|BACPYPES3_IMAGE"
+            "bacpypes|${BACPYPES_LEGACY_DIGEST}|BACPYPES_IMAGE"
             "bacnet4j|${B4J_DIGEST}|BACNET4J_IMAGE"
             "worldiety|${WORLD_DIGEST}|WORLDIETY_IMAGE"
             "sysiobacnet|${SYSIO_DIGEST}|SYSIOBACNET_IMAGE"
@@ -650,7 +678,7 @@ jobs:
               echo "| \`${registry}/bacnet-interop-${name}:${VERSION}\` | \`${digest:-not published (Dockerfile pending)}\` |"
             done
             echo
-            echo "\`bip-router\` is a topology aid (not a peer oracle). \`bacnet-stack-router\` is upstream bacnet-stack \`apps/router\` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (\`sysiobacnet\`) the fifth, cB-Sigma (\`cbsigma\`, device role and simulator) the sixth, ulbios/bacnet (\`ulbios\`, device and client mode) the seventh."
+            echo "\`bip-router\` is a topology aid (not a peer oracle). \`bacnet-stack-router\` is upstream bacnet-stack \`apps/router\` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (\`sysiobacnet\`) the fifth, cB-Sigma (\`cbsigma\`, device role and simulator) the sixth, ulbios/bacnet (\`ulbios\`, device and client mode) the seventh, legacy BACpypes (\`bacpypes\`, PyPI bacpypes 0.x, not BACpypes3) the eighth."
             echo
             echo "## Pinning in consumer repositories"
             echo

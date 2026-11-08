@@ -42,6 +42,7 @@ jobs:
         env:
           BACNET_STACK_IMAGE: bacnet-interop-bacnet-stack:local
           BACPYPES3_IMAGE: bacnet-interop-bacpypes3:local
+          BACPYPES_IMAGE: bacnet-interop-bacpypes:local
           BACNET4J_IMAGE: bacnet-interop-bacnet4j:local
           WORLDIETY_IMAGE: bacnet-interop-worldiety:local
           SYSIOBACNET_IMAGE: bacnet-interop-sysiobacnet:local
@@ -57,6 +58,7 @@ jobs:
         env:
           BACNET_STACK_IMAGE: bacnet-interop-bacnet-stack:local
           BACPYPES3_IMAGE: bacnet-interop-bacpypes3:local
+          BACPYPES_IMAGE: bacnet-interop-bacpypes:local
           BACNET4J_IMAGE: bacnet-interop-bacnet4j:local
           ULBIOS_IMAGE: bacnet-interop-ulbios:local
 
@@ -83,6 +85,7 @@ jobs:
             echo "platform           : linux/amd64"
             echo "bacnet-stack pin   : $(grep -E 'BACNET_STACK_(SHA|VERSION|REF)=' adapters/bacnet-stack/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "BACpypes3 pin      : $(grep -E 'BACPYPES3_(VERSION|REF)=' adapters/bacpypes3/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
+            echo "BACpypes pin       : $(grep -E '^ARG BACPYPES_VERSION=' adapters/bacpypes/Dockerfile | cut -d= -f2-) (legacy, wheel $(grep -oE 'sha256:[0-9a-f]{12}' adapters/bacpypes/requirements.txt))"
             echo "BACnet4J pin       : $(grep -E 'BACNET4J_VERSION=' adapters/bacnet4j/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "Worldiety pin      : $(grep -E 'WORLDIETY_COMMIT=' adapters/worldiety/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "System.IO.BACnet   : $(grep -E 'SYSIOBACNET_VERSION=' adapters/sysiobacnet/Dockerfile | head -1 | cut -d= -f2- || echo unset)"

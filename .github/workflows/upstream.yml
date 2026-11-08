@@ -48,6 +48,7 @@ jobs:
         include:
           - stack: bacnet-stack
           - stack: bacpypes3
+          - stack: bacpypes
           - stack: bacnet4j
           - stack: worldiety
             kind: commit
@@ -120,6 +121,9 @@ jobs:
               places) in `adapters/bacnet-stack/Dockerfile` and `adapters/bacnet-stack-router/Dockerfile`.
             - **BACpypes3:** `adapters/bacpypes3/requirements.txt` and `ARG BACPYPES3_VERSION`
               in its Dockerfile.
+            - **BACpypes (legacy, not BACpypes3):** `bacpypes==<version>` and its wheel
+              `--hash=sha256:<latest_sha>` in `adapters/bacpypes/requirements.txt`, and
+              `ARG BACPYPES_VERSION` in its Dockerfile.
             - **BACnet4J:** `ARG BACNET4J_VERSION` (both places) in its Dockerfile and
               `bacnet4j.version` in `adapters/bacnet4j/pom.xml`.
             - **System.IO.BACnet:** `ARG SYSIOBACNET_VERSION` (both places) in its Dockerfile and

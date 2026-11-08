@@ -22,6 +22,7 @@ Contract 1.0 stays valid: an image without client mode is unchanged.
 | bacnet4j | `LocalDevice` + `RemoteDevice` requests (`ClientDriver.java`) | Implemented. Segmentation, COV, COV-property (multiple), BBMD/FD; no client for the BVLC table functions |
 | bacpypes3 | Upstream `Application`: APDU classes sent with `Application.request()` and its `who_is`, `who_has`, `read_property_multiple` helpers | Implemented. Segmentation, COV, SubscribeCOVProperty, alarm and enrollment summaries, text messages, ConfirmedPrivateTransfer, BBMD/FD. No SubscribeCOVPropertyMultiple |
 | ulbios | ulbios/bacnet request encoders (`NewWhois`, `NewReadProperty`, `NewWriteProperty`, `objects.Enc*`) and `bacnet.Parse` (`client.go`) | Implemented (0.14.0). Who-Is without limits, ReadProperty, WriteProperty; everything else `unsupported`. Answers its decoders cannot read are `known-difference` (adapters/ulbios/README.md). No transaction layer upstream: the timer and retries are adapter code |
+| bacpypes | Legacy BACpypes 0.19.0 (not BACpypes3): upstream APDU classes sent through `ApplicationIOController.request_io` with an IOCB, the asyncore core in the main thread (`samples/ThreadedReadProperty.py`) | New, unreleased. Segmentation, COV, SubscribeCOVProperty, alarm and enrollment summaries, text messages, ConfirmedPrivateTransfer, BBMD/FD and the BVLC tables (second link layer, `samples/ReadWriteBBMD.py`). No SubscribeCOVPropertyMultiple |
 | sysiobacnet | `BacnetClient` | Its native side |
 | worldiety | Typed `apdu.Client` | |
 | bacnet-js (new) | `@bacnet-js/client`, pinned npm version, MIT | New image; client mode only. Independent JavaScript lineage (node-bacstack) |
@@ -220,3 +221,13 @@ BACpypes3 client mode implements every input above (same
 defaults) and runs all four scenario files against the go-bacnet server; the
 results and the BACpypes3 answers that count as `known-difference` are in
 PEER_SUPPORT.md.
+
+Legacy BACpypes client mode (`bacpypes`, not yet released) implements every
+input above (same defaults) and was run against the go-bacnet server with all
+four files: `server-baseline-v1` 23 of 23 pass, `server-services-v1` 36 of
+36, `server-bbmd-v1` 5 of 5, `server-extended-v1` 20 pass and the 3
+`scovpm` scenarios `unsupported` (no SubscribeCOVPropertyMultiple APDU).
+Against the bacnet-stack device image all 23 scenarios of
+`server-baseline-v1` pass, every emitted line of that run validates against
+the result-line schema, and a device instance that does not exist gives
+`infra-error`.

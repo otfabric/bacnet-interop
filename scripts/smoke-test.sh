@@ -10,13 +10,14 @@
 # Usage:
 #   BACNET_STACK_IMAGE=bacnet-interop-bacnet-stack:local \
 #   BACPYPES3_IMAGE=bacnet-interop-bacpypes3:local \
+#   BACPYPES_IMAGE=bacnet-interop-bacpypes:local \
 #   ./scripts/smoke-test.sh
 #
 # Single-adapter / candidate mode:
 #   SMOKE_ONLY=bacnet-stack BACNET_STACK_IMAGE=…:candidate ./scripts/smoke-test.sh
 #
 # Env:
-#   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,worldiety,sysiobacnet,cbsigma,ulbios,
+#   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,worldiety,sysiobacnet,cbsigma,ulbios,bacpypes,
 #                  bip-router,bacnet-stack-router
 #                  (empty = all present images; missing peers fail unless filtered)
 #   SMOKE_WHOIS    1 (default) run directed Who-Is→I-Am probe on default-mode peers
@@ -36,6 +37,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/results.sh"
 
 BACNET_STACK_IMAGE="${BACNET_STACK_IMAGE:-bacnet-interop-bacnet-stack:local}"
 BACPYPES3_IMAGE="${BACPYPES3_IMAGE:-bacnet-interop-bacpypes3:local}"
+# Legacy BACpypes (PyPI bacpypes 0.x), not BACpypes3.
+BACPYPES_IMAGE="${BACPYPES_IMAGE:-bacnet-interop-bacpypes:local}"
 BACNET4J_IMAGE="${BACNET4J_IMAGE:-bacnet-interop-bacnet4j:local}"
 WORLDIETY_IMAGE="${WORLDIETY_IMAGE:-bacnet-interop-worldiety:local}"
 SYSIOBACNET_IMAGE="${SYSIOBACNET_IMAGE:-bacnet-interop-sysiobacnet:local}"
@@ -348,6 +351,14 @@ if want_adapter bacpypes3; then
         fail "image missing: ${BACPYPES3_IMAGE}"
     fi
 fi
+if want_adapter bacpypes; then
+    at image.present "" bacpypes
+    if image_exists "$BACPYPES_IMAGE"; then
+        pass "image present: ${BACPYPES_IMAGE}"
+    else
+        fail "image missing: ${BACPYPES_IMAGE}"
+    fi
+fi
 if want_adapter bacnet4j; then
     at image.present "" bacnet4j
     if image_exists "$BACNET4J_IMAGE"; then
@@ -449,6 +460,33 @@ if want_adapter bacpypes3 && image_exists "$BACPYPES3_IMAGE"; then
     run_start_server ready whois "$BACPYPES3_IMAGE" 47883 -e BACNET_BBMD=1
     check_ready_event "bacpypes3 BBMD device server" "$ready" "bacpypes3" "device-baseline-v2"
     check_whois "bacpypes3 BBMD device server" "$whois"
+fi
+
+if want_adapter bacpypes && image_exists "$BACPYPES_IMAGE"; then
+    ADAPTER=bacpypes
+    info ""
+    info "=== BACpypes (legacy, bacpypes 0.x) ==="
+    check_fixture_file "$BACPYPES_IMAGE" /fixtures/device/device-baseline-v2.json
+    at files.entrypoint "" "${ADAPTER}"
+    if docker run --rm --entrypoint sh "$BACPYPES_IMAGE" -c "test -f /usr/local/lib/bacpypes-adapter/device_server.py && test -f /usr/local/lib/bacpypes-adapter/client_driver.py" >/dev/null 2>&1; then
+        pass "device_server.py and client_driver.py in ${BACPYPES_IMAGE}"
+    else
+        fail "device_server.py or client_driver.py MISSING in ${BACPYPES_IMAGE}"
+    fi
+    at files.licenses "" "${ADAPTER}"
+    if docker run --rm --entrypoint sh "$BACPYPES_IMAGE" -c 'ls /opt/venv/lib/python3*/site-packages/bacpypes-"$BACPYPES_VERSION".dist-info/LICENSE' >/dev/null 2>&1; then
+        pass "upstream licence in ${BACPYPES_IMAGE}"
+    else
+        fail "upstream licence MISSING in ${BACPYPES_IMAGE}"
+    fi
+    ready=""; whois=""
+    run_start_server ready whois "$BACPYPES_IMAGE" 47891
+    check_ready_event "bacpypes device server" "$ready" "bacpypes" "device-baseline-v2"
+    check_whois "bacpypes device server" "$whois"
+    ready=""; whois=""
+    run_start_server ready whois "$BACPYPES_IMAGE" 47892 -e BACNET_BBMD=1
+    check_ready_event "bacpypes BBMD device server" "$ready" "bacpypes" "device-baseline-v2"
+    check_whois "bacpypes BBMD device server" "$whois"
 fi
 
 if want_adapter bacnet4j && image_exists "$BACNET4J_IMAGE"; then

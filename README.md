@@ -9,8 +9,9 @@ BACnet object models, BBMD and routed-network scenarios, codec test
 vectors, and automated protocol compatibility testing.
 
 Reference implementations include BACnet Stack (C), BACpypes3
-(Python), BACnet4J (Java), System.IO.BACnet (C#), Worldiety (Go),
-cB-Sigma's bacnet and bacnet-sim (Go) and ulbios/bacnet (Go).
+(Python), legacy BACpypes 0.x (Python), BACnet4J (Java), System.IO.BACnet
+(C#), Worldiety (Go), cB-Sigma's bacnet and bacnet-sim (Go) and
+ulbios/bacnet (Go).
 
 The infrastructure is independently maintained and can be used
 by any BACnet client implementation.
@@ -28,6 +29,7 @@ implementation.
 |---|---|---|
 | `bacnet-interop-bacnet-stack` | bacnet-stack 1.6.1 (C) | Device oracle (+ BBMD) |
 | `bacnet-interop-bacpypes3` | BACpypes3 0.0.110 (Python) | Device oracle (+ BBMD) |
+| `bacnet-interop-bacpypes` | legacy BACpypes 0.19.0 (Python, PyPI `bacpypes`; not BACpypes3) | Device oracle (+ BBMD), client mode (new, unreleased) |
 | `bacnet-interop-bacnet4j` | BACnet4J 6.1.1 (Java) | Device oracle (+ BBMD) |
 | `bacnet-interop-worldiety` | worldiety/bacnet `3cb2aa80` (Go) | Native transport and APDU layer; the adapter supplies the object model |
 | `bacnet-interop-sysiobacnet` | System.IO.BACnet, NuGet `BACnet` 4.0.0 (C#) | Device oracle; the stack behind YABE (new in 0.10.0) |
@@ -54,9 +56,9 @@ and `FIXTURE`:
 | v1 | Device, Analog Value, Binary Value (frozen) | all device peers |
 | v2 | Trend Log (default) | all device peers (BACpypes3 skips the Trend Log; cbsigma serves ReadRange in its simulator role only) |
 | v3 | Notification Class, Event Enrollment, alarms | bacnet-stack, BACnet4J; System.IO.BACnet with an adapter-supplied alarm model |
-| v4 | File objects | bacnet-stack, BACnet4J, System.IO.BACnet |
+| v4 | File objects | bacnet-stack, BACnet4J, System.IO.BACnet, legacy BACpypes |
 | v5 | Object lifecycle and list mutation | bacnet-stack, BACnet4J |
-| v6 | Messaging and time synchronization | bacnet-stack, BACpypes3, BACnet4J |
+| v6 | Messaging and time synchronization | bacnet-stack, BACpypes3, BACnet4J, legacy BACpypes (adapter sinks) |
 | v7 | Identity (Who-Am-I / You-Are) | bacnet-stack |
 | v8 | Life safety | bacnet-stack, BACnet4J |
 | v9 | Large object model: 40 more objects, an Object_List that does not fit a 50-octet APDU | bacnet-stack only (new in 0.10.0) |
@@ -198,6 +200,7 @@ bacnet-interop/
     ├── bacnet-stack/
     ├── bacnet-stack-router/
     ├── bacpypes3/
+    ├── bacpypes/          legacy BACpypes 0.x (not BACpypes3)
     ├── bacnet4j/
     ├── worldiety/
     ├── sysiobacnet/

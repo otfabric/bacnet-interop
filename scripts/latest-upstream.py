@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Compares the upstream pin of one stack with the latest upstream.
 
-    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim|ulbios
+    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim|ulbios|bacpypes
 
 Prints key=value lines (the format of $GITHUB_OUTPUT), for the Upstream
 workflow and for `make candidate-<stack>`:
 
     pin=<the release pin>
     latest=<the latest stable upstream release; for worldiety and ulbios the HEAD commit>
-    latest_sha=<the commit of latest, for a stack that is pinned by commit>
+    latest_sha=<the commit of latest, for a stack that is pinned by commit;
+                for bacpypes the sha256 of the latest release's wheel>
     update=yes|no
     source=<where latest was looked up>
 
@@ -19,8 +20,10 @@ HEAD. cB-Sigma's two modules (bacnet, bacnet-sim) are pinned by their vX.Y.Z
 tags in adapters/cbsigma/go.mod, the source of truth (the Dockerfile ARGs
 repeat them). ulbios/bacnet has no tags or releases either: its pin is a
 commit of the default branch, as the pseudo-version in adapters/ulbios/go.mod
-(the Dockerfile ARG ULBIOS_COMMIT repeats it). Commits are shown with 12
-digits. Nothing is modified.
+(the Dockerfile ARG ULBIOS_COMMIT repeats it). Legacy BACpypes (PyPI
+bacpypes, not bacpypes3) is pinned by version and wheel sha256 in
+adapters/bacpypes/requirements.txt. Commits are shown with 12 digits.
+Nothing is modified.
 """
 
 import json
@@ -96,6 +99,23 @@ def bacpypes3():
     return pin, latest, "", latest != pin, "PyPI"
 
 
+def bacpypes():
+    """Legacy BACpypes (PyPI bacpypes, not bacpypes3): the pin is installed by
+    its wheel hash, so latest_sha is the sha256 of the latest wheel."""
+    text = (ROOT / "adapters/bacpypes/requirements.txt").read_text()
+    match = re.search(r"^bacpypes==(\S+)", text, re.M)
+    if not match:
+        raise SystemExit("adapters/bacpypes/requirements.txt has no bacpypes==<pin>")
+    pin = match.group(1)
+    releases = json.loads(fetch("https://pypi.org/pypi/bacpypes/json"))["releases"]
+    live = {v: files for v, files in releases.items() if files and not all(f.get("yanked") for f in files)}
+    latest = newest(live)
+    wheels = [f for f in live[latest] if f.get("packagetype") == "bdist_wheel" and not f.get("yanked")]
+    if len(wheels) != 1:
+        raise SystemExit(f"bacpypes {latest}: {len(wheels)} wheels on PyPI, the candidate build needs exactly one")
+    return pin, latest, wheels[0]["digests"]["sha256"], latest != pin, "PyPI"
+
+
 def bacnet4j():
     pin = arg("bacnet4j", "BACNET4J_VERSION")
     # <release> and <latest> of the metadata may name an alpha.
@@ -142,6 +162,7 @@ def ulbios():
 RESOLVERS = {
     "bacnet-stack": bacnet_stack,
     "bacpypes3": bacpypes3,
+    "bacpypes": bacpypes,
     "bacnet4j": bacnet4j,
     "worldiety": worldiety,
     "sysiobacnet": sysiobacnet,
