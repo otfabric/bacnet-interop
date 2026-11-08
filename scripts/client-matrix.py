@@ -91,6 +91,22 @@ EXPECTED_DIFFERENCES: dict[tuple[str, str], dict[str, str]] = {
         "wpm.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype",
         "wpm.unknown-object-second": "BACpypes3 device: plain Error 91 01 91 1f, which the legacy BACpypes client cannot decode as a WritePropertyMultiple-Error",
     },
+    ("bacpypes", "ulbios"): dict(ULBIOS_DEVICE_DIFFERENCES),
+    # The pairs with the bacnet-js client, from `--all-devices` runs. It binds
+    # by address, so against BACnet4J only discovery and the CharacterString
+    # writes differ.
+    ("bacnet-js", "bacnet4j"): {
+        **{s: "BACnet4J device: no I-Am or I-Have reaches the client (PEER_SUPPORT.md, BACnet4J device)"
+           for s in ("who-is.range", "who-is.global", "who-has.name", "who-has.object")},
+        "wp.av1.pv.wrong-type": "BACnet4J device: a CharacterString to an Analog Value's Present_Value is acknowledged",
+        "wpm.wrong-type": "BACnet4J device: a CharacterString to an Analog Value's Present_Value is acknowledged",
+    },
+    ("bacnet-js", "bacpypes3"): {
+        "wp.av1.pv.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype",
+        "wpm.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype",
+    },
+    ("bacnet-js", "bacpypes"): dict(_BP_WRONG_TYPE),
+    ("bacnet-js", "ulbios"): dict(ULBIOS_DEVICE_DIFFERENCES),
 }
 
 READY_TIMEOUT = 120

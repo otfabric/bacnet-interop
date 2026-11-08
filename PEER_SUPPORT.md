@@ -489,20 +489,25 @@ The go-bacnet server is the first device under test.
 `make client-matrix` (in CI) runs `server-baseline-v1` with every client
 image against the device images, on `device-baseline-v2`. The scenario
 expectations record bacnet-stack's answers where the standard leaves the
-error open, so the bacnet-stack device is the gate: bacnet-stack, BACnet4J
-and BACpypes3 pass all 23 scenarios against it; ulbios passes what it can
-send and decode, and no scenario fails. Against the other device images some
+error open, so the bacnet-stack device is the gate: bacnet-stack, BACnet4J,
+BACpypes3 and legacy BACpypes pass all 23 scenarios against it, bacnet-js
+21 (2 known differences of its client), and ulbios passes what it can send
+and decode; no scenario fails. Against the other device images some
 scenarios differ; CI reports those pairs (`--all-devices`) without failing
 on them. A pair listed in `EXPECTED_DIFFERENCES` (`scripts/client-matrix.py`)
 is reported as differing only when a scenario other than the listed ones
-fails, or a listed one passes; the ulbios pairs are listed:
+fails, or a listed one passes; the pairs with ulbios, legacy BACpypes and
+bacnet-js are listed. The 0.14.0 run (`make client-matrix
+CLIENT_MATRIX_FLAGS=--all-devices`, local builds):
 
-| Client \ device | bacnet-stack | BACnet4J | BACpypes3 | ulbios |
-|---|---|---|---|---|
-| bacnet-stack | 23 pass | 2 pass; no I-Am reaches the client, so the tools cannot bind | 20 pass | 10 pass |
-| BACnet4J | 23 pass | 16 pass | 20 pass | 10 pass |
-| BACpypes3 | 23 pass | 2 pass; no I-Am reaches the client, so it cannot bind | 20 pass | 10 pass |
-| ulbios | 5 pass, 5 known-difference, 13 unsupported | 4 pass, 5 known-difference, 13 unsupported; `who-is.global` gets no I-Am | 5 pass, 5 known-difference, 13 unsupported | 4 pass, 3 known-difference, 13 unsupported |
+| Client \ device | bacnet-stack | BACnet4J | BACpypes3 | Legacy BACpypes | ulbios | bacnet-js |
+|---|---|---|---|---|---|---|
+| bacnet-stack | 23 pass | 2 pass; no I-Am reaches the client, so the tools cannot bind | 20 pass | 22 pass | 10 pass | 23 pass |
+| BACnet4J | 23 pass | 16 pass | 20 pass | 22 pass | 10 pass | 23 pass |
+| BACpypes3 | 23 pass | 2 pass; no I-Am reaches the client, so it cannot bind | 20 pass | 22 pass | 10 pass | 23 pass |
+| Legacy BACpypes | 23 pass | 2 pass; cannot bind | 20 pass | 22 pass | 10 pass | 23 pass |
+| ulbios | 5 pass, 5 known-difference, 13 unsupported | 4 pass, 5 known-difference, 13 unsupported; `who-is.global` gets no I-Am | 5 pass, 5 known-difference, 13 unsupported | 5 pass, 5 known-difference, 13 unsupported | 4 pass, 3 known-difference, 13 unsupported | 5 pass, 5 known-difference, 13 unsupported |
+| bacnet-js | 21 pass, 2 known-difference | 16 pass, 1 known-difference; binds by address, discovery gets no answer | 20 pass, 1 known-difference | 20 pass, 2 known-difference | 10 pass | 21 pass, 2 known-difference |
 
 What the device images do differently:
 
@@ -532,6 +537,14 @@ What the device images do differently:
 - **Legacy BACpypes device:** a WriteProperty of the wrong datatype gets
   Reject invalid-tag (`wp.av1.pv.wrong-type`). Its WritePropertyMultiple is
   the adapter's shim, which answers property/invalid-data-type.
+- **bacnet-js device:** answers every `server-baseline-v1` scenario as the
+  bacnet-stack device does; the object model and the errors are adapter
+  code.
+- **bacnet-js client:** it binds by the given address, without Who-Is, so
+  against the BACnet4J device the reads and writes run and only discovery
+  and the CharacterString writes (acknowledged by BACnet4J) differ. Its
+  known differences are the WritePropertyMultiple-Error decode
+  ([below](#bacnet-js)).
 
 ### bacnet-stack
 
