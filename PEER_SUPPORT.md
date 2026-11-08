@@ -4,7 +4,7 @@ Which independent BACnet stacks can execute which scenarios with the adapter
 images of this repository. Assertions and pass/fail decisions live in
 [`go-bacnet`](https://github.com/otfabric/go-bacnet) (`INTEROP.md`, `interop/`).
 
-**Published images:** [v0.13.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.13.0)
+**Published images:** [v0.14.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.14.0)
 · default device fixture: `device-baseline-v2`
 
 Cells marked ¹ are new in 0.10.0; everything else also holds for the v0.9.0
@@ -40,8 +40,8 @@ and is.
 | bacnet-stack-router ¹ | bacnet-stack 1.6.1 `apps/router` | C | Native BACnet/IP ↔ BACnet/IP router |
 | cB-Sigma (`cbsigma`) | bacnet `v0.2.0` (device role), bacnet-sim `v0.1.0` | Go | Device oracle; simulator with fault switches (new in 0.13.0, [below](#cb-sigma-cbsigma)) |
 | ulbios (`ulbios`) | ulbios/bacnet `227d6227` (no tags) | Go | Device and client; Who-Is, ReadProperty and WriteProperty only (new in 0.14.0, [below](#ulbios-ulbios)) |
-| Legacy BACpypes (`bacpypes`) | PyPI `bacpypes` 0.19.0 | Python | Device (+ BBMD) and client; the asyncore predecessor of BACpypes3 (not yet released, [below](#legacy-bacpypes-bacpypes)) |
-| bacnet-js | npm `@bacnet-js/client` 3.3.2 (`43fbd922`) | TypeScript (Node.js) | Device oracle and client (unreleased, [below](#bacnet-js-bacnet-js)) |
+| Legacy BACpypes (`bacpypes`) | PyPI `bacpypes` 0.19.0 | Python | Device (+ BBMD) and client; the asyncore predecessor of BACpypes3 (new in 0.14.0, [below](#legacy-bacpypes-bacpypes)) |
+| bacnet-js | npm `@bacnet-js/client` 3.3.2 (`43fbd922`) | TypeScript (Node.js) | Device oracle and client (new in 0.14.0, [below](#bacnet-js-bacnet-js)) |
 | bip-router | topology-router-v1 | Python | Dual-homed BIP↔BIP topology aid |
 
 > **Worldiety:** supplies the native BACnet/IP, NPDU and APDU runtime. The
@@ -272,7 +272,7 @@ pass. Who-Has was not run from go-bacnet; the client matrix shows no I-Have.
 
 ## Legacy BACpypes (`bacpypes`)
 
-Not yet in a release. PyPI `bacpypes` 0.19.0 (MIT), the asyncore code base
+New in 0.14.0. PyPI `bacpypes` 0.19.0 (MIT), the asyncore code base
 that BACpypes3 replaced, with upstream's Application services; environment,
 pin and provenance: [adapters/bacpypes/README.md](adapters/bacpypes/README.md).
 The release is untagged on GitHub; the wheel's `bacpypes/` is identical to
@@ -314,7 +314,7 @@ local build of this adapter. A marks an adapter shim over the BACpypes codec.
 
 ## bacnet-js (`bacnet-js`)
 
-Not in a release yet. [@bacnet-js/client](https://github.com/bacnet-js/client)
+New in 0.14.0. [@bacnet-js/client](https://github.com/bacnet-js/client)
 3.3.2 (MIT), the maintained successor of node-bacnet and bacstack, unmodified,
 in device mode (default) and client mode. Upstream supplies BVLC, NPDU, APDU,
 the request decoders and the answer encoders; it has no object model and no
@@ -323,7 +323,7 @@ Environment, what is upstream and what is adapter, and the upstream defects:
 [adapters/bacnet-js/README.md](adapters/bacnet-js/README.md).
 
 The device cells are asserted by go-bacnet's `interop/bacnetjs_test.go` against
-an image built from this branch (go-bacnet branch `test/bacnet-js`).
+an image built from this repository.
 
 | Scenario | bacnet-js device |
 |---|:---:|

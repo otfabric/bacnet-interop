@@ -3,7 +3,7 @@
 # Assertions live in go-bacnet/interop; this file documents peer pins and evidence types.
 
 schema_version: "1"
-adapter_version: "0.13.0"
+adapter_version: "0.14.0"
 fixture: device-baseline-v2
 fixture_frozen: device-baseline-v1
 # Fixtures shipped by one adapter only (selected with DEVICE_FIXTURE_FILE / FIXTURE).
@@ -140,6 +140,7 @@ adapters:
     upstream: BACpypes
     upstream_version: "0.19.0"
     role: peer-oracle
+    since: "0.14.0"
     capabilities:
       who_is_i_am: native  # WhoIsIAmServices
       who_has_i_have: native  # WhoHasIHaveServices
@@ -467,7 +468,7 @@ adapters:
     upstream_version: "3.3.2"
     upstream_commit: "43fbd9228dbf03a72fb8b7d2d01aee3b1fe96734 (npm gitHead; tag v3.3.2 is 27a399a00a7057ebb1d844bd6431d25af383c7ad, same src)"
     role: peer-oracle
-    since: "unreleased"  # first release that ships the image
+    since: "0.14.0"
     roles: [device, client]  # device mode is the default; "client" as the first argument selects client mode
     evidence:
       bvlc: native  # transport.ts, bvlc.ts

@@ -31,6 +31,36 @@ Tags are immutable. A fix is a new version.
 
 ---
 
+## v0.14.0
+
+**Date:** 2026-11-08
+**Previous release:** v0.13.0
+
+Three new peers, each with a device and a client mode: ulbios/bacnet, legacy BACpypes and @bacnet-js/client. With them six images have client mode under container contract 1.1. The fixtures, the scenario files and the other images are unchanged.
+
+### Added
+
+- **New peer `ulbios`** (`ghcr.io/otfabric/bacnet-interop-ulbios`): [ulbios/bacnet](https://github.com/ulbios/bacnet) (Go, MIT), pinned by commit `227d62272ce9` (pseudo-version `v0.0.0-20230910233229-227d62272ce9`; upstream has no tags). A small codec library: Who-Is, I-Am, ReadProperty, WriteProperty and their answers, with no Reject or Abort encoder. The device has an adapter object model and reports each request it cannot answer as an `unanswered` operation line; client mode sends Who-Is, ReadProperty and WriteProperty, and every other scenario is `unsupported`. The transaction timer and retries are adapter code ([PEER_SUPPORT.md](PEER_SUPPORT.md#ulbios-ulbios), [adapters/ulbios/README.md](adapters/ulbios/README.md)).
+- **New peer `bacpypes`** (`ghcr.io/otfabric/bacnet-interop-bacpypes`): legacy BACpypes 0.19.0 (PyPI `bacpypes`, MIT; the asyncore predecessor of BACpypes3, not BACpypes3), the wheel hash-pinned, on Python 3.11 from the Debian bookworm base image. Device with the upstream services (RP, RPM, WP, Who-Has, COV, SubscribeCOVProperty, files, DCC, segmentation both ways) and BBMD mode (`BACNET_BBMD=1`); WritePropertyMultiple, ReadRange, ReinitializeDevice and the messaging services are adapter shims. Client mode runs every scenario file except SubscribeCOVPropertyMultiple, including foreign-device registration and the BVLC tables ([PEER_SUPPORT.md](PEER_SUPPORT.md#legacy-bacpypes-bacpypes), [adapters/bacpypes/README.md](adapters/bacpypes/README.md)).
+- **New peer `bacnet-js`** (`ghcr.io/otfabric/bacnet-interop-bacnet-js`): [@bacnet-js/client](https://github.com/bacnet-js/client) 3.3.2 (TypeScript on Node.js 24.22.2, MIT; the maintained successor of node-bacnet and bacstack), pinned with its four runtime dependencies in `package-lock.json`. Upstream supplies BVLC, NPDU, APDU, the request decoders and the answer encoders; the device's object model and service procedures are adapter code. Client mode uses upstream's `BACnetClient`; requests it has no method for are built with its encoders ([PEER_SUPPORT.md](PEER_SUPPORT.md#bacnet-js-bacnet-js), [adapters/bacnet-js/README.md](adapters/bacnet-js/README.md)).
+- `make build-ulbios`, `build-bacpypes`, `build-bacnet-js`; the three images in `make smoke`, CI, the release (`manifest.json`, every peer `"independent": true`), the Upstream check and `make candidate-*`. `scripts/check-versions.py` cross-checks the ulbios commit (go.mod and the Dockerfile ARG), the legacy BACpypes version (requirements.txt and the ARG) and the @bacnet-js/client version (package.json, package-lock.json and the ARG).
+- `make client-matrix` runs the three new clients and devices. bacnet-stack stays the gate device; `EXPECTED_DIFFERENCES` in `scripts/client-matrix.py` lists the scenarios each new pair answers differently, each with the recorded reason ([PEER_SUPPORT.md](PEER_SUPPORT.md#clients-against-the-device-images)).
+- The `ulbios` and `bacnet-js` images carry the licence texts of what they link or install under `/licenses/`; the `bacpypes` image keeps the wheel's `LICENSE` ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+
+### Known differences
+
+Recorded peer behaviour a consumer must allow for ([PEER_SUPPORT.md](PEER_SUPPORT.md#known-peer-behaviour), [Client mode](PEER_SUPPORT.md#client-mode)):
+
+- ulbios does not answer what it cannot decode (property identifiers above 255, array indexes, CharacterString, NULL, RPM, WPM, Who-Has, segmentation) where the standard has a Reject or Abort, encodes Unsigned in two octets, and does not recognise a request with segmented-response-accepted set (the adapter clears the bit unless `ULBIOS_KEEP_SA=1`).
+- Legacy BACpypes rejects a value of the wrong datatype with Reject invalid-tag, sends segments of Max APDU octets of service data plus the 5-octet header (1481 for 1476), answers FDT remaining time TTL + 5 and every Write-BDT with NAK 0x0010, and enforces DCC disable.
+- bacnet-js encodes a GetAlarmSummary ACK with context tags where clause 13.10.2 has application tags, does not answer GetEnrollmentSummary with the event-state filter normal and ConfirmedTextMessage, cannot send a segmented answer, decodes a WritePropertyMultiple-Error with the plain Error decoder and the day of a BACnetDateTime from the weekday.
+
+### Unchanged
+
+- The fixtures, the device fixtures, the scenario files and the container contract (1.1); the other images.
+
+---
+
 ## v0.13.0
 
 **Date:** 2026-11-06

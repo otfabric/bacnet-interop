@@ -9,7 +9,7 @@
 # (with go.sum) pins ulbios/bacnet by commit as a Go pseudo-version; the
 # Dockerfile ARG ULBIOS_COMMIT repeats it and is cross-checked the same way.
 
-interop_version: "0.13.0"      # equals adapter_version in adapters/inventory.yaml
+interop_version: "0.14.0"      # equals adapter_version in adapters/inventory.yaml
 contract_version: "1.1"        # docs/CONTAINER_CONTRACT.md
 
 protocol:
@@ -141,7 +141,7 @@ implementations:
     language: "TypeScript (Node.js)"
     independent_engine: true
     roles: [device, client]                              # device mode (default) and client mode
-    published: true                                      # from the next release (not on ghcr.io yet)
+    published: true
     pinned_in:
       - adapters/bacnet-js/package.json
       - adapters/bacnet-js/package-lock.json

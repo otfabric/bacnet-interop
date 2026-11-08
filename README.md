@@ -20,7 +20,7 @@ by any BACnet client implementation.
 consumes these reference images to validate its own BACnet protocol
 implementation.
 
-**Latest images:** [v0.13.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.13.0)
+**Latest images:** [v0.14.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.14.0)
 ([what changed](RELEASE.md#v0130)).
 
 ## Peers
@@ -29,13 +29,13 @@ implementation.
 |---|---|---|
 | `bacnet-interop-bacnet-stack` | bacnet-stack 1.6.1 (C) | Device oracle (+ BBMD) |
 | `bacnet-interop-bacpypes3` | BACpypes3 0.0.110 (Python) | Device oracle (+ BBMD) |
-| `bacnet-interop-bacpypes` | legacy BACpypes 0.19.0 (Python, PyPI `bacpypes`; not BACpypes3) | Device oracle (+ BBMD), client mode (new, unreleased) |
+| `bacnet-interop-bacpypes` | legacy BACpypes 0.19.0 (Python, PyPI `bacpypes`; not BACpypes3) | Device oracle (+ BBMD), client mode (new in 0.14.0) |
 | `bacnet-interop-bacnet4j` | BACnet4J 6.1.1 (Java) | Device oracle (+ BBMD) |
 | `bacnet-interop-worldiety` | worldiety/bacnet `3cb2aa80` (Go) | Native transport and APDU layer; the adapter supplies the object model |
 | `bacnet-interop-sysiobacnet` | System.IO.BACnet, NuGet `BACnet` 4.0.0 (C#) | Device oracle; the stack behind YABE (new in 0.10.0) |
 | `bacnet-interop-cbsigma` | cB-Sigma bacnet `v0.2.0` device role and bacnet-sim `v0.1.0` (Go) | Device oracle; the simulator (`CBSIGMA_ROLE=sim`) adds ReadRange, alarms, BBMD and segmentation fault switches (new in 0.13.0) |
-| `bacnet-interop-ulbios` | ulbios/bacnet `227d6227` (Go, no releases) | Small codec library (Who-Is, I-Am, ReadProperty, WriteProperty and their answers): device with an adapter object model, and client mode (new, unreleased) |
-| `bacnet-interop-bacnet-js` | @bacnet-js/client 3.3.2 (TypeScript on Node.js) | Device oracle (the adapter supplies the object model) and client (`client` mode); not released yet |
+| `bacnet-interop-ulbios` | ulbios/bacnet `227d6227` (Go, no releases) | Small codec library (Who-Is, I-Am, ReadProperty, WriteProperty and their answers): device with an adapter object model, and client mode (new in 0.14.0) |
+| `bacnet-interop-bacnet-js` | @bacnet-js/client 3.3.2 (TypeScript on Node.js) | Device oracle (the adapter supplies the object model) and client (`client` mode) (new in 0.14.0) |
 | `bacnet-interop-bacnet-stack-router` | bacnet-stack 1.6.1 `apps/router` (C) | Native BACnet/IP ↔ BACnet/IP router (new in 0.10.0) |
 | `bacnet-interop-bip-router` | none (Python, written for the tests) | Topology aid for routed scenarios; not evidence about any stack |
 
@@ -105,7 +105,7 @@ Every image writes JSON Lines to stdout. The first line is the ready event,
 written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.13.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.14.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
 `version` is the adapter release (a commit for a local build), `peer_version`
@@ -119,7 +119,7 @@ A consumer pins the images by digest (go-bacnet:
 
 ```bash
 # by tag, for a quick local run
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.13.0
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.14.0
 # by digest, for CI
 BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 ```
