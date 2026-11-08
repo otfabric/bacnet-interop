@@ -1,0 +1,4 @@
+github.com/google/go-cmp v0.5.0 h1:/QaMHBdZ26BB3SSst0Iwl10Epc+xhTquomWX0oZEB6w=
+github.com/google/go-cmp v0.5.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+github.com/ulbios/bacnet v0.0.0-20230910233229-227d62272ce9 h1:9PifA0bpb5tzkoPmouTXhN1pmTw5LN6ChKcgeY5fsac=
+github.com/ulbios/bacnet v0.0.0-20230910233229-227d62272ce9/go.mod h1:ybPN9Sqv887bIMtinbbymTSuyFPR7qtemfLdzeNsA9w=
