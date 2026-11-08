@@ -131,6 +131,21 @@ implementations:
     pinned_in:
       - adapters/ulbios/go.mod
       - adapters/ulbios/Dockerfile
+  bacnet-js:
+    upstream: "@bacnet-js/client (npm)"
+    repository: "https://github.com/bacnet-js/client"
+    module: "@bacnet-js/client"
+    version: "3.3.2"                                     # npm package version
+    upstream_commit: "43fbd9228dbf03a72fb8b7d2d01aee3b1fe96734"   # npm gitHead; tag v3.3.2 = 27a399a00a7057ebb1d844bd6431d25af383c7ad (same src)
+    license: "MIT"                                       # also debug 4.4.3, ms 2.1.3, iconv-lite 0.6.3, safer-buffer 2.1.2 (MIT)
+    language: "TypeScript (Node.js)"
+    independent_engine: true
+    roles: [device, client]                              # device mode (default) and client mode
+    published: true                                      # from the next release (not on ghcr.io yet)
+    pinned_in:
+      - adapters/bacnet-js/package.json
+      - adapters/bacnet-js/package-lock.json
+      - adapters/bacnet-js/Dockerfile
   bip-router:
     upstream: "none (written for the tests, a topology aid)"
     version: "topology-router-v1"
@@ -147,4 +162,5 @@ base_images:
   dotnet_sdk: "mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317"
   dotnet_runtime: "mcr.microsoft.com/dotnet/runtime:10.0@sha256:b89586dc17781f25531909993658aa8161205ae38b8cec8847df4a8221a403d5"
   golang: "docker.io/library/golang:1.26-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb"
+  node: "docker.io/library/node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9"   # bacnet-js
   golang_1_27: "docker.io/library/golang:1.27.2-trixie@sha256:e58d6f83b3416618d8bcac2b3dde1b7f7e3c4a77d25e88637f8bbae81536c48d"   # cbsigma (the modules need Go 1.27.1)

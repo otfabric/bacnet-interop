@@ -2,7 +2,7 @@
 
 ## What this is
 
-Independent BACnet/IP implementations (bacnet-stack, BACpypes3, legacy BACpypes, BACnet4J, System.IO.BACnet, worldiety/bacnet, cB-Sigma bacnet and bacnet-sim, ulbios/bacnet) and two routers in containers, with deterministic device fixtures, used as peer oracles by go-bacnet. Assertions live in go-bacnet, not here. Profile: **interoperability**.
+Independent BACnet/IP implementations (bacnet-stack, BACpypes3, legacy BACpypes, BACnet4J, System.IO.BACnet, worldiety/bacnet, cB-Sigma bacnet and bacnet-sim, ulbios/bacnet, @bacnet-js/client) and two routers in containers, with deterministic device fixtures, used as peer oracles by go-bacnet. Assertions live in go-bacnet, not here. Profile: **interoperability**.
 
 ## Organisation standards
 

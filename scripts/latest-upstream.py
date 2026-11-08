@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compares the upstream pin of one stack with the latest upstream.
 
-    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim|ulbios|bacpypes
+    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim|ulbios|bacpypes|bacnet-js
 
 Prints key=value lines (the format of $GITHUB_OUTPUT), for the Upstream
 workflow and for `make candidate-<stack>`:
@@ -22,8 +22,10 @@ repeat them). ulbios/bacnet has no tags or releases either: its pin is a
 commit of the default branch, as the pseudo-version in adapters/ulbios/go.mod
 (the Dockerfile ARG ULBIOS_COMMIT repeats it). Legacy BACpypes (PyPI
 bacpypes, not bacpypes3) is pinned by version and wheel sha256 in
-adapters/bacpypes/requirements.txt. Commits are shown with 12 digits.
-Nothing is modified.
+adapters/bacpypes/requirements.txt. bacnet-js follows the npm
+registry versions of @bacnet-js/client; its pin is
+adapters/bacnet-js/package.json (with package-lock.json). Commits are shown
+with 12 digits. Nothing is modified.
 """
 
 import json
@@ -158,6 +160,17 @@ def ulbios():
     tip = out.split()[0]
     return pin[:12], tip[:12], tip, not tip.startswith(pin), "HEAD of ulbios/bacnet"
 
+def bacnet_js():
+    package = json.loads((ROOT / "adapters/bacnet-js/package.json").read_text())
+    pin = package.get("dependencies", {}).get("@bacnet-js/client")
+    if not pin:
+        raise SystemExit("adapters/bacnet-js/package.json has no @bacnet-js/client dependency")
+    # Pre-releases (X.Y.Z-beta.N) and deprecated versions are not "latest".
+    versions = json.loads(fetch("https://registry.npmjs.org/@bacnet-js%2Fclient"))["versions"]
+    live = [v for v, meta in versions.items() if not meta.get("deprecated")]
+    latest = newest(live)
+    return pin, latest, "", latest != pin, "npm registry (@bacnet-js/client)"
+
 
 RESOLVERS = {
     "bacnet-stack": bacnet_stack,
@@ -169,6 +182,7 @@ RESOLVERS = {
     "cbsigma": lambda: cbsigma_module("bacnet"),
     "cbsigma-sim": lambda: cbsigma_module("bacnet-sim"),
     "ulbios": ulbios,
+    "bacnet-js": bacnet_js,
 }
 
 

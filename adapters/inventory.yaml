@@ -461,6 +461,88 @@ adapters:
       text_message: unsupported
       confirmed_private_transfer: unsupported
 
+  - id: bacnet-js
+    image: ghcr.io/otfabric/bacnet-interop-bacnet-js
+    upstream: "@bacnet-js/client (TypeScript on Node.js, MIT)"
+    upstream_version: "3.3.2"
+    upstream_commit: "43fbd9228dbf03a72fb8b7d2d01aee3b1fe96734 (npm gitHead; tag v3.3.2 is 27a399a00a7057ebb1d844bd6431d25af383c7ad, same src)"
+    role: peer-oracle
+    since: "unreleased"  # first release that ships the image
+    roles: [device, client]  # device mode is the default; "client" as the first argument selects client mode
+    evidence:
+      bvlc: native  # transport.ts, bvlc.ts
+      npdu: native  # npdu.ts
+      apdu_dispatch: native  # client.ts _handlePdu / _processServiceRequest: decoding, service events
+      confirmed_transactions: native  # request manager; no retries (apduRetries unused)
+      segmented_request_receive: native  # client.ts _processSegment reassembles and Segment-ACKs
+      segmented_complex_ack_send: unsupported  # no segmented send; the adapter answers a reply that does not fit with Abort segmentation-not-supported
+      fixture_object_model: adapter-shim  # upstream has no object model (device.js DeviceModel)
+      service_payload_handlers: adapter-shim  # service procedures (property access, priority array, COV, ReadRange, files, events) are adapter code; every payload is decoded and encoded by upstream services/*
+    capabilities:  # device mode
+      who_is_i_am: native  # iAmResponse; Max_APDU_Length_Accepted 1482 (transport getMaxPayload), the Device object says 1476
+      who_has_i_have: native  # iHaveResponse; name or identifier
+      read_property: native  # ReadProperty.encodeAcknowledge; Log_Buffer is read-access-denied (use ReadRange)
+      read_property_multiple: native  # ALL, REQUIRED, OPTIONAL expanded by the adapter
+      write_property: native  # commandable AV and BV (priority array, relinquish with NULL)
+      write_property_multiple: adapter-shim  # WritePropertyMultiple.decode does not stop at a specification's closing tag; the adapter decodes each specification alone from the raw datagram
+      read_range_by_position: native  # ReadRange.encodeAcknowledge; records encoded with asn1 primitives
+      read_range_by_sequence_number: native
+      read_range_by_time: native
+      cov: native  # unconfirmed and confirmed notifications, SubscribeCOV and SubscribeCOVProperty with COV increment
+      get_alarm_summary: native  # AlarmSummary.encode writes context tags 12, 9 and 8 where clause 13.10.2 has application tags: go-bacnet refuses the ACK
+      get_enrollment_summary: native  # GetEnrollmentSummary.decode reads a primitive [2] filter as constructed: offnormal decodes by accident, normal throws (no answer)
+      get_event_information: native
+      acknowledge_alarm: native  # time stamp checked against Event_Time_Stamps (services/invalid-time-stamp)
+      create_object: native  # Analog Value 100..199; CreateObject.decode needs the identifier choice and the list of initial values
+      delete_object: native  # objects it created
+      atomic_read_file_stream: native
+      atomic_read_file_record: native
+      atomic_write_file_stream: native
+      cov_multiple: unsupported  # no SubscribeCOVPropertyMultiple decoder
+      list_element: unsupported  # no listener: Error services/reject-unrecognized-service
+      messaging_time_sync: native  # operation line
+      messaging_text: unsupported  # outside upstream's service map: no answer
+      messaging_private_transfer: native  # confirmed (ACK) and unconfirmed; operation line
+      messaging_write_group: unsupported  # outside upstream's service map
+      event_notification_emit: unsupported
+      device_communication_control: adapter-shim  # enable and disable-initiation acknowledged and recorded; disable refused (services/service-request-denied)
+      reinitialize_device_warmstart: adapter-shim  # SimpleACK, no restart; backup/restore optional-functionality-not-supported
+      segmented_confirmed_request_receive: native
+      peer_as_bbmd: unsupported  # upstream has no BBMD
+    client_capabilities:  # docs/CLIENT_DRIVER_CONTRACT.md; client.js over BACnetClient
+      who_is_i_am: native  # whoIs(); whoIsThroughBBMD() with --bbmd
+      who_has_i_have: adapter-shim  # WhoHas.encode exists, no client method; sent as an Original-Broadcast
+      read_property: native
+      read_property_multiple: native
+      write_property: native
+      write_property_multiple: native  # a WritePropertyMultiple-Error is decoded as a plain Error (no firstFailedWriteAttempt): known-difference
+      subscribe_cov: native
+      subscribe_cov_property: adapter-shim  # subscribeProperty() hard-codes lifetime 0 and no increment; SubscribeProperty.encode through the request manager
+      read_range_by_position: native  # readRange() for Log_Buffer; ReadRange.encode through the request manager for other properties
+      device_communication_control: native
+      reinitialize_device: native
+      atomic_read_file_stream: native  # readFile(); a read larger than one APDU through the request manager with segmented-response-accepted
+      atomic_write_file_stream: native  # no segmented requests: a write larger than the DUT's max APDU is unsupported
+      add_list_element: unsupported  # AddListElement.encode is application-tagged only; a BACnetDestination cannot be encoded
+      remove_list_element: unsupported  # same encoder
+      create_object: native  # identifier choice only; the type choice is unsupported
+      delete_object: native
+      get_event_information: native
+      acknowledge_alarm: native  # decodeBacnetDatetime takes the weekday as the day of month: a date time stamp echoed back is wrong (known-difference)
+      time_synchronization: native  # timeSync(), timeSyncUTC()
+      unconfirmed_private_transfer: native
+      write_group: unsupported  # no encoder
+      foreign_device_registration: native  # registerForeignDevice() (--bbmd, --fd-ttl); whoIsThroughBBMD() sends Distribute-Broadcast-To-Network
+      read_bdt: unsupported  # bvlc.ts encodes the header only
+      read_fdt: unsupported
+      write_bdt: unsupported
+      segmentation: native  # segmented ComplexACK reassembly; no segmented requests
+      subscribe_cov_property_multiple: unsupported  # no encoder
+      get_alarm_summary: native
+      get_enrollment_summary: native  # unfiltered; encode drops filter 0 and wraps the others in constructed tags (unsupported)
+      text_message: unsupported  # no encoder
+      confirmed_private_transfer: native  # PrivateTransfer.decode returns empty data for an ACK with service parameters
+
   - id: bip-router
     image: ghcr.io/otfabric/bacnet-interop-bip-router
     upstream: bacnet-interop

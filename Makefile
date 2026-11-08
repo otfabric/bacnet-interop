@@ -1,4 +1,4 @@
-.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacpypes build-bacnet4j build-worldiety build-sysiobacnet build-cbsigma build-ulbios build-bip-router build-bacnet-stack-router smoke client-matrix ci FORCE
+.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacpypes build-bacnet4j build-worldiety build-sysiobacnet build-cbsigma build-ulbios build-bacnet-js build-bip-router build-bacnet-stack-router smoke client-matrix ci FORCE
 
 SCHEMA              := fixtures/schema/fixture.schema.json
 MANIFEST            := fixtures/manifest.json
@@ -14,6 +14,7 @@ WORLDIETY_IMAGE     ?= bacnet-interop-worldiety:local
 SYSIOBACNET_IMAGE   ?= bacnet-interop-sysiobacnet:local
 CBSIGMA_IMAGE       ?= bacnet-interop-cbsigma:local
 ULBIOS_IMAGE        ?= bacnet-interop-ulbios:local
+BACNET_JS_IMAGE     ?= bacnet-interop-bacnet-js:local
 BIP_ROUTER_IMAGE    ?= bacnet-interop-bip-router:local
 BACNET_STACK_ROUTER_IMAGE ?= bacnet-interop-bacnet-stack-router:local
 REGISTRY            ?= ghcr.io/otfabric
@@ -49,7 +50,7 @@ dissect-fixtures: ## Check the codec vectors against Wireshark's dissector (need
 # Adapter images (Docker when Dockerfile exists; stub otherwise)
 # ---------------------------------------------------------------------------
 
-build: build-bacnet-stack build-bacpypes3 build-bacpypes build-bacnet4j build-worldiety build-sysiobacnet build-cbsigma build-ulbios build-bip-router build-bacnet-stack-router ## Build all adapter images
+build: build-bacnet-stack build-bacpypes3 build-bacpypes build-bacnet4j build-worldiety build-sysiobacnet build-cbsigma build-ulbios build-bacnet-js build-bip-router build-bacnet-stack-router ## Build all adapter images
 
 build-bacnet-stack: ## Build bacnet-stack adapter image
 	@if [ -f adapters/bacnet-stack/Dockerfile ]; then \
@@ -127,6 +128,13 @@ build-ulbios: ## Build ulbios/bacnet adapter image (device and client mode)
 	    -f adapters/ulbios/Dockerfile \
 	    -t $(ULBIOS_IMAGE) .
 
+build-bacnet-js: ## Build bacnet-js adapter image (@bacnet-js/client, device and client mode)
+	@echo "Building bacnet-js adapter image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."
+	@docker buildx build --platform=$(PLATFORM) --load \
+	    --build-arg ADAPTER_VERSION=$(ADAPTER_VERSION) \
+	    -f adapters/bacnet-js/Dockerfile \
+	    -t $(BACNET_JS_IMAGE) .
+
 build-bip-router: ## Build BIP↔BIP topology router image
 	@if [ -f adapters/bip-router/Dockerfile ]; then \
 	  echo "Building bip-router image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."; \
@@ -154,10 +162,10 @@ build-bacnet-stack-router: ## Build native bacnet-stack BACnet/IP router image (
 # ---------------------------------------------------------------------------
 
 smoke: ## Smoke-test adapter ready events
-	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACPYPES_IMAGE=$(BACPYPES_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) SYSIOBACNET_IMAGE=$(SYSIOBACNET_IMAGE) CBSIGMA_IMAGE=$(CBSIGMA_IMAGE) ULBIOS_IMAGE=$(ULBIOS_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) BACNET_STACK_ROUTER_IMAGE=$(BACNET_STACK_ROUTER_IMAGE) ./scripts/smoke-test.sh
+	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACPYPES_IMAGE=$(BACPYPES_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) SYSIOBACNET_IMAGE=$(SYSIOBACNET_IMAGE) CBSIGMA_IMAGE=$(CBSIGMA_IMAGE) ULBIOS_IMAGE=$(ULBIOS_IMAGE) BACNET_JS_IMAGE=$(BACNET_JS_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) BACNET_STACK_ROUTER_IMAGE=$(BACNET_STACK_ROUTER_IMAGE) ./scripts/smoke-test.sh
 
 client-matrix: ## Run every client-mode image against the bacnet-stack device (server-baseline-v1); CLIENT_MATRIX_FLAGS=--all-devices adds the other devices
-	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACPYPES_IMAGE=$(BACPYPES_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) ULBIOS_IMAGE=$(ULBIOS_IMAGE) python3 scripts/client-matrix.py $(CLIENT_MATRIX_FLAGS)
+	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACPYPES_IMAGE=$(BACPYPES_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) ULBIOS_IMAGE=$(ULBIOS_IMAGE) BACNET_JS_IMAGE=$(BACNET_JS_IMAGE) python3 scripts/client-matrix.py $(CLIENT_MATRIX_FLAGS)
 
 # ---------------------------------------------------------------------------
 # Upstream candidates

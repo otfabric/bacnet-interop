@@ -10,8 +10,8 @@ vectors, and automated protocol compatibility testing.
 
 Reference implementations include BACnet Stack (C), BACpypes3
 (Python), legacy BACpypes 0.x (Python), BACnet4J (Java), System.IO.BACnet
-(C#), Worldiety (Go), cB-Sigma's bacnet and bacnet-sim (Go) and
-ulbios/bacnet (Go).
+(C#), Worldiety (Go), cB-Sigma's bacnet and bacnet-sim (Go), ulbios/bacnet
+(Go) and bacnet-js (TypeScript on Node.js).
 
 The infrastructure is independently maintained and can be used
 by any BACnet client implementation.
@@ -35,6 +35,7 @@ implementation.
 | `bacnet-interop-sysiobacnet` | System.IO.BACnet, NuGet `BACnet` 4.0.0 (C#) | Device oracle; the stack behind YABE (new in 0.10.0) |
 | `bacnet-interop-cbsigma` | cB-Sigma bacnet `v0.2.0` device role and bacnet-sim `v0.1.0` (Go) | Device oracle; the simulator (`CBSIGMA_ROLE=sim`) adds ReadRange, alarms, BBMD and segmentation fault switches (new in 0.13.0) |
 | `bacnet-interop-ulbios` | ulbios/bacnet `227d6227` (Go, no releases) | Small codec library (Who-Is, I-Am, ReadProperty, WriteProperty and their answers): device with an adapter object model, and client mode (new, unreleased) |
+| `bacnet-interop-bacnet-js` | @bacnet-js/client 3.3.2 (TypeScript on Node.js) | Device oracle (the adapter supplies the object model) and client (`client` mode); not released yet |
 | `bacnet-interop-bacnet-stack-router` | bacnet-stack 1.6.1 `apps/router` (C) | Native BACnet/IP ↔ BACnet/IP router (new in 0.10.0) |
 | `bacnet-interop-bip-router` | none (Python, written for the tests) | Topology aid for routed scenarios; not evidence about any stack |
 
@@ -62,6 +63,9 @@ and `FIXTURE`:
 | v7 | Identity (Who-Am-I / You-Are) | bacnet-stack |
 | v8 | Life safety | bacnet-stack, BACnet4J |
 | v9 | Large object model: 40 more objects, an Object_List that does not fit a 50-octet APDU | bacnet-stack only (new in 0.10.0) |
+
+`device-server-v1`, the fixture of the client-mode scenario files, is
+served by the bacnet-js device as well.
 
 `fixtures/codec/` holds wire vectors for go-bacnet's codec tests,
 `fixtures/topology/` and `fixtures/bbmd/` the routed and BBMD scenarios. See
@@ -206,6 +210,7 @@ bacnet-interop/
     ├── sysiobacnet/
     ├── cbsigma/           Go: go.mod (the pins), Dockerfile, *.go
     ├── ulbios/            Go: go.mod (the pin), Dockerfile, *.go
+    ├── bacnet-js/         Node.js: package.json + package-lock.json (the pins), *.js
     └── bip-router/
 ```
 

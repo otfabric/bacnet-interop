@@ -208,6 +208,13 @@ jobs:
               peer \
               'ULBIOS_COMMIT='
           fi
+          if [ -f adapters/bacnet-js/Dockerfile ]; then
+            add_adapter bacnet-js \
+              adapters/bacnet-js/Dockerfile \
+              ghcr.io/otfabric/bacnet-interop-bacnet-js \
+              peer \
+              '^ARG BACNETJS_VERSION='
+          fi
           if [ -f adapters/bip-router/Dockerfile ]; then
             add_adapter bip-router \
               adapters/bip-router/Dockerfile \
@@ -302,6 +309,7 @@ jobs:
       sysiobacnet-digest: ${{ steps.collect.outputs.sysiobacnet-digest }}
       cbsigma-digest: ${{ steps.collect.outputs.cbsigma-digest }}
       ulbios-digest: ${{ steps.collect.outputs.ulbios-digest }}
+      bacnet-js-digest: ${{ steps.collect.outputs.bacnet-js-digest }}
       bip-router-digest: ${{ steps.collect.outputs.bip-router-digest }}
       bacnet-stack-router-digest: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
     env:
@@ -425,6 +433,18 @@ jobs:
             type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Metadata — bacnet-js
+        if: hashFiles('adapters/bacnet-js/Dockerfile') != ''
+        id: meta-bacnet-js
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/otfabric/bacnet-interop-bacnet-js
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.version.outputs.tag }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Metadata — bip-router
         if: hashFiles('adapters/bip-router/Dockerfile') != ''
         id: meta-bip-router
@@ -462,6 +482,7 @@ jobs:
           META_SYSIO: ${{ steps.meta-sysiobacnet.outputs.tags }}
           META_CBSIGMA: ${{ steps.meta-cbsigma.outputs.tags }}
           META_ULBIOS: ${{ steps.meta-ulbios.outputs.tags }}
+          META_BACNETJS: ${{ steps.meta-bacnet-js.outputs.tags }}
           META_BIP: ${{ steps.meta-bip-router.outputs.tags }}
           META_STACK_ROUTER: ${{ steps.meta-bacnet-stack-router.outputs.tags }}
         run: |
@@ -477,6 +498,7 @@ jobs:
               sysiobacnet)  printf '%s' "$META_SYSIO" ;;
               cbsigma)      printf '%s' "$META_CBSIGMA" ;;
               ulbios)       printf '%s' "$META_ULBIOS" ;;
+              bacnet-js)    printf '%s' "$META_BACNETJS" ;;
               bip-router)   printf '%s' "$META_BIP" ;;
               bacnet-stack-router) printf '%s' "$META_STACK_ROUTER" ;;
               *)            return 1 ;;
@@ -533,6 +555,7 @@ jobs:
           SYSIO_DIGEST: ${{ steps.collect.outputs.sysiobacnet-digest }}
           CBSIGMA_DIGEST: ${{ steps.collect.outputs.cbsigma-digest }}
           ULBIOS_DIGEST: ${{ steps.collect.outputs.ulbios-digest }}
+          BACNETJS_DIGEST: ${{ steps.collect.outputs.bacnet-js-digest }}
           BIP_DIGEST: ${{ steps.collect.outputs.bip-router-digest }}
           STACK_ROUTER_DIGEST: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
         run: |
@@ -550,6 +573,7 @@ jobs:
               "sysiobacnet": os.environ.get("SYSIO_DIGEST") or None,
               "cbsigma": os.environ.get("CBSIGMA_DIGEST") or None,
               "ulbios": os.environ.get("ULBIOS_DIGEST") or None,
+              "bacnet-js": os.environ.get("BACNETJS_DIGEST") or None,
               "bip-router": os.environ.get("BIP_DIGEST") or None,
               "bacnet-stack-router": os.environ.get("STACK_ROUTER_DIGEST") or None,
           }
@@ -596,6 +620,7 @@ jobs:
               ("sysiobacnet", "ghcr.io/otfabric/bacnet-interop-sysiobacnet"),
               ("cbsigma", "ghcr.io/otfabric/bacnet-interop-cbsigma"),
               ("ulbios", "ghcr.io/otfabric/bacnet-interop-ulbios"),
+              ("bacnet-js", "ghcr.io/otfabric/bacnet-interop-bacnet-js"),
           ):
               peers.setdefault(name, {"pin": None, "image": image, "digest": None, "independent": True})
           topology.setdefault(
@@ -645,6 +670,7 @@ jobs:
           SYSIO_DIGEST: ${{ steps.collect.outputs.sysiobacnet-digest }}
           CBSIGMA_DIGEST: ${{ steps.collect.outputs.cbsigma-digest }}
           ULBIOS_DIGEST: ${{ steps.collect.outputs.ulbios-digest }}
+          BACNETJS_DIGEST: ${{ steps.collect.outputs.bacnet-js-digest }}
           BIP_DIGEST: ${{ steps.collect.outputs.bip-router-digest }}
           STACK_ROUTER_DIGEST: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
         run: |
@@ -660,6 +686,7 @@ jobs:
             "sysiobacnet|${SYSIO_DIGEST}|SYSIOBACNET_IMAGE"
             "cbsigma|${CBSIGMA_DIGEST}|CBSIGMA_IMAGE"
             "ulbios|${ULBIOS_DIGEST}|ULBIOS_IMAGE"
+            "bacnet-js|${BACNETJS_DIGEST}|BACNETJS_IMAGE"
             "bip-router|${BIP_DIGEST}|BIP_ROUTER_IMAGE"
             "bacnet-stack-router|${STACK_ROUTER_DIGEST}|BACNET_STACK_ROUTER_IMAGE"
           )
@@ -678,7 +705,7 @@ jobs:
               echo "| \`${registry}/bacnet-interop-${name}:${VERSION}\` | \`${digest:-not published (Dockerfile pending)}\` |"
             done
             echo
-            echo "\`bip-router\` is a topology aid (not a peer oracle). \`bacnet-stack-router\` is upstream bacnet-stack \`apps/router\` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (\`sysiobacnet\`) the fifth, cB-Sigma (\`cbsigma\`, device role and simulator) the sixth, ulbios/bacnet (\`ulbios\`, device and client mode) the seventh, legacy BACpypes (\`bacpypes\`, PyPI bacpypes 0.x, not BACpypes3) the eighth."
+            echo "\`bip-router\` is a topology aid (not a peer oracle). \`bacnet-stack-router\` is upstream bacnet-stack \`apps/router\` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (\`sysiobacnet\`) the fifth, cB-Sigma (\`cbsigma\`, device role and simulator) the sixth, ulbios/bacnet (\`ulbios\`, device and client mode) the seventh, legacy BACpypes (\`bacpypes\`, PyPI bacpypes 0.x, not BACpypes3) the eighth, bacnet-js (\`bacnet-js\`, @bacnet-js/client, device and client mode) the ninth."
             echo
             echo "## Pinning in consumer repositories"
             echo

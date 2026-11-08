@@ -57,6 +57,7 @@ jobs:
           - stack: cbsigma-sim
           - stack: ulbios
             kind: commit
+          - stack: bacnet-js
     steps:
       - uses: actions/checkout@v7
 
@@ -134,6 +135,9 @@ jobs:
             - **ulbios (commit):** `ARG ULBIOS_COMMIT` in its Dockerfile, and
               `go get github.com/ulbios/bacnet@<commit> && go mod tidy` in `adapters/ulbios`
               (the pseudo-version in `go.mod` and `versions.yaml`).
+            - **bacnet-js:** `npm install --save-exact --ignore-scripts @bacnet-js/client@<version>`
+              in `adapters/bacnet-js` (package.json and package-lock.json), then `ARG BACNETJS_VERSION`
+              in its Dockerfile and `versions.yaml` (version and the npm `gitHead` as upstream_commit).
             - **Worldiety (commit):** `ARG WORLDIETY_COMMIT` in its Dockerfile, and
               `go get github.com/worldiety/bacnet@<commit> && go mod tidy` in `adapters/worldiety`.
             - Reproduce a candidate with `make candidate-<stack> CANDIDATE_VERSION=<latest>

@@ -41,6 +41,7 @@ and is.
 | cB-Sigma (`cbsigma`) | bacnet `v0.2.0` (device role), bacnet-sim `v0.1.0` | Go | Device oracle; simulator with fault switches (new in 0.13.0, [below](#cb-sigma-cbsigma)) |
 | ulbios (`ulbios`) | ulbios/bacnet `227d6227` (no tags) | Go | Device and client; Who-Is, ReadProperty and WriteProperty only (new in 0.14.0, [below](#ulbios-ulbios)) |
 | Legacy BACpypes (`bacpypes`) | PyPI `bacpypes` 0.19.0 | Python | Device (+ BBMD) and client; the asyncore predecessor of BACpypes3 (not yet released, [below](#legacy-bacpypes-bacpypes)) |
+| bacnet-js | npm `@bacnet-js/client` 3.3.2 (`43fbd922`) | TypeScript (Node.js) | Device oracle and client (unreleased, [below](#bacnet-js-bacnet-js)) |
 | bip-router | topology-router-v1 | Python | Dual-homed BIP↔BIP topology aid |
 
 > **Worldiety:** supplies the native BACnet/IP, NPDU and APDU runtime. The
@@ -311,6 +312,42 @@ local build of this adapter. A marks an adapter shim over the BACpypes codec.
 | Write-BDT; Delete-FDT of an absent entry | ⚠ always NAK 0x0010; NAK 0x0050 |
 | Segmented answer from the BBMD role, client windows 1 and 4 | ✅ |
 
+## bacnet-js (`bacnet-js`)
+
+Not in a release yet. [@bacnet-js/client](https://github.com/bacnet-js/client)
+3.3.2 (MIT), the maintained successor of node-bacnet and bacstack, unmodified,
+in device mode (default) and client mode. Upstream supplies BVLC, NPDU, APDU,
+the request decoders and the answer encoders; it has no object model and no
+service procedures, so those are adapter code (A).
+Environment, what is upstream and what is adapter, and the upstream defects:
+[adapters/bacnet-js/README.md](adapters/bacnet-js/README.md).
+
+The device cells are asserted by go-bacnet's `interop/bacnetjs_test.go` against
+an image built from this branch (go-bacnet branch `test/bacnet-js`).
+
+| Scenario | bacnet-js device |
+|---|:---:|
+| Who-Is / I-Am (unicast, range), Who-Has by name and by identifier | ✅ (I-Am Max_APDU 1482, the Device object says 1476) |
+| ReadProperty, object-list (whole, [0], invalid index), wildcard Device instance | A |
+| ReadProperty unknown object / unknown property / not an array / Log_Buffer read-access-denied | A |
+| ReadPropertyMultiple with per-property errors, ALL | A |
+| WriteProperty at a priority, relinquish with NULL, wrong type, object-name write-access-denied | A |
+| WritePropertyMultiple, two specifications, WritePropertyMultiple-Error with first failed write | A (upstream's decoder overruns a specification; the adapter decodes each one alone) |
+| Segmented confirmed request (client segments for a 50-octet peer) | ✅ |
+| Reply larger than the client's max APDU | ✅ Abort segmentation-not-supported (no segmented send upstream) |
+| SubscribeCOV confirmed and unconfirmed, initial notification; SubscribeCOVProperty with increment; errors | A |
+| ReadRange by position (also negative count), by sequence number, by time, paged; errors | A |
+| AtomicReadFile / AtomicWriteFile stream and record, append, errors | A |
+| CreateObject (identifier choice), DeleteObject, errors | A |
+| GetEventInformation, GetEnrollmentSummary (no filter), AcknowledgeAlarm, errors | A |
+| GetEnrollmentSummary with an event-state filter | ⚠ offnormal decodes by accident; normal: no answer (upstream decoder throws) |
+| GetAlarmSummary with an alarm | ⚠ context tags 12, 9, 8 where clause 13.10.2 has application tags: go-bacnet refuses the ACK |
+| DeviceCommunicationControl, ReinitializeDevice | A |
+| TimeSynchronization, UTCTimeSynchronization, Confirmed/UnconfirmedPrivateTransfer | ✅ (operation lines) |
+| AddListElement, RemoveListElement | ✅ Error services/reject-unrecognized-service |
+| ConfirmedTextMessage | — no answer (not in upstream's service map) |
+| BBMD, COV-multiple, WriteGroup, event notifications | — |
+
 ## Transport and network
 
 | Capability | bacnet-stack | BACpypes3 | BACnet4J | Worldiety | System.IO.BACnet ¹ |
@@ -442,8 +479,9 @@ Peers acting as **clients** against a device under test
 ([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)):
 bacnet-stack (the upstream command-line tools), BACnet4J (the upstream
 `LocalDevice`), BACpypes3 (its upstream Application), ulbios (its
-request encoders and parser; the transaction timer is adapter code) and
-legacy BACpypes (its upstream Application), each at its pin, unmodified.
+request encoders and parser; the transaction timer is adapter code), legacy
+BACpypes (its upstream Application) and bacnet-js (its upstream
+`BACnetClient`), each at its pin, unmodified.
 The go-bacnet server is the first device under test.
 
 ### Clients against the device images
@@ -633,3 +671,34 @@ Against the go-bacnet server (go-bacnet `interop/server_clients_test.go`,
 local build): `server-baseline-v1` 23 of 23 pass; `server-services-v1` 36 of
 36 pass; `server-bbmd-v1` 5 of 5 pass; `server-extended-v1` 20 pass, 3
 unsupported (`scovpm.*`).
+
+### bacnet-js
+
+Known behaviour of the @bacnet-js/client 3.3.2 client (source references in
+[adapters/bacnet-js/README.md](adapters/bacnet-js/README.md#client-mode-client-as-the-first-argument)):
+
+- **WritePropertyMultiple-Error** is decoded with the plain Error decoder
+  (`client.ts _processError`, `services/Error.ts`): no first failed write,
+  and the constructed `[0]` is read as if it were application-tagged
+  (observed class device, code 1). `wpm.unknown-object-second` and
+  `wpm.wrong-type` are `known-difference`.
+- **BACnetDateTime decode:** `asn1.decodeBacnetDatetime` uses `getDay()`
+  (the weekday) as the day of the month, so an Event_Time_Stamps date echoed
+  in AcknowledgeAlarm is wrong and the device answers invalid-time-stamp;
+  the result is `known-difference` (`ack.av2` against a device that stamps a
+  date; the go-bacnet server stamps a sequence number and passes).
+- **Reject and Abort** reach the caller alike ("BacnetAbort - Reason:N"); the
+  driver reads the PDU type from the wire.
+- **No segmented requests:** `awf.file3.segmented-request` is `unsupported`.
+  Segmented answers are reassembled; `readFile()` does not set
+  segmented-response-accepted, so the driver sends the 3000-octet read with
+  upstream's encoder in a request that does (`arf.file3.segmented-reply`).
+- **No encoder** for AddListElement / RemoveListElement of a
+  BACnetDestination (application tags only), CreateObject by type,
+  WriteGroup, text messages, SubscribeCOVPropertyMultiple, or the BVLC table
+  functions: `unsupported`. GetEnrollmentSummary with a filter is
+  `unsupported` (`encode` drops filter 0 and wraps the others in constructed
+  tags).
+- **Against the bacnet-js device**, `arf.file3.segmented-reply` fails: the
+  device cannot send a segmented answer and aborts with
+  segmentation-not-supported.

@@ -1,0 +1,13 @@
+{
+  "name": "bacnet-interop-bacnet-js",
+  "version": "0.0.0",
+  "private": true,
+  "description": "bacnet-interop adapter for @bacnet-js/client (device mode and client mode)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@bacnet-js/client": "3.3.2"
+  }
+}

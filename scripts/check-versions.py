@@ -11,7 +11,10 @@ Checks, with the standard library only:
   - the cbsigma Dockerfile ARGs name the module versions of its go.mod;
   - the ulbios Dockerfile ARG ULBIOS_COMMIT is the commit of the
     pseudo-version adapters/ulbios/go.mod requires.
+  - the bacnet-js package.json, package-lock.json and Dockerfile ARG name the
+    same @bacnet-js/client version.
 """
+import json
 import pathlib
 import re
 import sys
@@ -73,6 +76,17 @@ if not pinned or not arg or pinned.group(1) != arg.group(1):
                   f"the Dockerfile says BACPYPES_VERSION={arg and arg.group(1)}")
 if not re.search(r"--hash=sha256:[0-9a-f]{64}", requirements):
     errors.append("adapters/bacpypes/requirements.txt has no --hash=sha256 (pip --require-hashes)")
+
+pkg = json.loads((root / "adapters/bacnet-js/package.json").read_text())
+lock = json.loads((root / "adapters/bacnet-js/package-lock.json").read_text())
+arg = re.search(r"^ARG BACNETJS_VERSION=(\S+)$", (root / "adapters/bacnet-js/Dockerfile").read_text(), re.M)
+pins = {
+    "package.json": pkg.get("dependencies", {}).get("@bacnet-js/client"),
+    "package-lock.json": lock.get("packages", {}).get("node_modules/@bacnet-js/client", {}).get("version"),
+    "Dockerfile BACNETJS_VERSION": arg and arg.group(1),
+}
+if len(set(pins.values())) != 1 or None in pins.values():
+    errors.append(f"adapters/bacnet-js: @bacnet-js/client pins disagree: {pins}")
 
 for error in errors:
     print(f"error: {error}", file=sys.stderr)
