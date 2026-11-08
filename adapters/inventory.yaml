@@ -134,6 +134,74 @@ adapters:
       segmentation: native  # segmented-both: segmented ComplexACK and segmented request
       undecodable_answer_detection: adapter-shim  # sap_response wrapper decodes a copy of each Error/ComplexACK and records failures
 
+  - id: bacpypes
+    # Legacy BACpypes (PyPI bacpypes, asyncore), not BACpypes3 (id bacpypes3).
+    image: ghcr.io/otfabric/bacnet-interop-bacpypes
+    upstream: BACpypes
+    upstream_version: "0.19.0"
+    role: peer-oracle
+    capabilities:
+      who_is_i_am: native  # WhoIsIAmServices
+      who_has_i_have: native  # WhoHasIHaveServices
+      read_property: native  # ReadWritePropertyServices
+      read_property_multiple: native  # ReadWritePropertyMultipleServices; ALL/REQUIRED/OPTIONAL expanded
+      write_property: native  # a value of the wrong datatype is Rejected invalid-tag, not Error invalid-data-type
+      write_property_multiple: adapter-shim  # upstream do_WritePropertyMultipleRequest is commented out (service/object.py); adapter handler answers WritePropertyMultiple-Error
+      read_range_by_position: adapter-shim  # ReadRange APDU upstream, no handler; adapter reads the TrendLogObject logBuffer
+      read_range_by_sequence_number: adapter-shim  # as read_range_by_position
+      read_range_by_time: unsupported
+      cov: native  # ChangeOfValueServices: SubscribeCOV, SubscribeCOVProperty (the property is not checked); confirmed and unconfirmed notifications
+      get_alarm_summary: unsupported  # Reject unrecognized-service
+      get_enrollment_summary: unsupported  # Reject unrecognized-service
+      get_event_information: unsupported  # Reject unrecognized-service
+      acknowledge_alarm: unsupported  # Reject unrecognized-service
+      cov_multiple: unsupported  # no SubscribeCOVPropertyMultiple APDU
+      messaging_time_sync: adapter-shim  # APDU decoded upstream; adapter do_* sink + operation JSONL
+      messaging_text: adapter-shim  # as messaging_time_sync; ConfirmedTextMessage SimpleACK
+      messaging_private_transfer: adapter-shim  # as messaging_time_sync; ConfirmedPrivateTransfer-ACK
+      messaging_write_group: adapter-shim  # as messaging_time_sync
+      event_notification_emit: unsupported
+      device_communication_control: native  # DeviceCommunicationControlServices; "disable" acknowledged and enforced in the SMAP
+      reinitialize_device_warmstart: adapter-shim  # APDU upstream, no handler; SimpleACK, password checked, no process restart
+      atomic_read_file_stream: native  # FileServices; contents in adapter subclasses of the abstract Local*AccessFileObject
+      atomic_write_file_stream: native  # as atomic_read_file_stream
+      segmented_confirmed_request_receive: native  # segmented-both; window BACNET_SEGMENT_WINDOW (SMAP proposedWindowSize)
+      peer_as_bbmd: native  # BACNET_BBMD=1: BIPBBMD; Register-FD accepted (remaining TTL+5), Write-BDT NAK 0x0010
+    client_capabilities:  # docs/CLIENT_DRIVER_CONTRACT.md; upstream Application, IOCB and APDU classes
+      who_is_i_am: native  # WhoIsRequest; I-Am recorded by WhoIsIAmServices
+      who_has_i_have: native  # WhoHasRequest (Application.who_has raises NotImplementedError); I-Have recorded by the adapter
+      read_property: native  # ReadPropertyRequest
+      read_property_multiple: native  # ReadPropertyMultipleRequest
+      write_property: native  # WritePropertyRequest
+      write_property_multiple: native  # WritePropertyMultipleRequest; WritePropertyMultipleError decoded
+      subscribe_cov: native  # SubscribeCOVRequest; notifications recorded by adapter do_* handlers
+      subscribe_cov_property: native  # SubscribeCOVPropertyRequest
+      subscribe_cov_property_multiple: unsupported  # no request APDU (apdu.py registers no confirmed service 30)
+      read_range_by_position: native  # ReadRangeRequest
+      device_communication_control: native
+      reinitialize_device: native
+      atomic_read_file_stream: native
+      atomic_write_file_stream: native
+      add_list_element: native  # ChangeListError decoded
+      remove_list_element: native
+      create_object: native  # CreateObjectError decoded
+      delete_object: native
+      get_event_information: native
+      acknowledge_alarm: native
+      get_alarm_summary: native
+      get_enrollment_summary: native
+      text_message: native  # Confirmed and UnconfirmedTextMessageRequest
+      confirmed_private_transfer: native
+      time_synchronization: native
+      unconfirmed_private_transfer: native
+      write_group: native
+      foreign_device_registration: native  # BIPForeign, --bbmd/--fd-ttl
+      read_bdt: native  # BVLL ReadBroadcastDistributionTable over a second AnnexJCodec/UDPMultiplexer (BIPForeign takes every BVLC-Result as its registration)
+      read_fdt: native  # as read_bdt
+      write_bdt: native  # as read_bdt
+      segmentation: native  # segmented-both: segmented ComplexACK and segmented request
+      undecodable_answer_detection: adapter-shim  # ASAP.confirmation wrapper decodes a copy of each answer and records failures
+
   - id: bacnet4j
     image: ghcr.io/otfabric/bacnet-interop-bacnet4j
     upstream: BACnet4J
