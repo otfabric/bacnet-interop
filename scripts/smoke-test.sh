@@ -634,8 +634,8 @@ if want_adapter bacnet-js && image_exists "$BACNET_JS_IMAGE"; then
     check_whois "bacnet-js device server" "$whois"
     ready=""; whois=""
     run_start_server ready whois "$BACNET_JS_IMAGE" 47892 -e FIXTURE=device-server-v1 -e DEVICE_FIXTURE_FILE=/fixtures/device/device-server-v1.json
-    check_ready_event "bacnet-js device server (device-server-v1)" "$ready" "bacnet-js" "device-server-v1"
-    check_whois "bacnet-js device server (device-server-v1)" "$whois"
+    check_ready_event "bacnet-js device-server-v1 device server" "$ready" "bacnet-js" "device-server-v1"
+    check_whois "bacnet-js device-server-v1 device server" "$whois"
 fi
 
 if want_adapter bip-router && image_exists "$BIP_ROUTER_IMAGE"; then
