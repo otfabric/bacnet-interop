@@ -46,6 +46,7 @@ jobs:
           WORLDIETY_IMAGE: bacnet-interop-worldiety:local
           SYSIOBACNET_IMAGE: bacnet-interop-sysiobacnet:local
           CBSIGMA_IMAGE: bacnet-interop-cbsigma:local
+          ULBIOS_IMAGE: bacnet-interop-ulbios:local
           BIP_ROUTER_IMAGE: bacnet-interop-bip-router:local
           BIP_ROUTER_REQUIRED: "1"
           BACNET_STACK_ROUTER_IMAGE: bacnet-interop-bacnet-stack-router:local
@@ -57,6 +58,7 @@ jobs:
           BACNET_STACK_IMAGE: bacnet-interop-bacnet-stack:local
           BACPYPES3_IMAGE: bacnet-interop-bacpypes3:local
           BACNET4J_IMAGE: bacnet-interop-bacnet4j:local
+          ULBIOS_IMAGE: bacnet-interop-ulbios:local
 
       - name: Results (interop-result-v1)
         if: always()
@@ -86,6 +88,7 @@ jobs:
             echo "System.IO.BACnet   : $(grep -E 'SYSIOBACNET_VERSION=' adapters/sysiobacnet/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "cB-Sigma bacnet    : $(grep -E '^ARG BACNET_VERSION=' adapters/cbsigma/Dockerfile | cut -d= -f2-)"
             echo "cB-Sigma bacnet-sim: $(grep -E '^ARG BACNET_SIM_VERSION=' adapters/cbsigma/Dockerfile | cut -d= -f2-)"
+            echo "ulbios/bacnet      : $(grep -E '^ARG ULBIOS_COMMIT=' adapters/ulbios/Dockerfile | cut -d= -f2-)"
             echo "bip-router         : topology-router-v1"
             echo "bacnet-stack-router: $(grep -E 'BACNET_STACK_(SHA|VERSION|REF)=' adapters/bacnet-stack-router/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
           } | tee build-provenance.txt

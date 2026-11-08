@@ -16,7 +16,7 @@
 #   SMOKE_ONLY=bacnet-stack BACNET_STACK_IMAGE=…:candidate ./scripts/smoke-test.sh
 #
 # Env:
-#   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,worldiety,sysiobacnet,cbsigma,
+#   SMOKE_ONLY     comma list: bacnet-stack,bacpypes3,bacnet4j,worldiety,sysiobacnet,cbsigma,ulbios,
 #                  bip-router,bacnet-stack-router
 #                  (empty = all present images; missing peers fail unless filtered)
 #   SMOKE_WHOIS    1 (default) run directed Who-Is→I-Am probe on default-mode peers
@@ -40,6 +40,7 @@ BACNET4J_IMAGE="${BACNET4J_IMAGE:-bacnet-interop-bacnet4j:local}"
 WORLDIETY_IMAGE="${WORLDIETY_IMAGE:-bacnet-interop-worldiety:local}"
 SYSIOBACNET_IMAGE="${SYSIOBACNET_IMAGE:-bacnet-interop-sysiobacnet:local}"
 CBSIGMA_IMAGE="${CBSIGMA_IMAGE:-bacnet-interop-cbsigma:local}"
+ULBIOS_IMAGE="${ULBIOS_IMAGE:-bacnet-interop-ulbios:local}"
 BIP_ROUTER_IMAGE="${BIP_ROUTER_IMAGE:-bacnet-interop-bip-router:local}"
 BACNET_STACK_ROUTER_IMAGE="${BACNET_STACK_ROUTER_IMAGE:-bacnet-interop-bacnet-stack-router:local}"
 SMOKE_ONLY="${SMOKE_ONLY:-}"
@@ -379,6 +380,14 @@ if want_adapter cbsigma; then
         fail "image missing: ${CBSIGMA_IMAGE}"
     fi
 fi
+if want_adapter ulbios; then
+    at image.present "" ulbios
+    if image_exists "$ULBIOS_IMAGE"; then
+        pass "image present: ${ULBIOS_IMAGE}"
+    else
+        fail "image missing: ${ULBIOS_IMAGE}"
+    fi
+fi
 if want_adapter bip-router; then
     at image.present "" bip-router
     if image_exists "$BIP_ROUTER_IMAGE"; then
@@ -517,6 +526,36 @@ if want_adapter cbsigma && image_exists "$CBSIGMA_IMAGE"; then
     run_start_server ready whois "$CBSIGMA_IMAGE" 47890 -e CBSIGMA_ROLE=sim -e BACNET_BBMD=1
     check_ready_event "cbsigma sim BBMD device server" "$ready" "cbsigma" "device-baseline-v2"
     check_whois "cbsigma sim BBMD device server" "$whois"
+fi
+
+if want_adapter ulbios && image_exists "$ULBIOS_IMAGE"; then
+    ADAPTER=ulbios
+    info ""
+    info "=== ulbios ==="
+    check_fixture_file "$ULBIOS_IMAGE" /fixtures/device/device-baseline-v2.json
+    check_fixture_file "$ULBIOS_IMAGE" /scenarios/server-baseline-v1.json
+    check_binary "$ULBIOS_IMAGE" ulbios
+    at files.licenses "" "${ADAPTER}"
+    if docker run --rm --entrypoint sh "$ULBIOS_IMAGE" -c "test -f /licenses/github.com/ulbios/bacnet/LICENSE" >/dev/null 2>&1; then
+        pass "upstream licence in ${ULBIOS_IMAGE}"
+    else
+        fail "upstream licence MISSING in ${ULBIOS_IMAGE}"
+    fi
+    ready=""; whois=""
+    run_start_server ready whois "$ULBIOS_IMAGE" 47891
+    check_ready_event "ulbios device server" "$ready" "ulbios" "device-baseline-v2"
+    check_whois "ulbios device server" "$whois"
+    # Client mode: the ready and done lines of a run without a target (the
+    # one scenario is unsupported, so nothing is sent).
+    at client.lines "" "${ADAPTER}"
+    client_out=$(docker run --rm "$ULBIOS_IMAGE" client --device 1234 \
+        --scenarios /scenarios/server-baseline-v1.json --only who-is.range 2>/dev/null || true)
+    if printf '%s\n' "$client_out" | head -1 | grep -q '"mode":"client"' \
+        && printf '%s\n' "$client_out" | tail -1 | grep -q '"event":"done"'; then
+        pass "ulbios client mode: ready and done lines"
+    else
+        fail "ulbios client mode output: ${client_out}"
+    fi
 fi
 
 if want_adapter bip-router && image_exists "$BIP_ROUTER_IMAGE"; then

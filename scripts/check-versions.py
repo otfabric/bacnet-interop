@@ -7,7 +7,9 @@ Checks, with the standard library only:
   - every version/revision of an implementation occurs in its pinned_in files;
   - every sha256 in a Dockerfile or the Makefile is listed in versions.yaml,
     and every base image digest listed there is used;
-  - the cbsigma Dockerfile ARGs name the module versions of its go.mod.
+  - the cbsigma Dockerfile ARGs name the module versions of its go.mod;
+  - the ulbios Dockerfile ARG ULBIOS_COMMIT is the commit of the
+    pseudo-version adapters/ulbios/go.mod requires.
 """
 import pathlib
 import re
@@ -51,6 +53,14 @@ for module, arg in (("bacnet", "BACNET_VERSION"), ("bacnet-sim", "BACNET_SIM_VER
     if not required or not pinned or required.group(1) != pinned.group(1):
         errors.append(f"adapters/cbsigma: go.mod requires cB-Sigma/{module} {required and required.group(1)}, "
                       f"the Dockerfile says {arg}={pinned and pinned.group(1)}")
+
+gomod = (root / "adapters/ulbios/go.mod").read_text()
+dockerfile = (root / "adapters/ulbios/Dockerfile").read_text()
+required = re.search(r"^\s*(?:require\s+)?github\.com/ulbios/bacnet (v0\.0\.0-\d{14}-([0-9a-f]{12}))$", gomod, re.M)
+pinned = re.search(r"^ARG ULBIOS_COMMIT=([0-9a-f]{40})$", dockerfile, re.M)
+if not required or not pinned or not pinned.group(1).startswith(required.group(2)):
+    errors.append(f"adapters/ulbios: go.mod requires ulbios/bacnet {required and required.group(1)}, "
+                  f"the Dockerfile says ULBIOS_COMMIT={pinned and pinned.group(1)}")
 
 for error in errors:
     print(f"error: {error}", file=sys.stderr)

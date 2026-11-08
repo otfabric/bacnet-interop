@@ -54,6 +54,8 @@ jobs:
           - stack: sysiobacnet
           - stack: cbsigma
           - stack: cbsigma-sim
+          - stack: ulbios
+            kind: commit
     steps:
       - uses: actions/checkout@v7
 
@@ -125,6 +127,9 @@ jobs:
             - **cB-Sigma (cbsigma, cbsigma-sim):** `go get github.com/cB-Sigma/bacnet@<tag>`
               (or `bacnet-sim`) and `go mod tidy` in `adapters/cbsigma`, then `ARG BACNET_VERSION` /
               `BACNET_SIM_VERSION` in its Dockerfile and `versions.yaml`.
+            - **ulbios (commit):** `ARG ULBIOS_COMMIT` in its Dockerfile, and
+              `go get github.com/ulbios/bacnet@<commit> && go mod tidy` in `adapters/ulbios`
+              (the pseudo-version in `go.mod` and `versions.yaml`).
             - **Worldiety (commit):** `ARG WORLDIETY_COMMIT` in its Dockerfile, and
               `go get github.com/worldiety/bacnet@<commit> && go mod tidy` in `adapters/worldiety`.
             - Reproduce a candidate with `make candidate-<stack> CANDIDATE_VERSION=<latest>
