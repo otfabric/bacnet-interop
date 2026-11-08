@@ -9,15 +9,20 @@
 #   scripts/candidate.sh <stack> <version> [<commit>]
 #     bacnet-stack  <bacnet-stack-X.Y.Z tag> <its commit>
 #     bacpypes3     <PyPI version>
+#     bacpypes      <PyPI version> <sha256 of its wheel>   (legacy BACpypes, not BACpypes3)
 #     bacnet4j      <Maven version>
 #     worldiety     <any> <commit of worldiety/bacnet>   (needs Go)
 #     sysiobacnet   <NuGet version>
 #     cbsigma       <tag of cB-Sigma/bacnet>       (the bacnet-sim pin stays)
 #     cbsigma-sim   <tag of cB-Sigma/bacnet-sim>   (the bacnet pin stays)
+#     ulbios        <any> <commit of ulbios/bacnet>
+#     bacnet-js     <npm version of @bacnet-js/client>
 #
-# The release pins stay as they are: bacpypes3 requirements.txt and worldiety
+# The release pins stay as they are: bacpypes3 and bacpypes requirements.txt and worldiety
 # go.mod/go.sum are edited for the build and restored afterwards; the cbsigma
-# Dockerfile resolves a candidate tag itself (go get in the build). Images are
+# and ulbios Dockerfiles resolve a candidate tag or commit themselves (go get
+# in the build); the bacnet-js Dockerfile installs a candidate version over
+# package-lock.json without changing it (npm install --no-save). Images are
 # tagged bacnet-interop-<image>:candidate.
 
 set -euo pipefail
@@ -72,6 +77,14 @@ case "${stack}" in
         build bacpypes3 --build-arg "BACPYPES3_VERSION=${version}"
         export SMOKE_ONLY=bacpypes3 BACPYPES3_IMAGE=bacnet-interop-bacpypes3:candidate
         ;;
+    bacpypes)
+        # pip --require-hashes: the candidate wheel is installed by its sha256.
+        need_commit
+        keep requirements.txt
+        printf 'bacpypes==%s \\\n    --hash=sha256:%s\n' "${version}" "${commit}" > adapters/bacpypes/requirements.txt
+        build bacpypes --build-arg "BACPYPES_VERSION=${version}"
+        export SMOKE_ONLY=bacpypes BACPYPES_IMAGE=bacnet-interop-bacpypes:candidate
+        ;;
     bacnet4j)
         build bacnet4j --build-arg "BACNET4J_VERSION=${version}"
         export SMOKE_ONLY=bacnet4j BACNET4J_IMAGE=bacnet-interop-bacnet4j:candidate
@@ -95,6 +108,15 @@ case "${stack}" in
     cbsigma-sim)
         build cbsigma --build-arg "BACNET_SIM_VERSION=${version}"
         export SMOKE_ONLY=cbsigma CBSIGMA_IMAGE=bacnet-interop-cbsigma:candidate
+        ;;
+    ulbios)
+        need_commit
+        build ulbios --build-arg "ULBIOS_COMMIT=${commit}"
+        export SMOKE_ONLY=ulbios ULBIOS_IMAGE=bacnet-interop-ulbios:candidate
+        ;;
+    bacnet-js)
+        build bacnet-js --build-arg "BACNETJS_VERSION=${version}"
+        export SMOKE_ONLY=bacnet-js BACNET_JS_IMAGE=bacnet-interop-bacnet-js:candidate
         ;;
     *)
         echo "candidate.sh: unknown stack '${stack}'" >&2

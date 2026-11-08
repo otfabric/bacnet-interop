@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Compares the upstream pin of one stack with the latest upstream.
 
-    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim
+    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim|ulbios|bacpypes|bacnet-js
 
 Prints key=value lines (the format of $GITHUB_OUTPUT), for the Upstream
 workflow and for `make candidate-<stack>`:
 
     pin=<the release pin>
-    latest=<the latest stable upstream release; for worldiety the HEAD commit>
-    latest_sha=<the commit of latest, for a stack that is pinned by commit>
+    latest=<the latest stable upstream release; for worldiety and ulbios the HEAD commit>
+    latest_sha=<the commit of latest, for a stack that is pinned by commit;
+                for bacpypes the sha256 of the latest release's wheel>
     update=yes|no
     source=<where latest was looked up>
 
@@ -17,7 +18,14 @@ never "latest". bacnet-stack follows its bacnet-stack-X.Y.Z release tags (not
 master). Worldiety publishes no releases: its pin is a commit of upstream
 HEAD. cB-Sigma's two modules (bacnet, bacnet-sim) are pinned by their vX.Y.Z
 tags in adapters/cbsigma/go.mod, the source of truth (the Dockerfile ARGs
-repeat them). Commits are shown with 12 digits. Nothing is modified.
+repeat them). ulbios/bacnet has no tags or releases either: its pin is a
+commit of the default branch, as the pseudo-version in adapters/ulbios/go.mod
+(the Dockerfile ARG ULBIOS_COMMIT repeats it). Legacy BACpypes (PyPI
+bacpypes, not bacpypes3) is pinned by version and wheel sha256 in
+adapters/bacpypes/requirements.txt. bacnet-js follows the npm
+registry versions of @bacnet-js/client; its pin is
+adapters/bacnet-js/package.json (with package-lock.json). Commits are shown
+with 12 digits. Nothing is modified.
 """
 
 import json
@@ -93,6 +101,23 @@ def bacpypes3():
     return pin, latest, "", latest != pin, "PyPI"
 
 
+def bacpypes():
+    """Legacy BACpypes (PyPI bacpypes, not bacpypes3): the pin is installed by
+    its wheel hash, so latest_sha is the sha256 of the latest wheel."""
+    text = (ROOT / "adapters/bacpypes/requirements.txt").read_text()
+    match = re.search(r"^bacpypes==(\S+)", text, re.M)
+    if not match:
+        raise SystemExit("adapters/bacpypes/requirements.txt has no bacpypes==<pin>")
+    pin = match.group(1)
+    releases = json.loads(fetch("https://pypi.org/pypi/bacpypes/json"))["releases"]
+    live = {v: files for v, files in releases.items() if files and not all(f.get("yanked") for f in files)}
+    latest = newest(live)
+    wheels = [f for f in live[latest] if f.get("packagetype") == "bdist_wheel" and not f.get("yanked")]
+    if len(wheels) != 1:
+        raise SystemExit(f"bacpypes {latest}: {len(wheels)} wheels on PyPI, the candidate build needs exactly one")
+    return pin, latest, wheels[0]["digests"]["sha256"], latest != pin, "PyPI"
+
+
 def bacnet4j():
     pin = arg("bacnet4j", "BACNET4J_VERSION")
     # <release> and <latest> of the metadata may name an alpha.
@@ -129,14 +154,35 @@ def cbsigma_module(module):
     return pin, latest, tags[latest], latest != pin, f"git tags of cB-Sigma/{module}"
 
 
+def ulbios():
+    pin = arg("ulbios", "ULBIOS_COMMIT")
+    out = subprocess.check_output(["git", "ls-remote", "https://github.com/ulbios/bacnet.git", "HEAD"], text=True)
+    tip = out.split()[0]
+    return pin[:12], tip[:12], tip, not tip.startswith(pin), "HEAD of ulbios/bacnet"
+
+def bacnet_js():
+    package = json.loads((ROOT / "adapters/bacnet-js/package.json").read_text())
+    pin = package.get("dependencies", {}).get("@bacnet-js/client")
+    if not pin:
+        raise SystemExit("adapters/bacnet-js/package.json has no @bacnet-js/client dependency")
+    # Pre-releases (X.Y.Z-beta.N) and deprecated versions are not "latest".
+    versions = json.loads(fetch("https://registry.npmjs.org/@bacnet-js%2Fclient"))["versions"]
+    live = [v for v, meta in versions.items() if not meta.get("deprecated")]
+    latest = newest(live)
+    return pin, latest, "", latest != pin, "npm registry (@bacnet-js/client)"
+
+
 RESOLVERS = {
     "bacnet-stack": bacnet_stack,
     "bacpypes3": bacpypes3,
+    "bacpypes": bacpypes,
     "bacnet4j": bacnet4j,
     "worldiety": worldiety,
     "sysiobacnet": sysiobacnet,
     "cbsigma": lambda: cbsigma_module("bacnet"),
     "cbsigma-sim": lambda: cbsigma_module("bacnet-sim"),
+    "ulbios": ulbios,
+    "bacnet-js": bacnet_js,
 }
 
 

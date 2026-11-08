@@ -4,11 +4,17 @@
 
 Checks, with the standard library only:
   - interop_version is the newest version in RELEASE.md;
-  - every version/revision of an implementation occurs in its pinned_in files;
+  - every version/revision/wheel_sha256 of an implementation occurs in its
+    pinned_in files;
   - every sha256 in a Dockerfile or the Makefile is listed in versions.yaml,
     and every base image digest listed there is used;
-  - the cbsigma Dockerfile ARGs name the module versions of its go.mod.
+  - the cbsigma Dockerfile ARGs name the module versions of its go.mod;
+  - the ulbios Dockerfile ARG ULBIOS_COMMIT is the commit of the
+    pseudo-version adapters/ulbios/go.mod requires.
+  - the bacnet-js package.json, package-lock.json and Dockerfile ARG name the
+    same @bacnet-js/client version.
 """
+import json
 import pathlib
 import re
 import sys
@@ -29,7 +35,7 @@ for block in re.split(r"^  (?=[a-z0-9-]+:\n)", section, flags=re.M)[1:]:
     if not files:
         errors.append(f"{name}: no pinned_in files")
     sources = "".join((root / f).read_text() for f in files)
-    for key in ("version", "revision"):
+    for key in ("version", "revision", "wheel_sha256"):
         for value in re.findall(rf'^    {key}: "([^"]+)"', block, re.M):
             if value not in sources:
                 errors.append(f"{name}: {key} {value} is not in {files}")
@@ -51,6 +57,36 @@ for module, arg in (("bacnet", "BACNET_VERSION"), ("bacnet-sim", "BACNET_SIM_VER
     if not required or not pinned or required.group(1) != pinned.group(1):
         errors.append(f"adapters/cbsigma: go.mod requires cB-Sigma/{module} {required and required.group(1)}, "
                       f"the Dockerfile says {arg}={pinned and pinned.group(1)}")
+
+gomod = (root / "adapters/ulbios/go.mod").read_text()
+dockerfile = (root / "adapters/ulbios/Dockerfile").read_text()
+required = re.search(r"^\s*(?:require\s+)?github\.com/ulbios/bacnet (v0\.0\.0-\d{14}-([0-9a-f]{12}))$", gomod, re.M)
+pinned = re.search(r"^ARG ULBIOS_COMMIT=([0-9a-f]{40})$", dockerfile, re.M)
+if not required or not pinned or not pinned.group(1).startswith(required.group(2)):
+    errors.append(f"adapters/ulbios: go.mod requires ulbios/bacnet {required and required.group(1)}, "
+                  f"the Dockerfile says ULBIOS_COMMIT={pinned and pinned.group(1)}")
+
+# Legacy BACpypes: the Dockerfile's version check compares the installed wheel
+# with BACPYPES_VERSION, so requirements.txt and the ARG must name one version.
+requirements = (root / "adapters/bacpypes/requirements.txt").read_text()
+pinned = re.search(r"^bacpypes==(\S+)", requirements, re.M)
+arg = re.search(r"^ARG BACPYPES_VERSION=(\S+)$", (root / "adapters/bacpypes/Dockerfile").read_text(), re.M)
+if not pinned or not arg or pinned.group(1) != arg.group(1):
+    errors.append(f"adapters/bacpypes: requirements.txt pins {pinned and pinned.group(1)}, "
+                  f"the Dockerfile says BACPYPES_VERSION={arg and arg.group(1)}")
+if not re.search(r"--hash=sha256:[0-9a-f]{64}", requirements):
+    errors.append("adapters/bacpypes/requirements.txt has no --hash=sha256 (pip --require-hashes)")
+
+pkg = json.loads((root / "adapters/bacnet-js/package.json").read_text())
+lock = json.loads((root / "adapters/bacnet-js/package-lock.json").read_text())
+arg = re.search(r"^ARG BACNETJS_VERSION=(\S+)$", (root / "adapters/bacnet-js/Dockerfile").read_text(), re.M)
+pins = {
+    "package.json": pkg.get("dependencies", {}).get("@bacnet-js/client"),
+    "package-lock.json": lock.get("packages", {}).get("node_modules/@bacnet-js/client", {}).get("version"),
+    "Dockerfile BACNETJS_VERSION": arg and arg.group(1),
+}
+if len(set(pins.values())) != 1 or None in pins.values():
+    errors.append(f"adapters/bacnet-js: @bacnet-js/client pins disagree: {pins}")
 
 for error in errors:
     print(f"error: {error}", file=sys.stderr)

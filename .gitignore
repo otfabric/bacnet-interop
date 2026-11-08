@@ -54,3 +54,7 @@ coverage.out
 /adapters/worldiety/cmd/device-server/device-server
 /adapters/cbsigma/cbsigma
 /adapters/cbsigma/device_server
+/adapters/ulbios/ulbios
+
+# npm install output of the bacnet-js adapter (the image runs npm ci)
+/adapters/bacnet-js/node_modules/

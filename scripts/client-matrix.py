@@ -18,7 +18,7 @@ reason recorded in PEER_SUPPORT.md; any other failure, a listed scenario
 that now passes, or a run with no `pass` at all fails the matrix.
 
 Usage:
-    BACNET_STACK_IMAGE=... BACNET4J_IMAGE=... BACPYPES3_IMAGE=... \\
+    BACNET_STACK_IMAGE=... BACNET4J_IMAGE=... BACPYPES3_IMAGE=... BACPYPES_IMAGE=... ULBIOS_IMAGE=... BACNET_JS_IMAGE=... \\
         scripts/client-matrix.py [--scenarios server-baseline-v1]
 """
 
@@ -37,13 +37,77 @@ CLIENTS = {
     "bacnet-stack": "BACNET_STACK_IMAGE",
     "bacnet4j": "BACNET4J_IMAGE",
     "bacpypes3": "BACPYPES3_IMAGE",
+    # Legacy BACpypes (PyPI bacpypes 0.x), not BACpypes3.
+    "bacpypes": "BACPYPES_IMAGE",
+    "ulbios": "ULBIOS_IMAGE",
+    "bacnet-js": "BACNET_JS_IMAGE",
 }
 DEVICES = dict(CLIENTS)
 GATE_DEVICE = "bacnet-stack"
 
 # (client, device) -> {scenario: reason}. Filled from runs; each reason is
 # a recorded behaviour of the device or client in PEER_SUPPORT.md.
-EXPECTED_DIFFERENCES: dict[tuple[str, str], dict[str, str]] = {}
+_NO_REPLY = "no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)"
+ULBIOS_DEVICE_DIFFERENCES = {
+    "who-has.name": "ulbios has no Who-Has (bacnet.Parse: ErrNotImplemented), so no I-Have",
+    "who-has.object": "ulbios has no Who-Has (bacnet.Parse: ErrNotImplemented), so no I-Have",
+    "rp.device.object-name": "no CharacterString encoder in ulbios: Error property/unknown-property",
+    "rp.av1.object-name": "no CharacterString encoder in ulbios: Error property/unknown-property",
+    "rp.unknown-property": "property 9999 does not fit ulbios' one-octet property identifier; " + _NO_REPLY,
+    "rp.not-an-array": "ConfirmedReadProperty.Decode refuses an array index; " + _NO_REPLY,
+    "rpm.av1.name-and-type": "no ReadPropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+    "rpm.unknown-object": "no ReadPropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+    "wp.av1.pv.relinquish8": "objects.DecNull refuses every NULL; " + _NO_REPLY,
+    "wp.av1.pv.wrong-type": "no CharacterString decoder in ulbios; " + _NO_REPLY,
+    "wpm.av1.pv.priority8": "no WritePropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+    "wpm.unknown-object-second": "no WritePropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+    "wpm.wrong-type": "no WritePropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+}
+_BP_WRONG_TYPE = {"wp.av1.pv.wrong-type": "legacy BACpypes device: Reject invalid-tag for a value of the wrong datatype"}
+_BACNET4J_UNBOUND = "BACnet4J device: no I-Am reaches the client, so it cannot bind"
+_BACNET4J_SCENARIOS = (
+    "who-is.range", "who-is.global", "who-has.name", "who-has.object",
+    "rp.device.object-name", "rp.av1.object-name", "rp.av1.object-type", "rp.av1.object-identifier",
+    "rp.bv1.present-value", "rp.unknown-object", "rp.unknown-property", "rp.not-an-array",
+    "rpm.av1.name-and-type", "rpm.unknown-object", "wp.av1.pv.priority8", "wp.av1.pv.relinquish8",
+    "wp.av1.pv.wrong-type", "wp.unknown-object", "wpm.av1.pv.priority8", "wpm.unknown-object-second",
+    "wpm.wrong-type",
+)
+EXPECTED_DIFFERENCES: dict[tuple[str, str], dict[str, str]] = {
+    **{(c, "ulbios"): ULBIOS_DEVICE_DIFFERENCES for c in ("bacnet-stack", "bacnet4j", "bacpypes3")},
+    # The ulbios client sends no Who-Has, RPM, WPM, character string or array
+    # index (unsupported); of the rest only these differ against its device.
+    ("ulbios", "ulbios"): {k: ULBIOS_DEVICE_DIFFERENCES[k]
+                           for k in ("rp.device.object-name", "rp.av1.object-name", "wp.av1.pv.relinquish8")},
+    ("ulbios", "bacnet4j"): {"who-is.global": "the BACnet4J device's I-Am does not reach the client (PEER_SUPPORT.md, BACnet4J device)"},
+    # The pairs with legacy BACpypes (`bacpypes`), from `--all-devices` runs.
+    ("bacnet-stack", "bacpypes"): dict(_BP_WRONG_TYPE),
+    ("bacnet4j", "bacpypes"): dict(_BP_WRONG_TYPE),
+    ("bacpypes3", "bacpypes"): dict(_BP_WRONG_TYPE),
+    ("bacpypes", "bacpypes"): dict(_BP_WRONG_TYPE),
+    ("bacpypes", "bacnet4j"): {s: _BACNET4J_UNBOUND for s in _BACNET4J_SCENARIOS},
+    ("bacpypes", "bacpypes3"): {
+        "wp.av1.pv.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype",
+        "wpm.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype",
+        "wpm.unknown-object-second": "BACpypes3 device: plain Error 91 01 91 1f, which the legacy BACpypes client cannot decode as a WritePropertyMultiple-Error",
+    },
+    ("bacpypes", "ulbios"): dict(ULBIOS_DEVICE_DIFFERENCES),
+    # The pairs with the bacnet-js client, from `--all-devices` runs. It binds
+    # by address, so against BACnet4J only discovery and the CharacterString
+    # writes differ.
+    ("bacnet-js", "bacnet4j"): {
+        **{s: "BACnet4J device: no I-Am or I-Have reaches the client (PEER_SUPPORT.md, BACnet4J device)"
+           for s in ("who-is.range", "who-is.global", "who-has.name", "who-has.object")},
+        "wp.av1.pv.wrong-type": "BACnet4J device: a CharacterString to an Analog Value's Present_Value is acknowledged",
+        "wpm.wrong-type": "BACnet4J device: a CharacterString to an Analog Value's Present_Value is acknowledged",
+    },
+    ("bacnet-js", "bacpypes3"): {
+        "wp.av1.pv.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype",
+        "wpm.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype",
+    },
+    ("bacnet-js", "bacpypes"): dict(_BP_WRONG_TYPE),
+    ("bacnet-js", "ulbios"): dict(ULBIOS_DEVICE_DIFFERENCES),
+}
 
 READY_TIMEOUT = 120
 RUN_TIMEOUT = 600

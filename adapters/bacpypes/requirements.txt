@@ -1,0 +1,4 @@
+# The 0.19.0 wheel on PyPI (uploaded 2025-01-22, the only file of the
+# release; no dependencies). Installed with --require-hashes.
+bacpypes==0.19.0 \
+    --hash=sha256:317fbe440474845978dab134f8aefb5f45a41a13926cbdf87b9b8afe6e79131b

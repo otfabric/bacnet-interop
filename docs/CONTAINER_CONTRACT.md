@@ -11,10 +11,10 @@ Contract version **1.1** (`contract_version` in [versions.yaml](../versions.yaml
 Every image writes JSON Lines to stdout. The first line is the ready event, written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.13.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.14.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
-`version` is the adapter release (a commit for a local build), `peer_version` the upstream stack. The two routers add `networks` and `addresses`; `cbsigma` adds `role` (`device` or `sim`, `CBSIGMA_ROLE`). Some adapters then write `{"event":"operation","adapter":…,"operation":…,"result":…}` lines for requests that have no observable reply. Diagnostics go to stderr.
+`version` is the adapter release (a commit for a local build), `peer_version` the upstream stack. The two routers add `networks` and `addresses`; `cbsigma` adds `role` (`device` or `sim`, `CBSIGMA_ROLE`). The legacy BACpypes image (`bacpypes`, not BACpypes3) has client mode as well, under the same contract 1.1. Some adapters then write `{"event":"operation","adapter":…,"operation":…,"result":…}` lines for requests that have no observable reply. Diagnostics go to stderr.
 
 ## Fixtures
 

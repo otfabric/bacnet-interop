@@ -1,4 +1,4 @@
-.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-sysiobacnet build-cbsigma build-bip-router build-bacnet-stack-router smoke client-matrix ci FORCE
+.PHONY: help validate-fixtures dissect-fixtures build build-bacnet-stack build-bacpypes3 build-bacpypes build-bacnet4j build-worldiety build-sysiobacnet build-cbsigma build-ulbios build-bacnet-js build-bip-router build-bacnet-stack-router smoke client-matrix ci FORCE
 
 SCHEMA              := fixtures/schema/fixture.schema.json
 MANIFEST            := fixtures/manifest.json
@@ -8,10 +8,13 @@ PLATFORM            ?= $(shell docker version -f '{{.Server.Os}}/{{.Server.Arch}
 ADAPTER_VERSION     ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo dev)
 BACNET_STACK_IMAGE  ?= bacnet-interop-bacnet-stack:local
 BACPYPES3_IMAGE     ?= bacnet-interop-bacpypes3:local
-BACNET4J_IMAGE      ?= bacnet-interop-bacnet4j:local
+BACPYPES_IMAGE      ?= bacnet-interop-bacpypes:local
+BACNET4J_IMAGE     ?= bacnet-interop-bacnet4j:local
 WORLDIETY_IMAGE     ?= bacnet-interop-worldiety:local
 SYSIOBACNET_IMAGE   ?= bacnet-interop-sysiobacnet:local
 CBSIGMA_IMAGE       ?= bacnet-interop-cbsigma:local
+ULBIOS_IMAGE        ?= bacnet-interop-ulbios:local
+BACNET_JS_IMAGE     ?= bacnet-interop-bacnet-js:local
 BIP_ROUTER_IMAGE    ?= bacnet-interop-bip-router:local
 BACNET_STACK_ROUTER_IMAGE ?= bacnet-interop-bacnet-stack-router:local
 REGISTRY            ?= ghcr.io/otfabric
@@ -47,7 +50,7 @@ dissect-fixtures: ## Check the codec vectors against Wireshark's dissector (need
 # Adapter images (Docker when Dockerfile exists; stub otherwise)
 # ---------------------------------------------------------------------------
 
-build: build-bacnet-stack build-bacpypes3 build-bacnet4j build-worldiety build-sysiobacnet build-cbsigma build-bip-router build-bacnet-stack-router ## Build all adapter images
+build: build-bacnet-stack build-bacpypes3 build-bacpypes build-bacnet4j build-worldiety build-sysiobacnet build-cbsigma build-ulbios build-bacnet-js build-bip-router build-bacnet-stack-router ## Build all adapter images
 
 build-bacnet-stack: ## Build bacnet-stack adapter image
 	@if [ -f adapters/bacnet-stack/Dockerfile ]; then \
@@ -70,6 +73,13 @@ build-bacpypes3: ## Build BACpypes3 adapter image
 	else \
 	  echo "adapter images TBD: bacpypes3 (see adapters/bacpypes3/README.md)"; \
 	fi
+
+build-bacpypes: ## Build legacy BACpypes (bacpypes 0.x, not BACpypes3) adapter image
+	@echo "Building legacy BACpypes adapter image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."
+	@docker buildx build --platform=$(PLATFORM) --load \
+	    --build-arg ADAPTER_VERSION=$(ADAPTER_VERSION) \
+	    -f adapters/bacpypes/Dockerfile \
+	    -t $(BACPYPES_IMAGE) .
 
 build-bacnet4j: ## Build BACnet4J adapter image
 	@if [ -f adapters/bacnet4j/Dockerfile ]; then \
@@ -111,6 +121,20 @@ build-cbsigma: ## Build cB-Sigma adapter image (bacnet device role + bacnet-sim)
 	    -f adapters/cbsigma/Dockerfile \
 	    -t $(CBSIGMA_IMAGE) .
 
+build-ulbios: ## Build ulbios/bacnet adapter image (device and client mode)
+	@echo "Building ulbios adapter image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."
+	@docker buildx build --platform=$(PLATFORM) --load \
+	    --build-arg ADAPTER_VERSION=$(ADAPTER_VERSION) \
+	    -f adapters/ulbios/Dockerfile \
+	    -t $(ULBIOS_IMAGE) .
+
+build-bacnet-js: ## Build bacnet-js adapter image (@bacnet-js/client, device and client mode)
+	@echo "Building bacnet-js adapter image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."
+	@docker buildx build --platform=$(PLATFORM) --load \
+	    --build-arg ADAPTER_VERSION=$(ADAPTER_VERSION) \
+	    -f adapters/bacnet-js/Dockerfile \
+	    -t $(BACNET_JS_IMAGE) .
+
 build-bip-router: ## Build BIP↔BIP topology router image
 	@if [ -f adapters/bip-router/Dockerfile ]; then \
 	  echo "Building bip-router image (ADAPTER_VERSION=$(ADAPTER_VERSION))..."; \
@@ -138,10 +162,10 @@ build-bacnet-stack-router: ## Build native bacnet-stack BACnet/IP router image (
 # ---------------------------------------------------------------------------
 
 smoke: ## Smoke-test adapter ready events
-	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) SYSIOBACNET_IMAGE=$(SYSIOBACNET_IMAGE) CBSIGMA_IMAGE=$(CBSIGMA_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) BACNET_STACK_ROUTER_IMAGE=$(BACNET_STACK_ROUTER_IMAGE) ./scripts/smoke-test.sh
+	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACPYPES_IMAGE=$(BACPYPES_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) WORLDIETY_IMAGE=$(WORLDIETY_IMAGE) SYSIOBACNET_IMAGE=$(SYSIOBACNET_IMAGE) CBSIGMA_IMAGE=$(CBSIGMA_IMAGE) ULBIOS_IMAGE=$(ULBIOS_IMAGE) BACNET_JS_IMAGE=$(BACNET_JS_IMAGE) BIP_ROUTER_IMAGE=$(BIP_ROUTER_IMAGE) BACNET_STACK_ROUTER_IMAGE=$(BACNET_STACK_ROUTER_IMAGE) ./scripts/smoke-test.sh
 
 client-matrix: ## Run every client-mode image against the bacnet-stack device (server-baseline-v1); CLIENT_MATRIX_FLAGS=--all-devices adds the other devices
-	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) python3 scripts/client-matrix.py $(CLIENT_MATRIX_FLAGS)
+	@BACNET_STACK_IMAGE=$(BACNET_STACK_IMAGE) BACPYPES3_IMAGE=$(BACPYPES3_IMAGE) BACPYPES_IMAGE=$(BACPYPES_IMAGE) BACNET4J_IMAGE=$(BACNET4J_IMAGE) ULBIOS_IMAGE=$(ULBIOS_IMAGE) BACNET_JS_IMAGE=$(BACNET_JS_IMAGE) python3 scripts/client-matrix.py $(CLIENT_MATRIX_FLAGS)
 
 # ---------------------------------------------------------------------------
 # Upstream candidates
@@ -155,7 +179,7 @@ client-matrix: ## Run every client-mode image against the bacnet-stack device (s
 CANDIDATE_VERSION ?=
 CANDIDATE_SHA     ?=
 
-candidate-%: FORCE ## Build one stack on CANDIDATE_VERSION (and CANDIDATE_SHA) and smoke it, e.g. candidate-bacpypes3 CANDIDATE_VERSION=0.0.110, candidate-cbsigma CANDIDATE_VERSION=v0.3.0
+candidate-%: FORCE ## Build one stack on CANDIDATE_VERSION (and CANDIDATE_SHA) and smoke it, e.g. candidate-bacpypes3 CANDIDATE_VERSION=0.0.110, candidate-bacpypes CANDIDATE_VERSION=0.19.0 CANDIDATE_SHA=<wheel sha256>, candidate-cbsigma CANDIDATE_VERSION=v0.3.0
 	@test -n "$(CANDIDATE_VERSION)" || { echo "Error: CANDIDATE_VERSION=<upstream version> is required"; exit 1; }
 	@PLATFORM=$(PLATFORM) scripts/candidate.sh $* "$(CANDIDATE_VERSION)" "$(CANDIDATE_SHA)"
 

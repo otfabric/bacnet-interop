@@ -42,10 +42,13 @@ jobs:
         env:
           BACNET_STACK_IMAGE: bacnet-interop-bacnet-stack:local
           BACPYPES3_IMAGE: bacnet-interop-bacpypes3:local
+          BACPYPES_IMAGE: bacnet-interop-bacpypes:local
           BACNET4J_IMAGE: bacnet-interop-bacnet4j:local
           WORLDIETY_IMAGE: bacnet-interop-worldiety:local
           SYSIOBACNET_IMAGE: bacnet-interop-sysiobacnet:local
           CBSIGMA_IMAGE: bacnet-interop-cbsigma:local
+          ULBIOS_IMAGE: bacnet-interop-ulbios:local
+          BACNET_JS_IMAGE: bacnet-interop-bacnet-js:local
           BIP_ROUTER_IMAGE: bacnet-interop-bip-router:local
           BIP_ROUTER_REQUIRED: "1"
           BACNET_STACK_ROUTER_IMAGE: bacnet-interop-bacnet-stack-router:local
@@ -56,7 +59,10 @@ jobs:
         env:
           BACNET_STACK_IMAGE: bacnet-interop-bacnet-stack:local
           BACPYPES3_IMAGE: bacnet-interop-bacpypes3:local
+          BACPYPES_IMAGE: bacnet-interop-bacpypes:local
           BACNET4J_IMAGE: bacnet-interop-bacnet4j:local
+          ULBIOS_IMAGE: bacnet-interop-ulbios:local
+          BACNET_JS_IMAGE: bacnet-interop-bacnet-js:local
 
       - name: Results (interop-result-v1)
         if: always()
@@ -81,11 +87,14 @@ jobs:
             echo "platform           : linux/amd64"
             echo "bacnet-stack pin   : $(grep -E 'BACNET_STACK_(SHA|VERSION|REF)=' adapters/bacnet-stack/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "BACpypes3 pin      : $(grep -E 'BACPYPES3_(VERSION|REF)=' adapters/bacpypes3/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
+            echo "BACpypes pin       : $(grep -E '^ARG BACPYPES_VERSION=' adapters/bacpypes/Dockerfile | cut -d= -f2-) (legacy, wheel $(grep -oE 'sha256:[0-9a-f]{12}' adapters/bacpypes/requirements.txt))"
             echo "BACnet4J pin       : $(grep -E 'BACNET4J_VERSION=' adapters/bacnet4j/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "Worldiety pin      : $(grep -E 'WORLDIETY_COMMIT=' adapters/worldiety/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "System.IO.BACnet   : $(grep -E 'SYSIOBACNET_VERSION=' adapters/sysiobacnet/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
             echo "cB-Sigma bacnet    : $(grep -E '^ARG BACNET_VERSION=' adapters/cbsigma/Dockerfile | cut -d= -f2-)"
             echo "cB-Sigma bacnet-sim: $(grep -E '^ARG BACNET_SIM_VERSION=' adapters/cbsigma/Dockerfile | cut -d= -f2-)"
+            echo "ulbios/bacnet      : $(grep -E '^ARG ULBIOS_COMMIT=' adapters/ulbios/Dockerfile | cut -d= -f2-)"
+            echo "bacnet-js          : $(grep -E '^ARG BACNETJS_VERSION=' adapters/bacnet-js/Dockerfile | cut -d= -f2-)"
             echo "bip-router         : topology-router-v1"
             echo "bacnet-stack-router: $(grep -E 'BACNET_STACK_(SHA|VERSION|REF)=' adapters/bacnet-stack-router/Dockerfile | head -1 | cut -d= -f2- || echo unset)"
           } | tee build-provenance.txt

@@ -48,12 +48,16 @@ jobs:
         include:
           - stack: bacnet-stack
           - stack: bacpypes3
+          - stack: bacpypes
           - stack: bacnet4j
           - stack: worldiety
             kind: commit
           - stack: sysiobacnet
           - stack: cbsigma
           - stack: cbsigma-sim
+          - stack: ulbios
+            kind: commit
+          - stack: bacnet-js
     steps:
       - uses: actions/checkout@v7
 
@@ -118,6 +122,9 @@ jobs:
               places) in `adapters/bacnet-stack/Dockerfile` and `adapters/bacnet-stack-router/Dockerfile`.
             - **BACpypes3:** `adapters/bacpypes3/requirements.txt` and `ARG BACPYPES3_VERSION`
               in its Dockerfile.
+            - **BACpypes (legacy, not BACpypes3):** `bacpypes==<version>` and its wheel
+              `--hash=sha256:<latest_sha>` in `adapters/bacpypes/requirements.txt`, and
+              `ARG BACPYPES_VERSION` in its Dockerfile.
             - **BACnet4J:** `ARG BACNET4J_VERSION` (both places) in its Dockerfile and
               `bacnet4j.version` in `adapters/bacnet4j/pom.xml`.
             - **System.IO.BACnet:** `ARG SYSIOBACNET_VERSION` (both places) in its Dockerfile and
@@ -125,6 +132,12 @@ jobs:
             - **cB-Sigma (cbsigma, cbsigma-sim):** `go get github.com/cB-Sigma/bacnet@<tag>`
               (or `bacnet-sim`) and `go mod tidy` in `adapters/cbsigma`, then `ARG BACNET_VERSION` /
               `BACNET_SIM_VERSION` in its Dockerfile and `versions.yaml`.
+            - **ulbios (commit):** `ARG ULBIOS_COMMIT` in its Dockerfile, and
+              `go get github.com/ulbios/bacnet@<commit> && go mod tidy` in `adapters/ulbios`
+              (the pseudo-version in `go.mod` and `versions.yaml`).
+            - **bacnet-js:** `npm install --save-exact --ignore-scripts @bacnet-js/client@<version>`
+              in `adapters/bacnet-js` (package.json and package-lock.json), then `ARG BACNETJS_VERSION`
+              in its Dockerfile and `versions.yaml` (version and the npm `gitHead` as upstream_commit).
             - **Worldiety (commit):** `ARG WORLDIETY_COMMIT` in its Dockerfile, and
               `go get github.com/worldiety/bacnet@<commit> && go mod tidy` in `adapters/worldiety`.
             - Reproduce a candidate with `make candidate-<stack> CANDIDATE_VERSION=<latest>

@@ -4,7 +4,7 @@ Which independent BACnet stacks can execute which scenarios with the adapter
 images of this repository. Assertions and pass/fail decisions live in
 [`go-bacnet`](https://github.com/otfabric/go-bacnet) (`INTEROP.md`, `interop/`).
 
-**Published images:** [v0.13.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.13.0)
+**Published images:** [v0.14.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.14.0)
 · default device fixture: `device-baseline-v2`
 
 Cells marked ¹ are new in 0.10.0; everything else also holds for the v0.9.0
@@ -39,6 +39,9 @@ and is.
 | System.IO.BACnet ¹ | NuGet `BACnet` 4.0.0 | C# | Device oracle; the stack behind YABE |
 | bacnet-stack-router ¹ | bacnet-stack 1.6.1 `apps/router` | C | Native BACnet/IP ↔ BACnet/IP router |
 | cB-Sigma (`cbsigma`) | bacnet `v0.2.0` (device role), bacnet-sim `v0.1.0` | Go | Device oracle; simulator with fault switches (new in 0.13.0, [below](#cb-sigma-cbsigma)) |
+| ulbios (`ulbios`) | ulbios/bacnet `227d6227` (no tags) | Go | Device and client; Who-Is, ReadProperty and WriteProperty only (new in 0.14.0, [below](#ulbios-ulbios)) |
+| Legacy BACpypes (`bacpypes`) | PyPI `bacpypes` 0.19.0 | Python | Device (+ BBMD) and client; the asyncore predecessor of BACpypes3 (new in 0.14.0, [below](#legacy-bacpypes-bacpypes)) |
+| bacnet-js | npm `@bacnet-js/client` 3.3.2 (`43fbd922`) | TypeScript (Node.js) | Device oracle and client (new in 0.14.0, [below](#bacnet-js-bacnet-js)) |
 | bip-router | topology-router-v1 | Python | Dual-homed BIP↔BIP topology aid |
 
 > **Worldiety:** supplies the native BACnet/IP, NPDU and APDU runtime. The
@@ -235,6 +238,116 @@ so every segmented answer timed out (BACpypes3 0.0.110 showed the same).
 Fixed in go-bacnet v0.6.0; its `TestSegmentedAnswerWithReceiveWindow` keeps
 it fixed against cbsigma and BACpypes3.
 
+## ulbios (`ulbios`)
+
+New in 0.14.0. [ulbios/bacnet](https://github.com/ulbios/bacnet) (Go, MIT),
+pinned by commit `227d62272ce9` (2023-09-10; upstream has no tags), as a
+device and as a client. `bacnet.Parse` decodes Who-Is, I-Am, ReadProperty,
+WriteProperty, Simple-ACK, Complex-ACK and Error; the encoders build REAL,
+NULL, one-octet Enumerated, two-octet Unsigned and object identifiers. There
+is no Reject or Abort encoder. Environment, object model and what is
+adapter-shim: [adapters/ulbios/README.md](adapters/ulbios/README.md).
+
+The cells are asserted by go-bacnet's `interop/ulbios_test.go` against
+`bacnet-interop-ulbios:local` built from this repository, with go-bacnet
+`main` (after v0.6.0).
+
+| Scenario | device |
+|---|:---:|
+| Who-Is / I-Am, unicast, with and without limits; outside the range no I-Am | ✅ (limits read by the adapter from ulbios' tokens) |
+| Who-Is by broadcast → ulbios' broadcast I-Am (DNET 0xFFFF) | ✅ |
+| ReadProperty of every served property (object identifier, type, list, vendor, max APDU, segmentation, protocol version, system status, present value, event state, units, relinquish default, priority array) | ✅ Unsigned always in two octets (`22 00 01`, clause 20.2.4 asks for one) |
+| ReadProperty unknown object / unknown property (Object_Name, Status_Flags, Out_Of_Service: no encoder) | ✅ |
+| WriteProperty at priority 1, 8, none (16), to a Binary Value; priority array afterwards | ✅ (tokens assigned by the adapter: `ConfirmedWriteProperty.Decode` takes only ulbios' own five-token form) |
+| WriteProperty errors: unknown object, unknown property, write-access-denied, invalid-data-type, value-out-of-range | A (the adapter decides; ulbios encodes the Error) |
+| WriteProperty NULL (relinquish) | ⚠ no reply: `objects.DecNull` refuses every NULL |
+| Property identifier above 255, array index, CharacterString or Boolean value, priority 17 | ⚠ no reply (no decoder, no Reject encoder) |
+| Who-Has, RPM, WPM, COV, ReadRange, DCC, ReinitializeDevice, an unrecognized service | ⚠ no reply where clause 18.8 has Reject unrecognized-service |
+| An answer longer than the client's Max APDU (fixture v9, 206 octets) | ⚠ no reply where clause 5.4.5 has Abort segmentation-not-supported |
+| A request with segmented-response-accepted set (`ULBIOS_KEEP_SA=1`) | ⚠ `bacnet.Parse` compares the whole first octet and does not recognise it; by default the adapter clears the bit |
+
+Each ⚠ request is reported as `{"event":"operation","operation":"unanswered","result":"no-reply","service":…,"reason":…}`;
+go-bacnet asserts the line and records the case as an observation, not a
+pass. Who-Has was not run from go-bacnet; the client matrix shows no I-Have.
+
+## Legacy BACpypes (`bacpypes`)
+
+New in 0.14.0. PyPI `bacpypes` 0.19.0 (MIT), the asyncore code base
+that BACpypes3 replaced, with upstream's Application services; environment,
+pin and provenance: [adapters/bacpypes/README.md](adapters/bacpypes/README.md).
+The release is untagged on GitHub; the wheel's `bacpypes/` is identical to
+`py34/bacpypes` at `86288e6`.
+
+**How independent it is:** the same author as BACpypes3 (Joel Bender) and the
+same object model vocabulary, but a separate repository and package rewritten
+for asyncio, not an import of this code. Agreement between BACpypes and
+BACpypes3 is weaker evidence than agreement between either and bacnet-stack,
+BACnet4J or cB-Sigma.
+
+The cells are asserted by go-bacnet's `interop/bacpypes_test.go` against a
+local build of this adapter. A marks an adapter shim over the BACpypes codec.
+
+| Scenario | bacpypes |
+|---|:---:|
+| Who-Is / I-Am (unicast and broadcast); Who-Has by name and by identifier | ✅ |
+| ReadProperty, ReadPropertyMultiple, their errors | ✅ |
+| WriteProperty at a priority, relinquish with NULL | ✅ |
+| WriteProperty of the wrong datatype | ⚠ Reject invalid-tag |
+| WriteProperty to Description | ⚠ property/write-access-denied (`mutable=False`) |
+| WritePropertyMultiple; firstFailedWriteAttempt | A |
+| Segmented answer: seven pairs of device window (1, 2, 4, 8) and client window (1, 2, 4, 16); device Max APDU 128 | ✅ |
+| Segmented confirmed request (WPM to a 50-octet peer) | ✅ |
+| Segment size | ⚠ Max APDU octets of service data plus the 5-octet header (1481 for 1476, clause 20.1.2.5) |
+| SubscribeCOV, confirmed and unconfirmed; unknown object | ✅ |
+| SubscribeCOVProperty | ⚠ the monitored property is not checked: an unknown property is accepted |
+| AtomicReadFile / AtomicWriteFile, stream and record, segmented 3000 octets, errors | ✅ (contents A) |
+| ReadRange by position and by sequence number | A |
+| DeviceCommunicationControl disable-initiation, enable, password | ✅ |
+| DeviceCommunicationControl disable | ⚠ acknowledged and enforced: silent except DCC, ReinitializeDevice and Who-Is |
+| ReinitializeDevice | A |
+| CreateObject, DeleteObject, GetEventInformation, GetAlarmSummary, GetEnrollmentSummary | ✅ Reject unrecognized-service |
+| Time synchronization, text messages, private transfer, WriteGroup (operation lines) | A |
+| Read-BDT (own entry, mask 255.255.255.255), Read-FDT, Delete-FDT, FD registration, Distribute-Broadcast-To-Network | ✅ |
+| FDT remaining time | ⚠ TTL + 5 (clause J.5.2.3: TTL + 30) |
+| Write-BDT; Delete-FDT of an absent entry | ⚠ always NAK 0x0010; NAK 0x0050 |
+| Segmented answer from the BBMD role, client windows 1 and 4 | ✅ |
+
+## bacnet-js (`bacnet-js`)
+
+New in 0.14.0. [@bacnet-js/client](https://github.com/bacnet-js/client)
+3.3.2 (MIT), the maintained successor of node-bacnet and bacstack, unmodified,
+in device mode (default) and client mode. Upstream supplies BVLC, NPDU, APDU,
+the request decoders and the answer encoders; it has no object model and no
+service procedures, so those are adapter code (A).
+Environment, what is upstream and what is adapter, and the upstream defects:
+[adapters/bacnet-js/README.md](adapters/bacnet-js/README.md).
+
+The device cells are asserted by go-bacnet's `interop/bacnetjs_test.go` against
+an image built from this repository.
+
+| Scenario | bacnet-js device |
+|---|:---:|
+| Who-Is / I-Am (unicast, range), Who-Has by name and by identifier | ✅ (I-Am Max_APDU 1482, the Device object says 1476) |
+| ReadProperty, object-list (whole, [0], invalid index), wildcard Device instance | A |
+| ReadProperty unknown object / unknown property / not an array / Log_Buffer read-access-denied | A |
+| ReadPropertyMultiple with per-property errors, ALL | A |
+| WriteProperty at a priority, relinquish with NULL, wrong type, object-name write-access-denied | A |
+| WritePropertyMultiple, two specifications, WritePropertyMultiple-Error with first failed write | A (upstream's decoder overruns a specification; the adapter decodes each one alone) |
+| Segmented confirmed request (client segments for a 50-octet peer) | ✅ |
+| Reply larger than the client's max APDU | ✅ Abort segmentation-not-supported (no segmented send upstream) |
+| SubscribeCOV confirmed and unconfirmed, initial notification; SubscribeCOVProperty with increment; errors | A |
+| ReadRange by position (also negative count), by sequence number, by time, paged; errors | A |
+| AtomicReadFile / AtomicWriteFile stream and record, append, errors | A |
+| CreateObject (identifier choice), DeleteObject, errors | A |
+| GetEventInformation, GetEnrollmentSummary (no filter), AcknowledgeAlarm, errors | A |
+| GetEnrollmentSummary with an event-state filter | ⚠ offnormal decodes by accident; normal: no answer (upstream decoder throws) |
+| GetAlarmSummary with an alarm | ⚠ context tags 12, 9, 8 where clause 13.10.2 has application tags: go-bacnet refuses the ACK |
+| DeviceCommunicationControl, ReinitializeDevice | A |
+| TimeSynchronization, UTCTimeSynchronization, Confirmed/UnconfirmedPrivateTransfer | ✅ (operation lines) |
+| AddListElement, RemoveListElement | ✅ Error services/reject-unrecognized-service |
+| ConfirmedTextMessage | — no answer (not in upstream's service map) |
+| BBMD, COV-multiple, WriteGroup, event notifications | — |
+
 ## Transport and network
 
 | Capability | bacnet-stack | BACpypes3 | BACnet4J | Worldiety | System.IO.BACnet ¹ |
@@ -365,23 +478,36 @@ noticed.
 Peers acting as **clients** against a device under test
 ([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)):
 bacnet-stack (the upstream command-line tools), BACnet4J (the upstream
-`LocalDevice`) and BACpypes3 (its upstream Application), each at its pin,
-unmodified. The go-bacnet server is the first device under test.
+`LocalDevice`), BACpypes3 (its upstream Application), ulbios (its
+request encoders and parser; the transaction timer is adapter code), legacy
+BACpypes (its upstream Application) and bacnet-js (its upstream
+`BACnetClient`), each at its pin, unmodified.
+The go-bacnet server is the first device under test.
 
 ### Clients against the device images
 
 `make client-matrix` (in CI) runs `server-baseline-v1` with every client
 image against the device images, on `device-baseline-v2`. The scenario
 expectations record bacnet-stack's answers where the standard leaves the
-error open, so the bacnet-stack device is the gate: every client passes all
-23 scenarios against it. Against the other device images some scenarios
-differ; CI reports those pairs (`--all-devices`) without failing on them:
+error open, so the bacnet-stack device is the gate: bacnet-stack, BACnet4J,
+BACpypes3 and legacy BACpypes pass all 23 scenarios against it, bacnet-js
+21 (2 known differences of its client), and ulbios passes what it can send
+and decode; no scenario fails. Against the other device images some
+scenarios differ; CI reports those pairs (`--all-devices`) without failing
+on them. A pair listed in `EXPECTED_DIFFERENCES` (`scripts/client-matrix.py`)
+is reported as differing only when a scenario other than the listed ones
+fails, or a listed one passes; the pairs with ulbios, legacy BACpypes and
+bacnet-js are listed. The 0.14.0 run (`make client-matrix
+CLIENT_MATRIX_FLAGS=--all-devices`, local builds):
 
-| Client \ device | bacnet-stack | BACnet4J | BACpypes3 |
-|---|---|---|---|
-| bacnet-stack | 23 pass | 2 pass; no I-Am reaches the client, so the tools cannot bind | 20 pass |
-| BACnet4J | 23 pass | 16 pass | 20 pass |
-| BACpypes3 | 23 pass | 2 pass; no I-Am reaches the client, so it cannot bind | 20 pass |
+| Client \ device | bacnet-stack | BACnet4J | BACpypes3 | Legacy BACpypes | ulbios | bacnet-js |
+|---|---|---|---|---|---|---|
+| bacnet-stack | 23 pass | 2 pass; no I-Am reaches the client, so the tools cannot bind | 20 pass | 22 pass | 10 pass | 23 pass |
+| BACnet4J | 23 pass | 16 pass | 20 pass | 22 pass | 10 pass | 23 pass |
+| BACpypes3 | 23 pass | 2 pass; no I-Am reaches the client, so it cannot bind | 20 pass | 22 pass | 10 pass | 23 pass |
+| Legacy BACpypes | 23 pass | 2 pass; cannot bind | 20 pass | 22 pass | 10 pass | 23 pass |
+| ulbios | 5 pass, 5 known-difference, 13 unsupported | 4 pass, 5 known-difference, 13 unsupported; `who-is.global` gets no I-Am | 5 pass, 5 known-difference, 13 unsupported | 5 pass, 5 known-difference, 13 unsupported | 4 pass, 3 known-difference, 13 unsupported | 5 pass, 5 known-difference, 13 unsupported |
+| bacnet-js | 21 pass, 2 known-difference | 16 pass, 1 known-difference; binds by address, discovery gets no answer | 20 pass, 1 known-difference | 20 pass, 2 known-difference | 10 pass | 21 pass, 2 known-difference |
 
 What the device images do differently:
 
@@ -396,7 +522,29 @@ What the device images do differently:
   invalid-tag instead of Error property/invalid-data-type (WriteProperty and
   WritePropertyMultiple), and an unknown object in WritePropertyMultiple gets
   a plain Error (`91 01 91 1f`, object/unknown-object) instead of a
-  WritePropertyMultiple-Error naming the first failed write.
+  WritePropertyMultiple-Error naming the first failed write. The legacy
+  BACpypes client cannot decode that Error as a WritePropertyMultiple-Error
+  and reports the octets (`fail`, `undecodable`).
+- **ulbios device** (`ULBIOS_DEVICE_DIFFERENCES` in
+  `scripts/client-matrix.py`): no Who-Has, so no I-Have; Object_Name is
+  property/unknown-property (no CharacterString encoder); no reply to
+  ReadProperty of property 9999 (one-octet property identifiers) or with an
+  array index, to ReadPropertyMultiple and WritePropertyMultiple, to a NULL
+  write (`DecNull`) or a CharacterString write. The other devices answer
+  these with an ACK, an Error or a Reject; ulbios has no Reject encoder.
+  With the ulbios client the scenarios it cannot send are unsupported, so
+  only the two Object_Name reads and the relinquish differ.
+- **Legacy BACpypes device:** a WriteProperty of the wrong datatype gets
+  Reject invalid-tag (`wp.av1.pv.wrong-type`). Its WritePropertyMultiple is
+  the adapter's shim, which answers property/invalid-data-type.
+- **bacnet-js device:** answers every `server-baseline-v1` scenario as the
+  bacnet-stack device does; the object model and the errors are adapter
+  code.
+- **bacnet-js client:** it binds by the given address, without Who-Is, so
+  against the BACnet4J device the reads and writes run and only discovery
+  and the CharacterString writes (acknowledged by BACnet4J) differ. Its
+  known differences are the WritePropertyMultiple-Error decode
+  ([below](#bacnet-js)).
 
 ### bacnet-stack
 
@@ -443,6 +591,39 @@ Known behaviour of the BACnet4J 6.1.1 client:
 - **Segmentation:** both directions work; `server-extended-v1` reads and
   writes a 3000-octet file in one request each.
 
+### ulbios
+
+The ulbios client sends Who-Is without limits, ReadProperty and
+WriteProperty with ulbios' encoders; every other scenario is `unsupported`,
+as are a ranged Who-Is, a property identifier above 255, an array index and
+a CharacterString value. Its decoders cannot read some answers; the driver
+reports `known-difference` with the answer's octets
+([adapters/ulbios/README.md](adapters/ulbios/README.md#client-mode)):
+
+- **`ulbios-no-decoder`:** no CharacterString decoder; `bacnet.Parse` reads
+  a tag length of up to 4 octets only (`rp.device.object-name`,
+  `rp.av1.object-name`).
+- **`ulbios-short-complex-ack`:** `ComplexACK.UnmarshalBinary` refuses an
+  APDU shorter than 17 octets, the length of its own REAL ACK
+  (`rp.av1.object-type`, `rp.bv1.present-value`, an empty Recipient_List).
+- **`ulbios-object-identifier-type`:** `objects.DecObjectIdentifier`
+  returns the object type shifted left by two (`rp.av1.object-identifier`
+  decodes as device,1).
+- **`ulbios-no-reject-abort`:** `bacnet.Parse` has no Reject or Abort PDU.
+- **`ulbios-write-real-null`:** `bacnet.NewWriteProperty`, used for a REAL
+  without priority or at 16, puts a REAL followed by a NULL into the value
+  [3] (`services.ConfirmedWritePropertyObjects`); clause 15.9.1.1.3 has one
+  value. The bacnet-stack, BACnet4J and ulbios devices acknowledge it, the
+  BACpypes3 device sends Reject invalid-tag and the go-bacnet server
+  property/invalid-data-type (`wp.av2.high`, `wp.av2.normal`).
+
+Against the BACnet4J device `who-is.global` fails like the other clients'
+(no I-Am reaches the client). Against the go-bacnet server
+(go-bacnet `interop/server_clients_test.go`): `server-baseline-v1` 5 pass,
+5 known-difference, 13 unsupported; `server-services-v1` 4 known-difference,
+32 unsupported; `server-bbmd-v1` 1 known-difference, 4 unsupported;
+`server-extended-v1` 2 known-difference, 21 unsupported.
+
 ### BACpypes3
 
 BACpypes3 0.0.110 cannot decode some answers; its
@@ -479,3 +660,58 @@ Other behaviour:
 Against the go-bacnet server (go-bacnet `interop/server_clients_test.go`): `server-baseline-v1` 23 of 23 pass; `server-services-v1`
 35 pass, 1 known-difference; `server-bbmd-v1` 5 of 5 pass;
 `server-extended-v1` 15 pass, 5 known-difference, 3 unsupported.
+
+### Legacy BACpypes
+
+Known behaviour of the BACpypes 0.19.0 client
+([adapters/bacpypes/README.md](adapters/bacpypes/README.md#client-mode)):
+
+- **SubscribeCOVPropertyMultiple** is `unsupported`: `apdu.py` registers no
+  confirmed service 30.
+- **Undecodable answers:** upstream's ApplicationServiceAccessPoint replaces
+  an answer it cannot decode with an Error that has no source or invoke ID,
+  so the request never completes. The driver decodes a copy of every answer
+  and reports the octets (`fail`, `undecodable`; adapter-shim). Seen with the
+  BACpypes3 device's plain Error to WritePropertyMultiple; no answer of the
+  go-bacnet server failed to decode.
+- **Foreign mode** (`BIPForeign`) takes every BVLC-Result from the BBMD as
+  its registration status, so Read-BDT, Read-FDT and Write-BDT go out on a
+  second link layer on port 47809 (upstream `samples/ReadWriteBBMD.py`).
+- **Enumeration names** come from camel case; the driver converts them to
+  the hyphenated names of the scenario files.
+
+Against the go-bacnet server (go-bacnet `interop/server_clients_test.go`,
+local build): `server-baseline-v1` 23 of 23 pass; `server-services-v1` 36 of
+36 pass; `server-bbmd-v1` 5 of 5 pass; `server-extended-v1` 20 pass, 3
+unsupported (`scovpm.*`).
+
+### bacnet-js
+
+Known behaviour of the @bacnet-js/client 3.3.2 client (source references in
+[adapters/bacnet-js/README.md](adapters/bacnet-js/README.md#client-mode-client-as-the-first-argument)):
+
+- **WritePropertyMultiple-Error** is decoded with the plain Error decoder
+  (`client.ts _processError`, `services/Error.ts`): no first failed write,
+  and the constructed `[0]` is read as if it were application-tagged
+  (observed class device, code 1). `wpm.unknown-object-second` and
+  `wpm.wrong-type` are `known-difference`.
+- **BACnetDateTime decode:** `asn1.decodeBacnetDatetime` uses `getDay()`
+  (the weekday) as the day of the month, so an Event_Time_Stamps date echoed
+  in AcknowledgeAlarm is wrong and the device answers invalid-time-stamp;
+  the result is `known-difference` (`ack.av2` against a device that stamps a
+  date; the go-bacnet server stamps a sequence number and passes).
+- **Reject and Abort** reach the caller alike ("BacnetAbort - Reason:N"); the
+  driver reads the PDU type from the wire.
+- **No segmented requests:** `awf.file3.segmented-request` is `unsupported`.
+  Segmented answers are reassembled; `readFile()` does not set
+  segmented-response-accepted, so the driver sends the 3000-octet read with
+  upstream's encoder in a request that does (`arf.file3.segmented-reply`).
+- **No encoder** for AddListElement / RemoveListElement of a
+  BACnetDestination (application tags only), CreateObject by type,
+  WriteGroup, text messages, SubscribeCOVPropertyMultiple, or the BVLC table
+  functions: `unsupported`. GetEnrollmentSummary with a filter is
+  `unsupported` (`encode` drops filter 0 and wraps the others in constructed
+  tags).
+- **Against the bacnet-js device**, `arf.file3.segmented-reply` fails: the
+  device cannot send a segmented answer and aborts with
+  segmentation-not-supported.
