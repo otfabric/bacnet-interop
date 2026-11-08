@@ -9,8 +9,8 @@ BACnet object models, BBMD and routed-network scenarios, codec test
 vectors, and automated protocol compatibility testing.
 
 Reference implementations include BACnet Stack (C), BACpypes3
-(Python), BACnet4J (Java), System.IO.BACnet (C#), Worldiety (Go) and
-cB-Sigma's bacnet and bacnet-sim (Go).
+(Python), BACnet4J (Java), System.IO.BACnet (C#), Worldiety (Go),
+cB-Sigma's bacnet and bacnet-sim (Go) and ulbios/bacnet (Go).
 
 The infrastructure is independently maintained and can be used
 by any BACnet client implementation.
@@ -32,6 +32,7 @@ implementation.
 | `bacnet-interop-worldiety` | worldiety/bacnet `3cb2aa80` (Go) | Native transport and APDU layer; the adapter supplies the object model |
 | `bacnet-interop-sysiobacnet` | System.IO.BACnet, NuGet `BACnet` 4.0.0 (C#) | Device oracle; the stack behind YABE (new in 0.10.0) |
 | `bacnet-interop-cbsigma` | cB-Sigma bacnet `v0.2.0` device role and bacnet-sim `v0.1.0` (Go) | Device oracle; the simulator (`CBSIGMA_ROLE=sim`) adds ReadRange, alarms, BBMD and segmentation fault switches (new in 0.13.0) |
+| `bacnet-interop-ulbios` | ulbios/bacnet `227d6227` (Go, no releases) | Small codec library (Who-Is, I-Am, ReadProperty, WriteProperty and their answers): device with an adapter object model, and client mode (new, unreleased) |
 | `bacnet-interop-bacnet-stack-router` | bacnet-stack 1.6.1 `apps/router` (C) | Native BACnet/IP ↔ BACnet/IP router (new in 0.10.0) |
 | `bacnet-interop-bip-router` | none (Python, written for the tests) | Topology aid for routed scenarios; not evidence about any stack |
 
@@ -201,6 +202,7 @@ bacnet-interop/
     ├── worldiety/
     ├── sysiobacnet/
     ├── cbsigma/           Go: go.mod (the pins), Dockerfile, *.go
+    ├── ulbios/            Go: go.mod (the pin), Dockerfile, *.go
     └── bip-router/
 ```
 
