@@ -9,13 +9,14 @@
 #   scripts/candidate.sh <stack> <version> [<commit>]
 #     bacnet-stack  <bacnet-stack-X.Y.Z tag> <its commit>
 #     bacpypes3     <PyPI version>
+#     bacpypes      <PyPI version> <sha256 of its wheel>   (legacy BACpypes, not BACpypes3)
 #     bacnet4j      <Maven version>
 #     worldiety     <any> <commit of worldiety/bacnet>   (needs Go)
 #     sysiobacnet   <NuGet version>
 #     cbsigma       <tag of cB-Sigma/bacnet>       (the bacnet-sim pin stays)
 #     cbsigma-sim   <tag of cB-Sigma/bacnet-sim>   (the bacnet pin stays)
 #
-# The release pins stay as they are: bacpypes3 requirements.txt and worldiety
+# The release pins stay as they are: bacpypes3 and bacpypes requirements.txt and worldiety
 # go.mod/go.sum are edited for the build and restored afterwards; the cbsigma
 # Dockerfile resolves a candidate tag itself (go get in the build). Images are
 # tagged bacnet-interop-<image>:candidate.
@@ -71,6 +72,14 @@ case "${stack}" in
         echo "bacpypes3==${version}" > adapters/bacpypes3/requirements.txt
         build bacpypes3 --build-arg "BACPYPES3_VERSION=${version}"
         export SMOKE_ONLY=bacpypes3 BACPYPES3_IMAGE=bacnet-interop-bacpypes3:candidate
+        ;;
+    bacpypes)
+        # pip --require-hashes: the candidate wheel is installed by its sha256.
+        need_commit
+        keep requirements.txt
+        printf 'bacpypes==%s \\\n    --hash=sha256:%s\n' "${version}" "${commit}" > adapters/bacpypes/requirements.txt
+        build bacpypes --build-arg "BACPYPES_VERSION=${version}"
+        export SMOKE_ONLY=bacpypes BACPYPES_IMAGE=bacnet-interop-bacpypes:candidate
         ;;
     bacnet4j)
         build bacnet4j --build-arg "BACNET4J_VERSION=${version}"

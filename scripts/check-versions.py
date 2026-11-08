@@ -4,7 +4,8 @@
 
 Checks, with the standard library only:
   - interop_version is the newest version in RELEASE.md;
-  - every version/revision of an implementation occurs in its pinned_in files;
+  - every version/revision/wheel_sha256 of an implementation occurs in its
+    pinned_in files;
   - every sha256 in a Dockerfile or the Makefile is listed in versions.yaml,
     and every base image digest listed there is used;
   - the cbsigma Dockerfile ARGs name the module versions of its go.mod.
@@ -29,7 +30,7 @@ for block in re.split(r"^  (?=[a-z0-9-]+:\n)", section, flags=re.M)[1:]:
     if not files:
         errors.append(f"{name}: no pinned_in files")
     sources = "".join((root / f).read_text() for f in files)
-    for key in ("version", "revision"):
+    for key in ("version", "revision", "wheel_sha256"):
         for value in re.findall(rf'^    {key}: "([^"]+)"', block, re.M):
             if value not in sources:
                 errors.append(f"{name}: {key} {value} is not in {files}")
@@ -51,6 +52,17 @@ for module, arg in (("bacnet", "BACNET_VERSION"), ("bacnet-sim", "BACNET_SIM_VER
     if not required or not pinned or required.group(1) != pinned.group(1):
         errors.append(f"adapters/cbsigma: go.mod requires cB-Sigma/{module} {required and required.group(1)}, "
                       f"the Dockerfile says {arg}={pinned and pinned.group(1)}")
+
+# Legacy BACpypes: the Dockerfile's version check compares the installed wheel
+# with BACPYPES_VERSION, so requirements.txt and the ARG must name one version.
+requirements = (root / "adapters/bacpypes/requirements.txt").read_text()
+pinned = re.search(r"^bacpypes==(\S+)", requirements, re.M)
+arg = re.search(r"^ARG BACPYPES_VERSION=(\S+)$", (root / "adapters/bacpypes/Dockerfile").read_text(), re.M)
+if not pinned or not arg or pinned.group(1) != arg.group(1):
+    errors.append(f"adapters/bacpypes: requirements.txt pins {pinned and pinned.group(1)}, "
+                  f"the Dockerfile says BACPYPES_VERSION={arg and arg.group(1)}")
+if not re.search(r"--hash=sha256:[0-9a-f]{64}", requirements):
+    errors.append("adapters/bacpypes/requirements.txt has no --hash=sha256 (pip --require-hashes)")
 
 for error in errors:
     print(f"error: {error}", file=sys.stderr)
