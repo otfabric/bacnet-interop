@@ -18,7 +18,7 @@ reason recorded in PEER_SUPPORT.md; any other failure, a listed scenario
 that now passes, or a run with no `pass` at all fails the matrix.
 
 Usage:
-    BACNET_STACK_IMAGE=... BACNET4J_IMAGE=... BACPYPES3_IMAGE=... \\
+    BACNET_STACK_IMAGE=... BACNET4J_IMAGE=... BACPYPES3_IMAGE=... ULBIOS_IMAGE=... \\
         scripts/client-matrix.py [--scenarios server-baseline-v1]
 """
 
@@ -37,13 +37,37 @@ CLIENTS = {
     "bacnet-stack": "BACNET_STACK_IMAGE",
     "bacnet4j": "BACNET4J_IMAGE",
     "bacpypes3": "BACPYPES3_IMAGE",
+    "ulbios": "ULBIOS_IMAGE",
 }
 DEVICES = dict(CLIENTS)
 GATE_DEVICE = "bacnet-stack"
 
 # (client, device) -> {scenario: reason}. Filled from runs; each reason is
 # a recorded behaviour of the device or client in PEER_SUPPORT.md.
-EXPECTED_DIFFERENCES: dict[tuple[str, str], dict[str, str]] = {}
+_NO_REPLY = "no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)"
+ULBIOS_DEVICE_DIFFERENCES = {
+    "who-has.name": "ulbios has no Who-Has (bacnet.Parse: ErrNotImplemented), so no I-Have",
+    "who-has.object": "ulbios has no Who-Has (bacnet.Parse: ErrNotImplemented), so no I-Have",
+    "rp.device.object-name": "no CharacterString encoder in ulbios: Error property/unknown-property",
+    "rp.av1.object-name": "no CharacterString encoder in ulbios: Error property/unknown-property",
+    "rp.unknown-property": "property 9999 does not fit ulbios' one-octet property identifier; " + _NO_REPLY,
+    "rp.not-an-array": "ConfirmedReadProperty.Decode refuses an array index; " + _NO_REPLY,
+    "rpm.av1.name-and-type": "no ReadPropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+    "rpm.unknown-object": "no ReadPropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+    "wp.av1.pv.relinquish8": "objects.DecNull refuses every NULL; " + _NO_REPLY,
+    "wp.av1.pv.wrong-type": "no CharacterString decoder in ulbios; " + _NO_REPLY,
+    "wpm.av1.pv.priority8": "no WritePropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+    "wpm.unknown-object-second": "no WritePropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+    "wpm.wrong-type": "no WritePropertyMultiple in bacnet.Parse; " + _NO_REPLY,
+}
+EXPECTED_DIFFERENCES: dict[tuple[str, str], dict[str, str]] = {
+    **{(c, "ulbios"): ULBIOS_DEVICE_DIFFERENCES for c in ("bacnet-stack", "bacnet4j", "bacpypes3")},
+    # The ulbios client sends no Who-Has, RPM, WPM, character string or array
+    # index (unsupported); of the rest only these differ against its device.
+    ("ulbios", "ulbios"): {k: ULBIOS_DEVICE_DIFFERENCES[k]
+                           for k in ("rp.device.object-name", "rp.av1.object-name", "wp.av1.pv.relinquish8")},
+    ("ulbios", "bacnet4j"): {"who-is.global": "the BACnet4J device's I-Am does not reach the client (PEER_SUPPORT.md, BACnet4J device)"},
+}
 
 READY_TIMEOUT = 120
 RUN_TIMEOUT = 600

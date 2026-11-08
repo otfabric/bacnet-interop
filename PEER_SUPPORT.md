@@ -39,6 +39,7 @@ and is.
 | System.IO.BACnet ¹ | NuGet `BACnet` 4.0.0 | C# | Device oracle; the stack behind YABE |
 | bacnet-stack-router ¹ | bacnet-stack 1.6.1 `apps/router` | C | Native BACnet/IP ↔ BACnet/IP router |
 | cB-Sigma (`cbsigma`) | bacnet `v0.2.0` (device role), bacnet-sim `v0.1.0` | Go | Device oracle; simulator with fault switches (new in 0.13.0, [below](#cb-sigma-cbsigma)) |
+| ulbios (`ulbios`) | ulbios/bacnet `227d6227` (no tags) | Go | Device and client; Who-Is, ReadProperty and WriteProperty only (new in 0.14.0, [below](#ulbios-ulbios)) |
 | bip-router | topology-router-v1 | Python | Dual-homed BIP↔BIP topology aid |
 
 > **Worldiety:** supplies the native BACnet/IP, NPDU and APDU runtime. The
@@ -235,6 +236,38 @@ so every segmented answer timed out (BACpypes3 0.0.110 showed the same).
 Fixed in go-bacnet v0.6.0; its `TestSegmentedAnswerWithReceiveWindow` keeps
 it fixed against cbsigma and BACpypes3.
 
+## ulbios (`ulbios`)
+
+New in 0.14.0. [ulbios/bacnet](https://github.com/ulbios/bacnet) (Go, MIT),
+pinned by commit `227d62272ce9` (2023-09-10; upstream has no tags), as a
+device and as a client. `bacnet.Parse` decodes Who-Is, I-Am, ReadProperty,
+WriteProperty, Simple-ACK, Complex-ACK and Error; the encoders build REAL,
+NULL, one-octet Enumerated, two-octet Unsigned and object identifiers. There
+is no Reject or Abort encoder. Environment, object model and what is
+adapter-shim: [adapters/ulbios/README.md](adapters/ulbios/README.md).
+
+The cells are asserted by go-bacnet's `interop/ulbios_test.go` against
+`bacnet-interop-ulbios:local` built from this repository, with go-bacnet
+`main` (after v0.6.0).
+
+| Scenario | device |
+|---|:---:|
+| Who-Is / I-Am, unicast, with and without limits; outside the range no I-Am | ✅ (limits read by the adapter from ulbios' tokens) |
+| Who-Is by broadcast → ulbios' broadcast I-Am (DNET 0xFFFF) | ✅ |
+| ReadProperty of every served property (object identifier, type, list, vendor, max APDU, segmentation, protocol version, system status, present value, event state, units, relinquish default, priority array) | ✅ Unsigned always in two octets (`22 00 01`, clause 20.2.4 asks for one) |
+| ReadProperty unknown object / unknown property (Object_Name, Status_Flags, Out_Of_Service: no encoder) | ✅ |
+| WriteProperty at priority 1, 8, none (16), to a Binary Value; priority array afterwards | ✅ (tokens assigned by the adapter: `ConfirmedWriteProperty.Decode` takes only ulbios' own five-token form) |
+| WriteProperty errors: unknown object, unknown property, write-access-denied, invalid-data-type, value-out-of-range | A (the adapter decides; ulbios encodes the Error) |
+| WriteProperty NULL (relinquish) | ⚠ no reply: `objects.DecNull` refuses every NULL |
+| Property identifier above 255, array index, CharacterString or Boolean value, priority 17 | ⚠ no reply (no decoder, no Reject encoder) |
+| Who-Has, RPM, WPM, COV, ReadRange, DCC, ReinitializeDevice, an unrecognized service | ⚠ no reply where clause 18.8 has Reject unrecognized-service |
+| An answer longer than the client's Max APDU (fixture v9, 206 octets) | ⚠ no reply where clause 5.4.5 has Abort segmentation-not-supported |
+| A request with segmented-response-accepted set (`ULBIOS_KEEP_SA=1`) | ⚠ `bacnet.Parse` compares the whole first octet and does not recognise it; by default the adapter clears the bit |
+
+Each ⚠ request is reported as `{"event":"operation","operation":"unanswered","result":"no-reply","service":…,"reason":…}`;
+go-bacnet asserts the line and records the case as an observation, not a
+pass. Who-Has was not run from go-bacnet; the client matrix shows no I-Have.
+
 ## Transport and network
 
 | Capability | bacnet-stack | BACpypes3 | BACnet4J | Worldiety | System.IO.BACnet ¹ |
@@ -365,23 +398,29 @@ noticed.
 Peers acting as **clients** against a device under test
 ([docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md)):
 bacnet-stack (the upstream command-line tools), BACnet4J (the upstream
-`LocalDevice`) and BACpypes3 (its upstream Application), each at its pin,
-unmodified. The go-bacnet server is the first device under test.
+`LocalDevice`), BACpypes3 (its upstream Application) and ulbios (its
+request encoders and parser; the transaction timer is adapter code), each at
+its pin, unmodified. The go-bacnet server is the first device under test.
 
 ### Clients against the device images
 
 `make client-matrix` (in CI) runs `server-baseline-v1` with every client
 image against the device images, on `device-baseline-v2`. The scenario
 expectations record bacnet-stack's answers where the standard leaves the
-error open, so the bacnet-stack device is the gate: every client passes all
-23 scenarios against it. Against the other device images some scenarios
-differ; CI reports those pairs (`--all-devices`) without failing on them:
+error open, so the bacnet-stack device is the gate: bacnet-stack, BACnet4J
+and BACpypes3 pass all 23 scenarios against it; ulbios passes what it can
+send and decode, and no scenario fails. Against the other device images some
+scenarios differ; CI reports those pairs (`--all-devices`) without failing
+on them. A pair listed in `EXPECTED_DIFFERENCES` (`scripts/client-matrix.py`)
+is reported as differing only when a scenario other than the listed ones
+fails, or a listed one passes; the ulbios pairs are listed:
 
-| Client \ device | bacnet-stack | BACnet4J | BACpypes3 |
-|---|---|---|---|
-| bacnet-stack | 23 pass | 2 pass; no I-Am reaches the client, so the tools cannot bind | 20 pass |
-| BACnet4J | 23 pass | 16 pass | 20 pass |
-| BACpypes3 | 23 pass | 2 pass; no I-Am reaches the client, so it cannot bind | 20 pass |
+| Client \ device | bacnet-stack | BACnet4J | BACpypes3 | ulbios |
+|---|---|---|---|---|
+| bacnet-stack | 23 pass | 2 pass; no I-Am reaches the client, so the tools cannot bind | 20 pass | 10 pass |
+| BACnet4J | 23 pass | 16 pass | 20 pass | 10 pass |
+| BACpypes3 | 23 pass | 2 pass; no I-Am reaches the client, so it cannot bind | 20 pass | 10 pass |
+| ulbios | 5 pass, 5 known-difference, 13 unsupported | 4 pass, 5 known-difference, 13 unsupported; `who-is.global` gets no I-Am | 5 pass, 5 known-difference, 13 unsupported | 4 pass, 3 known-difference, 13 unsupported |
 
 What the device images do differently:
 
@@ -397,6 +436,15 @@ What the device images do differently:
   WritePropertyMultiple), and an unknown object in WritePropertyMultiple gets
   a plain Error (`91 01 91 1f`, object/unknown-object) instead of a
   WritePropertyMultiple-Error naming the first failed write.
+- **ulbios device** (`ULBIOS_DEVICE_DIFFERENCES` in
+  `scripts/client-matrix.py`): no Who-Has, so no I-Have; Object_Name is
+  property/unknown-property (no CharacterString encoder); no reply to
+  ReadProperty of property 9999 (one-octet property identifiers) or with an
+  array index, to ReadPropertyMultiple and WritePropertyMultiple, to a NULL
+  write (`DecNull`) or a CharacterString write. The other devices answer
+  these with an ACK, an Error or a Reject; ulbios has no Reject encoder.
+  With the ulbios client the scenarios it cannot send are unsupported, so
+  only the two Object_Name reads and the relinquish differ.
 
 ### bacnet-stack
 
@@ -442,6 +490,39 @@ Known behaviour of the BACnet4J 6.1.1 client:
   (`IpNetwork` serves them as a BBMD only): `unsupported`.
 - **Segmentation:** both directions work; `server-extended-v1` reads and
   writes a 3000-octet file in one request each.
+
+### ulbios
+
+The ulbios client sends Who-Is without limits, ReadProperty and
+WriteProperty with ulbios' encoders; every other scenario is `unsupported`,
+as are a ranged Who-Is, a property identifier above 255, an array index and
+a CharacterString value. Its decoders cannot read some answers; the driver
+reports `known-difference` with the answer's octets
+([adapters/ulbios/README.md](adapters/ulbios/README.md#client-mode)):
+
+- **`ulbios-no-decoder`:** no CharacterString decoder; `bacnet.Parse` reads
+  a tag length of up to 4 octets only (`rp.device.object-name`,
+  `rp.av1.object-name`).
+- **`ulbios-short-complex-ack`:** `ComplexACK.UnmarshalBinary` refuses an
+  APDU shorter than 17 octets, the length of its own REAL ACK
+  (`rp.av1.object-type`, `rp.bv1.present-value`, an empty Recipient_List).
+- **`ulbios-object-identifier-type`:** `objects.DecObjectIdentifier`
+  returns the object type shifted left by two (`rp.av1.object-identifier`
+  decodes as device,1).
+- **`ulbios-no-reject-abort`:** `bacnet.Parse` has no Reject or Abort PDU.
+- **`ulbios-write-real-null`:** `bacnet.NewWriteProperty`, used for a REAL
+  without priority or at 16, puts a REAL followed by a NULL into the value
+  [3] (`services.ConfirmedWritePropertyObjects`); clause 15.9.1.1.3 has one
+  value. The bacnet-stack, BACnet4J and ulbios devices acknowledge it, the
+  BACpypes3 device sends Reject invalid-tag and the go-bacnet server
+  property/invalid-data-type (`wp.av2.high`, `wp.av2.normal`).
+
+Against the BACnet4J device `who-is.global` fails like the other clients'
+(no I-Am reaches the client). Against the go-bacnet server
+(go-bacnet `interop/server_clients_test.go`): `server-baseline-v1` 5 pass,
+5 known-difference, 13 unsupported; `server-services-v1` 4 known-difference,
+32 unsupported; `server-bbmd-v1` 1 known-difference, 4 unsupported;
+`server-extended-v1` 2 known-difference, 21 unsupported.
 
 ### BACpypes3
 

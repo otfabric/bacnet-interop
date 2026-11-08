@@ -14,11 +14,12 @@
 #     sysiobacnet   <NuGet version>
 #     cbsigma       <tag of cB-Sigma/bacnet>       (the bacnet-sim pin stays)
 #     cbsigma-sim   <tag of cB-Sigma/bacnet-sim>   (the bacnet pin stays)
+#     ulbios        <any> <commit of ulbios/bacnet>
 #
 # The release pins stay as they are: bacpypes3 requirements.txt and worldiety
 # go.mod/go.sum are edited for the build and restored afterwards; the cbsigma
-# Dockerfile resolves a candidate tag itself (go get in the build). Images are
-# tagged bacnet-interop-<image>:candidate.
+# and ulbios Dockerfiles resolve a candidate tag or commit themselves (go get
+# in the build). Images are tagged bacnet-interop-<image>:candidate.
 
 set -euo pipefail
 
@@ -95,6 +96,11 @@ case "${stack}" in
     cbsigma-sim)
         build cbsigma --build-arg "BACNET_SIM_VERSION=${version}"
         export SMOKE_ONLY=cbsigma CBSIGMA_IMAGE=bacnet-interop-cbsigma:candidate
+        ;;
+    ulbios)
+        need_commit
+        build ulbios --build-arg "ULBIOS_COMMIT=${commit}"
+        export SMOKE_ONLY=ulbios ULBIOS_IMAGE=bacnet-interop-ulbios:candidate
         ;;
     *)
         echo "candidate.sh: unknown stack '${stack}'" >&2

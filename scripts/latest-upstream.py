@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Compares the upstream pin of one stack with the latest upstream.
 
-    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim
+    scripts/latest-upstream.py bacnet-stack|bacpypes3|bacnet4j|worldiety|sysiobacnet|cbsigma|cbsigma-sim|ulbios
 
 Prints key=value lines (the format of $GITHUB_OUTPUT), for the Upstream
 workflow and for `make candidate-<stack>`:
 
     pin=<the release pin>
-    latest=<the latest stable upstream release; for worldiety the HEAD commit>
+    latest=<the latest stable upstream release; for worldiety and ulbios the HEAD commit>
     latest_sha=<the commit of latest, for a stack that is pinned by commit>
     update=yes|no
     source=<where latest was looked up>
@@ -17,7 +17,10 @@ never "latest". bacnet-stack follows its bacnet-stack-X.Y.Z release tags (not
 master). Worldiety publishes no releases: its pin is a commit of upstream
 HEAD. cB-Sigma's two modules (bacnet, bacnet-sim) are pinned by their vX.Y.Z
 tags in adapters/cbsigma/go.mod, the source of truth (the Dockerfile ARGs
-repeat them). Commits are shown with 12 digits. Nothing is modified.
+repeat them). ulbios/bacnet has no tags or releases either: its pin is a
+commit of the default branch, as the pseudo-version in adapters/ulbios/go.mod
+(the Dockerfile ARG ULBIOS_COMMIT repeats it). Commits are shown with 12
+digits. Nothing is modified.
 """
 
 import json
@@ -129,6 +132,13 @@ def cbsigma_module(module):
     return pin, latest, tags[latest], latest != pin, f"git tags of cB-Sigma/{module}"
 
 
+def ulbios():
+    pin = arg("ulbios", "ULBIOS_COMMIT")
+    out = subprocess.check_output(["git", "ls-remote", "https://github.com/ulbios/bacnet.git", "HEAD"], text=True)
+    tip = out.split()[0]
+    return pin[:12], tip[:12], tip, not tip.startswith(pin), "HEAD of ulbios/bacnet"
+
+
 RESOLVERS = {
     "bacnet-stack": bacnet_stack,
     "bacpypes3": bacpypes3,
@@ -137,6 +147,7 @@ RESOLVERS = {
     "sysiobacnet": sysiobacnet,
     "cbsigma": lambda: cbsigma_module("bacnet"),
     "cbsigma-sim": lambda: cbsigma_module("bacnet-sim"),
+    "ulbios": ulbios,
 }
 
 
