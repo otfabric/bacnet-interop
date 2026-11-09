@@ -2,7 +2,7 @@
 
 // Command device-server is the Worldiety fixture-driven BACnet/IP peer for bacnet-interop.
 //
-// It must not import go-bacnet. Worldiety owns BVLC/NPDU/APDU/segmentation;
+// It must not import a library under test. Worldiety owns BVLC/NPDU/APDU/segmentation;
 // this adapter owns fixture object-model and service payload handlers.
 package main
 

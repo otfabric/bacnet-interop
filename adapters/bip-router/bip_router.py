@@ -11,7 +11,7 @@ network numbers. Supports:
   - Final unicast delivery omits SNET so non-routing peers reply locally
   - Local-broadcast forwarding with SNET (I-Am toward the originating net)
 
-This is topology infrastructure for go-bacnet interop, not a product BBMD/router.
+This is topology infrastructure for interop tests, not a product BBMD/router.
 """
 
 from __future__ import annotations

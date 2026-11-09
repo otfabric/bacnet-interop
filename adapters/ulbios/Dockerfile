@@ -11,7 +11,7 @@
 # repeat it and scripts/check-versions.py cross-checks them. The binary links
 # no other module (its go.mod also names cobra, pflag, mousetrap and go-cmp,
 # used only by its examples and tests). The licence of every linked module
-# is copied to /licenses. go-bacnet must never import this adapter module.
+# is copied to /licenses. No library under test may import this adapter module.
 
 ARG GOLANG_DIGEST=sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
 ARG DEBIAN_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818

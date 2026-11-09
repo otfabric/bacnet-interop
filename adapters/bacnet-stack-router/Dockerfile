@@ -7,8 +7,8 @@
 #
 # The router is upstream code, built unpatched at the same pinned commit as
 # adapters/bacnet-stack/Dockerfile (keep BACNET_STACK_SHA identical in both).
-# Peer code retains its upstream license inside the image. go-bacnet must
-# never link against bacnet-stack.
+# Peer code retains its upstream license inside the image. No library under
+# test may link against bacnet-stack.
 
 ARG DEBIAN_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818
 

@@ -6,12 +6,14 @@ Contract version **1.1** (`contract_version` in [versions.yaml](../versions.yaml
 
 `ghcr.io/otfabric/bacnet-interop-<name>`, one per entry of [adapters/inventory.yaml](../adapters/inventory.yaml), listening on UDP 47808 (`EXPOSE 47808/udp`). A container runs one device or router, or, for an image with client mode started with `client` as its first argument, one client run ([CLIENT_DRIVER_CONTRACT.md](CLIENT_DRIVER_CONTRACT.md)). Environment variables per image are in `adapters/<name>/README.md`.
 
+`ghcr.io/otfabric/bacnet-interop-otfabric` (adapter name `otfabric`) is OT Fabric's own stack, go-bacnet, under the same contract. It is not in the inventory, a release or `manifest.json`, its tags are go-bacnet versions, and its ready line has `"independent_engine": false` ([own/go-bacnet/README.md](../own/go-bacnet/README.md)). `scripts/smoke-test.sh` and `scripts/client-matrix.py` take an image that is not in the inventory through `ADAPTER_IMAGE_<adapter>`.
+
 ## Output
 
 Every image writes JSON Lines to stdout. The first line is the ready event, written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.14.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.15.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
 `version` is the adapter release (a commit for a local build), `peer_version` the upstream stack. The two routers add `networks` and `addresses`; `cbsigma` adds `role` (`device` or `sim`, `CBSIGMA_ROLE`). The legacy BACpypes image (`bacpypes`, not BACpypes3) has client mode as well, under the same contract 1.1. Some adapters then write `{"event":"operation","adapter":…,"operation":…,"result":…}` lines for requests that have no observable reply. Diagnostics go to stderr.

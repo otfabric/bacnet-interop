@@ -630,7 +630,7 @@ public final class DeviceServer {
 
     /**
      * Map BACnet4J service simple names to kebab-case operation ids used in
-     * device-baseline-v6 notes and go-bacnet awaitOperation assertions.
+     * device-baseline-v6 notes and the operation lines consumers wait for.
      */
     private static String messagingOperationName(String simpleName) {
         return switch (simpleName) {

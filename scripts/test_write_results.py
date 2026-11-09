@@ -81,6 +81,15 @@ class Convert(unittest.TestCase):
         self.assertEqual(wr.implementation("a", {"a": {"revision": "0123456789abcdef"}}, None)["version"], "0123456789ab")
         self.assertTrue(wr.versions_yaml())
 
+    def test_an_own_implementation_is_not_independent(self):
+        pins = wr.versions_yaml()
+        self.assertTrue(pins["otfabric"].get("own"))
+        self.assertFalse(pins["bacnet-stack"].get("own"))
+        own = wr.implementation("otfabric", pins, None)
+        self.assertFalse(own["independent"])
+        self.assertEqual(own["version"], "unknown")
+        self.assertTrue(wr.implementation("bacnet-stack", pins, None)["independent"])
+
 
 class Records(unittest.TestCase):
     """scripts/results.sh, through a shell."""

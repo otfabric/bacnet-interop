@@ -24,17 +24,22 @@ OPTIONAL = ("title", "feature", "protocolVersion", "platform", "evidence")
 
 
 def versions_yaml(root=ROOT):
-    """name -> the scalars of its block under "implementations:" in versions.yaml."""
-    out, name, inside = {}, None, False
+    """name -> the scalars of its block under "implementations:" in versions.yaml.
+
+    A block under "own_implementations:" (a library under test, not a
+    reference) is marked "own": its results are not independent evidence.
+    """
+    out, name, inside, own = {}, None, False, False
     with open(os.path.join(root, "versions.yaml")) as f:
         for line in f:
             if re.match(r"\S", line):
-                inside = line.startswith("implementations:")
+                own = line.startswith("own_implementations:")
+                inside = own or line.startswith("implementations:")
                 continue
             m = re.match(r"  ([A-Za-z0-9_-]+):\s*$", line)
             if inside and m:
                 name = m.group(1)
-                out[name] = {}
+                out[name] = {"own": True} if own else {}
                 continue
             m = re.match(r'    (upstream|version|revision|license): "([^"]*)"', line)
             if inside and name and m:
@@ -52,7 +57,8 @@ def load(directory):
 
 def implementation(name, pins, image):
     pin = pins.get(name, {})
-    i = {"name": name, "version": pin.get("version") or pin.get("revision", "unknown")[:12], "independent": True}
+    version = "unknown" if pin.get("own") else pin.get("version") or pin.get("revision", "unknown")[:12]
+    i = {"name": name, "version": version, "independent": not pin.get("own")}
     for key in ("upstream", "revision", "license"):
         if pin.get(key):
             i[key] = pin[key]

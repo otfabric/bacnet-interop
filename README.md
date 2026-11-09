@@ -20,8 +20,8 @@ by any BACnet client implementation.
 consumes these reference images to validate its own BACnet protocol
 implementation.
 
-**Latest images:** [v0.14.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.14.0)
-([what changed](RELEASE.md#v0130)).
+**Latest images:** [v0.15.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.15.0)
+([what changed](RELEASE.md#v0150)).
 
 ## Peers
 
@@ -46,6 +46,15 @@ variables and observed behaviour: `adapters/<name>/README.md`.
 The adapters never patch an upstream stack. They load a fixture, start the
 stack's own server, and where a stack has no object or service of its own
 supply it in adapter code, which the capability matrix marks as such.
+
+## OT Fabric's own stack
+
+`ghcr.io/otfabric/bacnet-interop-otfabric` is go-bacnet behind the same
+contract: a device (with BBMD mode) and a client. You can test your stack
+against ours the way we test ours against yours. Its name looks like those of
+the reference images, but it is not an independent implementation and it is
+not part of a release of this repository. Its tags are go-bacnet versions, and
+`manifest.json` does not list it. See [own/go-bacnet/README.md](own/go-bacnet/README.md).
 
 ## Fixtures
 
@@ -105,7 +114,7 @@ Every image writes JSON Lines to stdout. The first line is the ready event,
 written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.14.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.15.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
 `version` is the adapter release (a commit for a local build), `peer_version`
@@ -119,7 +128,7 @@ A consumer pins the images by digest (go-bacnet:
 
 ```bash
 # by tag, for a quick local run
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:v0.14.0
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:0.15.0
 # by digest, for CI
 BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 ```

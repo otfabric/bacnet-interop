@@ -11,8 +11,8 @@
 # and x/sys (BSD-3-Clause). The binary links them statically; the licence
 # and NOTICE of every linked module are copied to /licenses. The pins are
 # the ARGs below, adapters/cbsigma/go.mod (with go.sum) and versions.yaml.
-# The modules need Go 1.27.1 or later. go-bacnet must never import this
-# adapter module.
+# The modules need Go 1.27.1 or later. No library under test may import
+# this adapter module.
 
 ARG GOLANG_DIGEST=sha256:e58d6f83b3416618d8bcac2b3dde1b7f7e3c4a77d25e88637f8bbae81536c48d
 ARG DEBIAN_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818

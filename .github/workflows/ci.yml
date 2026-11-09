@@ -20,6 +20,18 @@ jobs:
       - name: RELEASE.md has the notes of adapter_version
         run: scripts/release-notes.sh > /dev/null
 
+      - name: No reference to a library under test
+        # Adapters, fixtures, schemas, scripts and the Makefile must not know a
+        # consumer; own/ and its workflow are the one exception
+        # (own/go-bacnet/README.md). Documentation (*.md) may name consumers as
+        # examples, and so may the provenance text of a fixture ("notes",
+        # "description": which consumer defect a codec vector records).
+        run: |
+          if grep -rInE 'otfabric/go-|go-bacnet|bacnetctl' adapters fixtures schemas scripts Makefile \
+              | grep -vE '\.md:' | grep -vE '"(notes|description)": '; then
+            echo "::error::consumer-specific reference found"; exit 1
+          fi
+
       - name: Validate fixture manifest and schema
         run: make validate-fixtures
 

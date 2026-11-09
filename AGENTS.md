@@ -18,6 +18,7 @@ This repository follows **otfabric/engineering policy 1.2**, profile **interoper
 | Fixtures | fixtures/manifest.json, fixtures/schema/ |
 | What is done and what is next | PLAN.md |
 | Open blockers | BLOCKERS.md |
+| Our own stack's image (not a reference) | own/go-bacnet/README.md |
 
 ## Hard rules
 
@@ -26,6 +27,7 @@ This repository follows **otfabric/engineering policy 1.2**, profile **interoper
 3. `unsupported` is never reported as a pass.
 4. `adapter_version` in adapters/inventory.yaml, `interop_version` in versions.yaml, RELEASE.md and the tag agree.
 5. Licences: every redistributed component in THIRD_PARTY_NOTICES.md.
+6. Nothing under adapters/, fixtures/, schemas/, scripts/ or the Makefile names a library under test (CI enforces it); own/ and its workflow are the exception, built by hand and never part of a release (own/go-bacnet/README.md).
 
 ## Commands
 

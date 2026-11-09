@@ -31,6 +31,29 @@ Tags are immutable. A fix is a new version.
 
 ---
 
+## v0.15.0
+
+**Date:** 2026-11-09
+**Previous release:** v0.14.0
+
+An image of OT Fabric's own stack, go-bacnet, that other stacks can test against. It is not a reference and not part of this release. The fixtures, the scenario files, the container contract (1.1) and the behaviour of the reference images are unchanged.
+
+### Added
+
+- **`ghcr.io/otfabric/bacnet-interop-otfabric`** (adapter name `otfabric`): go-bacnet behind the container and client-driver contracts. It has a device (device-baseline-v1, -v2, -v4, -v5, -v6, -v9, device-server-v1), BBMD mode (`BACNET_BBMD=1`) and client mode with every scenario file. It declares `independentEngine: false`, so a result against it is at most Tested. It is built by hand from the latest go-bacnet release with the manual **Own stack (go-bacnet)** workflow, and tagged with go-bacnet versions and `latest`. No harness release and no `manifest.json` contains it, and neither repository pins the other (otfabric/engineering ADR-0012; [own/go-bacnet/README.md](own/go-bacnet/README.md)).
+- `scripts/smoke-test.sh` smoke-tests every image given as `ADAPTER_IMAGE_<adapter>`. `scripts/client-matrix.py` adds those images as clients and devices. With `--gate <adapter>`, every pair with that adapter gates; `--extra-differences` names the expected differences of those pairs.
+- CI: the job *No reference to a library under test* fails when anything under `adapters/`, `fixtures/`, `schemas/`, `scripts/` or the `Makefile` names a library under test. Comments in the adapters that named one were reworded.
+
+### Fixed
+
+- `scripts/write-results.py` recorded every implementation as `independent: true`. An implementation under `own_implementations` in `versions.yaml` is now recorded as `independent: false`.
+
+### Unchanged
+
+- The fixtures, the device fixtures, the scenario files, the container contract (1.1) and the reference images; they are rebuilt from the same pins.
+
+---
+
 ## v0.14.0
 
 **Date:** 2026-11-08

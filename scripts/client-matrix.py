@@ -17,9 +17,17 @@ in EXPECTED_DIFFERENCES may have the named scenarios fail, each with the
 reason recorded in PEER_SUPPORT.md; any other failure, a listed scenario
 that now passes, or a run with no `pass` at all fails the matrix.
 
+An image outside the reference set joins as client and device when
+ADAPTER_IMAGE_<adapter> names it (own/*/README.md). --gate <adapter> makes
+every pair with that adapter gating, and --extra-differences FILE adds the
+expected differences of such pairs, so that nothing here knows the image.
+
 Usage:
     BACNET_STACK_IMAGE=... BACNET4J_IMAGE=... BACPYPES3_IMAGE=... BACPYPES_IMAGE=... ULBIOS_IMAGE=... BACNET_JS_IMAGE=... \\
-        scripts/client-matrix.py [--scenarios server-baseline-v1]
+        scripts/client-matrix.py [--scenarios server-baseline-v1] [--all-devices]
+        [--gate ADAPTER] [--extra-differences FILE]
+
+FILE is JSON: {"<client>|<device>": {"<scenario>": "<reason>"}}.
 """
 
 from __future__ import annotations
@@ -27,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -162,18 +171,37 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenarios", default="server-baseline-v1")
     ap.add_argument("--all-devices", action="store_true", help="also run against the other device images (reported, not gated)")
+    ap.add_argument("--gate", action="append", default=[], help="an adapter whose every pair gates (repeatable)")
+    ap.add_argument("--extra-differences", help="JSON file of expected differences for pairs with extra images")
     args = ap.parse_args()
-    devices = list(DEVICES) if args.all_devices else [GATE_DEVICE]
 
     images = {k: os.environ.get(v, f"bacnet-interop-{k}:local") for k, v in CLIENTS.items()}
+    extra = {m.group(1): v for k, v in sorted(os.environ.items()) if (m := re.fullmatch(r"ADAPTER_IMAGE_([a-z0-9_]+)", k))}
+    images.update(extra)
+    clients = list(CLIENTS) + list(extra)
+    devices = (list(DEVICES) + list(extra)) if args.all_devices else [GATE_DEVICE] + list(extra)
+    unknown = [g for g in args.gate if g not in images]
+    if unknown:
+        print(f"--gate {', '.join(unknown)}: no such adapter", file=sys.stderr)
+        return 2
+    differences = dict(EXPECTED_DIFFERENCES)
+    if args.extra_differences:
+        with open(args.extra_differences, encoding="utf-8") as f:
+            for pair, scenarios in json.load(f).items():
+                client, _, device = pair.partition("|")
+                if client not in images or device not in images:
+                    print(f"{args.extra_differences}: {pair}: no such adapter", file=sys.stderr)
+                    return 2
+                differences[(client, device)] = {**differences.get((client, device), {}), **scenarios}
+
     failed = False
     print(f"| client \\ device | {' | '.join(devices)} |")
     print(f"|---|{'---|' * len(devices)}")
-    for client in CLIENTS:
+    for client in clients:
         cells = []
         for device in devices:
-            gated = device == GATE_DEVICE
-            expected = EXPECTED_DIFFERENCES.get((client, device), {})
+            gated = device == GATE_DEVICE or client in args.gate or device in args.gate
+            expected = differences.get((client, device), {})
             try:
                 lines = run_pair(images[client], images[device], args.scenarios)
             except Exception as exc:  # noqa: BLE001 - report and go on

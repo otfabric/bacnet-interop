@@ -667,6 +667,59 @@ elif [ -z "$SMOKE_ONLY" ] && ! image_exists "$BACNET_STACK_ROUTER_IMAGE" && [ "$
     info "bacnet-stack-router image absent; skipping native router smoke (build with make build-bacnet-stack-router)"
 fi
 
+# Images outside the reference set, named by ADAPTER_IMAGE_<adapter>
+# (own/*/README.md): the contract checks only, the same for every such image.
+for var in $(compgen -e | grep -E '^ADAPTER_IMAGE_[a-z0-9_-]+$' || true); do
+    name="${var#ADAPTER_IMAGE_}"
+    image="${!var}"
+    want_adapter "$name" || continue
+    ADAPTER="$name"
+    info ""
+    info "=== ${name} (${image}) ==="
+    if ! image_exists "$image"; then
+        at image.present "" "${ADAPTER}"
+        fail "${var}=${image}: no such image"
+        continue
+    fi
+    check_fixture_file "$image" /fixtures/device/device-baseline-v2.json
+    check_fixture_file "$image" /fixtures/device/device-server-v1.json
+    check_fixture_file "$image" /scenarios/server-baseline-v1.json
+    at files.licenses "" "${ADAPTER}"
+    if docker run --rm --entrypoint sh "$image" -c "test -n \"\$(ls /licenses)\"" >/dev/null 2>&1; then
+        pass "licences in ${image}"
+    else
+        fail "licences MISSING in ${image}"
+    fi
+    at client.usage-error "" "${ADAPTER}"
+    rc=0
+    docker run --rm "$image" client --device 1234 --scenarios /scenarios/server-baseline-v1.json --fd-ttl 0 >/dev/null 2>&1 || rc=$?
+    if [ "$rc" -eq 2 ]; then
+        pass "client mode: usage error exits 2 in ${image}"
+    else
+        fail "client mode: usage error exited ${rc}, not 2, in ${image}"
+    fi
+    at client.lines "" "${ADAPTER}"
+    client_out=$(docker run --rm "$image" client --device 1234 \
+        --scenarios /scenarios/server-baseline-v1.json --only rp.device.object-name 2>/dev/null || true)
+    if printf '%s\n' "$client_out" | head -1 | grep -q '"mode":"client"' \
+        && printf '%s\n' "$client_out" | tail -1 | grep -q '"event":"done"'; then
+        pass "${name} client mode: ready and done lines"
+    else
+        fail "${name} client mode output: ${client_out}"
+    fi
+    ready=""; whois=""
+    run_start_server ready whois "$image" 47893
+    check_ready_event "${name} device server" "$ready" "$name" "device-baseline-v2"
+    check_whois "${name} device server" "$whois"
+    ready=""; whois=""
+    run_start_server ready whois "$image" 47894 -e FIXTURE=device-server-v1 -e DEVICE_FIXTURE_FILE=/fixtures/device/device-server-v1.json
+    check_ready_event "${name} device-server-v1 device server" "$ready" "$name" "device-server-v1"
+    check_whois "${name} device-server-v1 device server" "$whois"
+    ready=""; whois=""
+    run_start_server ready whois "$image" 47895 -e BACNET_BBMD=1 -e FIXTURE=device-server-v1 -e DEVICE_FIXTURE_FILE=/fixtures/device/device-server-v1.json
+    check_ready_event "${name} BBMD device server" "$ready" "$name" "device-server-v1"
+done
+
 echo ""
 echo -e "Results: ${GREEN}${PASS} passed${RESET}  ${RED}${FAIL} failed${RESET}"
 results_close || FAIL=$((FAIL + 1))

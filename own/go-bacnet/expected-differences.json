@@ -1,0 +1,30 @@
+{
+  "otfabric|bacnet4j": {
+    "wp.av1.pv.wrong-type": "BACnet4J device: a CharacterString to an Analog Value's Present_Value is acknowledged (PEER_SUPPORT.md, BACnet4J device)",
+    "wpm.wrong-type": "BACnet4J device: a CharacterString to an Analog Value's Present_Value is acknowledged (PEER_SUPPORT.md, BACnet4J device)",
+    "wpm.unknown-object-second": "BACnet4J device: error class property, not object, for an unknown object in WritePropertyMultiple (PEER_SUPPORT.md, BACnet4J device)"
+  },
+  "otfabric|bacpypes3": {
+    "wp.av1.pv.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype (PEER_SUPPORT.md, BACpypes3 device)",
+    "wpm.wrong-type": "BACpypes3 device: Reject invalid-tag for a value of the wrong datatype (PEER_SUPPORT.md, BACpypes3 device)",
+    "wpm.unknown-object-second": "BACpypes3 device: a plain Error (object/unknown-object) instead of a WritePropertyMultiple-Error naming the first failed write (PEER_SUPPORT.md, BACpypes3 device)"
+  },
+  "otfabric|bacpypes": {
+    "wp.av1.pv.wrong-type": "legacy BACpypes device: Reject invalid-tag for a value of the wrong datatype"
+  },
+  "otfabric|ulbios": {
+    "who-has.name": "ulbios has no Who-Has (bacnet.Parse: ErrNotImplemented), so no I-Have",
+    "who-has.object": "ulbios has no Who-Has (bacnet.Parse: ErrNotImplemented), so no I-Have",
+    "rp.device.object-name": "no CharacterString encoder in ulbios: Error property/unknown-property",
+    "rp.av1.object-name": "no CharacterString encoder in ulbios: Error property/unknown-property",
+    "rp.unknown-property": "property 9999 does not fit ulbios' one-octet property identifier; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)",
+    "rp.not-an-array": "ConfirmedReadProperty.Decode refuses an array index; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)",
+    "rpm.av1.name-and-type": "no ReadPropertyMultiple in bacnet.Parse; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)",
+    "rpm.unknown-object": "no ReadPropertyMultiple in bacnet.Parse; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)",
+    "wp.av1.pv.relinquish8": "objects.DecNull refuses every NULL; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)",
+    "wp.av1.pv.wrong-type": "no CharacterString decoder in ulbios; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)",
+    "wpm.av1.pv.priority8": "no WritePropertyMultiple in bacnet.Parse; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)",
+    "wpm.unknown-object-second": "no WritePropertyMultiple in bacnet.Parse; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)",
+    "wpm.wrong-type": "no WritePropertyMultiple in bacnet.Parse; no Reject or Abort encoder in ulbios, so no reply (PEER_SUPPORT.md, ulbios)"
+  }
+}

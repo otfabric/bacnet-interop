@@ -1,9 +1,9 @@
 # Machine-readable adapter inventory for bacnet-interop.
 # Capability cells: native | adapter-shim | unsupported | topology-aid
-# Assertions live in go-bacnet/interop; this file documents peer pins and evidence types.
+# Assertions live in the consumers' interop suites; this file documents peer pins and evidence types.
 
 schema_version: "1"
-adapter_version: "0.14.0"
+adapter_version: "0.15.0"
 fixture: device-baseline-v2
 fixture_frozen: device-baseline-v1
 # Fixtures shipped by one adapter only (selected with DEVICE_FIXTURE_FILE / FIXTURE).
@@ -384,8 +384,8 @@ adapters:
       segmented_confirmed_request_receive: native  # both roles
       segmentation_fault_injection: native  # sim role: CBSIGMA_DROP_SEG / CBSIGMA_STALL_SEG; a lost segment is never resent
       peer_as_bbmd: native  # sim role, BACNET_BBMD=1: Register-FD (CBSIGMA_FD_NAK=1 refuses), Distribute-Broadcast; no BDT/FDT reads
-      bacnet_ipv6: unsupported  # upstream has it; out of scope, go-bacnet is IPv4 BACnet/IP only
-      bacnet_sc: unsupported  # upstream has it; out of scope, go-bacnet is IPv4 BACnet/IP only
+      bacnet_ipv6: unsupported  # upstream has it; out of scope, the contract is IPv4 BACnet/IP only
+      bacnet_sc: unsupported  # upstream has it; out of scope, the contract is IPv4 BACnet/IP only
 
   - id: ulbios
     image: ghcr.io/otfabric/bacnet-interop-ulbios
@@ -490,7 +490,7 @@ adapters:
       read_range_by_sequence_number: native
       read_range_by_time: native
       cov: native  # unconfirmed and confirmed notifications, SubscribeCOV and SubscribeCOVProperty with COV increment
-      get_alarm_summary: native  # AlarmSummary.encode writes context tags 12, 9 and 8 where clause 13.10.2 has application tags: go-bacnet refuses the ACK
+      get_alarm_summary: native  # AlarmSummary.encode writes context tags 12, 9 and 8 where clause 13.10.2 has application tags: a decoder that follows the clause refuses the ACK (PEER_SUPPORT.md)
       get_enrollment_summary: native  # GetEnrollmentSummary.decode reads a primitive [2] filter as constructed: offnormal decodes by accident, normal throws (no answer)
       get_event_information: native
       acknowledge_alarm: native  # time stamp checked against Event_Time_Stamps (services/invalid-time-stamp)

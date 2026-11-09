@@ -14,7 +14,7 @@
 // ulbios' service decoders refuse are adapter code. With "client" as first
 // argument it runs the client-driver contract
 // (docs/CLIENT_DRIVER_CONTRACT.md) with ulbios' request encoders. It must not
-// import go-bacnet.
+// import a library under test.
 package main
 
 import (
