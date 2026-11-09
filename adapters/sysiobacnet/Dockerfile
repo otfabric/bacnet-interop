@@ -7,7 +7,7 @@
 #
 # Upstream: https://github.com/ela-compil/BACnet (NuGet package id "BACnet",
 # MIT). Nothing of it is vendored: the package is restored from nuget.org at
-# build time at the exact version below. go-bacnet never links against it.
+# build time at the exact version below. No library under test links against it.
 
 # mcr.microsoft.com/dotnet/sdk:10.0 and runtime:10.0 (multi-arch index digests).
 ARG DOTNET_SDK_DIGEST=sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317

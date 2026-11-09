@@ -14,6 +14,8 @@ the first release with client mode.
 
 Contract 1.0 stays valid: an image without client mode is unchanged.
 
+The `otfabric` image (go-bacnet, OT Fabric's own stack) has client mode under this contract too. It is not an independent client: a result with it is at most Tested ([own/go-bacnet/README.md](../own/go-bacnet/README.md)).
+
 ## Peers
 
 | Image | Client engine | Notes |

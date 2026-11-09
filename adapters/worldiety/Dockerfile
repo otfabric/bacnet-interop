@@ -5,8 +5,8 @@
 #       -f adapters/worldiety/Dockerfile \
 #       -t bacnet-interop-worldiety:local .
 #
-# Peer code retains its upstream license inside the image. go-bacnet must
-# never link against or import this adapter module.
+# Peer code retains its upstream license inside the image. No library under
+# test may link against or import this adapter module.
 
 ARG DEBIAN_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818
 

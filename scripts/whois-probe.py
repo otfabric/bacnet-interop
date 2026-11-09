@@ -6,7 +6,7 @@ an I-Am. Many peers (notably bacnet-stack) answer with an Original-Broadcast
 I-Am to UDP/47808 rather than unicasting to the Who-Is source port, so this
 probe binds :47808 by default.
 
-Used by scripts/smoke-test.sh; does not depend on go-bacnet.
+Used by scripts/smoke-test.sh; depends on no library under test.
 
 Usage:
   python3 scripts/whois-probe.py --host 172.18.0.2 [--port 47808] [--timeout 5]

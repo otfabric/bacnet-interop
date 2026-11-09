@@ -13,7 +13,7 @@
 // The adapter only fills the upstream object table from the fixture,
 // seeds trend logs, encodes the canned alarm and event answers of the
 // simulator and reports what it received as operation lines. It must not
-// import go-bacnet.
+// import a library under test.
 package main
 
 import (

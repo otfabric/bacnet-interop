@@ -6,8 +6,8 @@
 #       -f adapters/bacnet4j/Dockerfile \
 #       -t bacnet-interop-bacnet4j:local .
 #
-# Peer code retains its upstream license inside the image. go-bacnet must
-# never link against BACnet4J.
+# Peer code retains its upstream license inside the image. No library under
+# test may link against BACnet4J.
 
 ARG TEMURIN_JDK_DIGEST=sha256:723151f3fc88ca2060153ee08ab8dbbea7983d6ed6f2622fe440acf178737c94
 ARG TEMURIN_JRE_DIGEST=sha256:475d8e96b4b2bfe08999e5e854755c773af1581acdf959a4545d88f0696a2339

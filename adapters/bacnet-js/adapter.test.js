@@ -3,7 +3,7 @@
 
 // Unit tests of the adapter code (node:test, run in the image build).
 // Wire behaviour is tested against peers (scripts/smoke-test.sh,
-// scripts/client-matrix.py, go-bacnet interop/).
+// scripts/client-matrix.py, the consumers' interop suites).
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
