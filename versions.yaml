@@ -9,7 +9,7 @@
 # (with go.sum) pins ulbios/bacnet by commit as a Go pseudo-version; the
 # Dockerfile ARG ULBIOS_COMMIT repeats it and is cross-checked the same way.
 
-interop_version: "0.14.0"      # equals adapter_version in adapters/inventory.yaml
+interop_version: "0.15.0"      # equals adapter_version in adapters/inventory.yaml
 contract_version: "1.1"        # docs/CONTAINER_CONTRACT.md
 
 protocol:
@@ -164,3 +164,20 @@ base_images:
   golang: "docker.io/library/golang:1.26-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb"
   node: "docker.io/library/node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9"   # bacnet-js
   golang_1_27: "docker.io/library/golang:1.27.2-trixie@sha256:e58d6f83b3416618d8bcac2b3dde1b7f7e3c4a77d25e88637f8bbae81536c48d"   # cbsigma (the modules need Go 1.27.1)
+
+# The image of go-bacnet, our own stack (own/go-bacnet/README.md). Not a
+# reference: not in a harness release, not in manifest.json, not pinned here.
+# Built by hand from the latest go-bacnet release; results against it are at
+# most Tested (independent_engine: false).
+own_implementations:
+  otfabric:
+    upstream: "go-bacnet"
+    repository: "https://github.com/otfabric/go-bacnet"
+    artifact: "go:github.com/otfabric/go-bacnet"
+    version: "latest release, resolved when the image is built by hand"
+    license: "MIT"
+    language: "Go"
+    independent_engine: false
+    roles: [device, client, bbmd]
+    image: "ghcr.io/otfabric/bacnet-interop-otfabric"
+    build: "own/go-bacnet"
