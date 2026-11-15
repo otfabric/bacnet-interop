@@ -6,13 +6,17 @@ Checks, with the standard library only:
   - interop_version is the newest version in RELEASE.md;
   - every version/revision/wheel_sha256 of an implementation occurs in its
     pinned_in files;
-  - every sha256 in a Dockerfile or the Makefile is listed in versions.yaml,
-    and every base image digest listed there is used;
+  - every sha256 in a Dockerfile, the Makefile or a workflow is listed in
+    versions.yaml, and every base image digest listed there is used;
+  - the license_texts of every implementation is a file or a non-empty
+    directory, and every adapter Dockerfile copies licence texts to /licenses;
   - the cbsigma Dockerfile ARGs name the module versions of its go.mod;
   - the ulbios Dockerfile ARG ULBIOS_COMMIT is the commit of the
     pseudo-version adapters/ulbios/go.mod requires.
   - the bacnet-js package.json, package-lock.json and Dockerfile ARG name the
-    same @bacnet-js/client version.
+    same @bacnet-js/client version;
+  - BACpypes3 and legacy BACpypes: requirements.txt and the Dockerfile ARG
+    name one version, and requirements.txt pins the wheel by --hash=sha256.
 """
 import json
 import pathlib
@@ -39,10 +43,19 @@ for block in re.split(r"^  (?=[a-z0-9-]+:\n)", section, flags=re.M)[1:]:
         for value in re.findall(rf'^    {key}: "([^"]+)"', block, re.M):
             if value not in sources:
                 errors.append(f"{name}: {key} {value} is not in {files}")
+    # The upstream licence texts (THIRD_PARTY_NOTICES.md, licenses/).
+    texts = re.search(r'^    license_texts: "([^"]+)"', block, re.M)
+    path = root / texts.group(1) if texts else None
+    if not path or not (path.is_file() and path.stat().st_size or path.is_dir() and any(path.iterdir())):
+        errors.append(f"{name}: license_texts {texts and texts.group(1)} is not a file or a non-empty directory")
+
+for dockerfile in sorted(root.glob("adapters/*/Dockerfile")):
+    if not re.search(r"^COPY\s.*\s/licenses(/\S*)?$", dockerfile.read_text(), re.M):
+        errors.append(f"{dockerfile.relative_to(root)} copies no licence text to /licenses")
 
 digests = set(re.findall(r"sha256:[0-9a-f]{64}", text[text.index("base_images:"):]))
 used = set()
-for path in [*root.glob("**/Dockerfile"), root / "Makefile"]:
+for path in [*root.glob("**/Dockerfile"), root / "Makefile", *root.glob(".github/workflows/*.yml")]:
     used |= set(re.findall(r"sha256:[0-9a-f]{64}", path.read_text()))
 for digest in sorted(used - digests):
     errors.append(f"{digest} is used by a build but not listed in versions.yaml")
@@ -66,16 +79,18 @@ if not required or not pinned or not pinned.group(1).startswith(required.group(2
     errors.append(f"adapters/ulbios: go.mod requires ulbios/bacnet {required and required.group(1)}, "
                   f"the Dockerfile says ULBIOS_COMMIT={pinned and pinned.group(1)}")
 
-# Legacy BACpypes: the Dockerfile's version check compares the installed wheel
-# with BACPYPES_VERSION, so requirements.txt and the ARG must name one version.
-requirements = (root / "adapters/bacpypes/requirements.txt").read_text()
-pinned = re.search(r"^bacpypes==(\S+)", requirements, re.M)
-arg = re.search(r"^ARG BACPYPES_VERSION=(\S+)$", (root / "adapters/bacpypes/Dockerfile").read_text(), re.M)
-if not pinned or not arg or pinned.group(1) != arg.group(1):
-    errors.append(f"adapters/bacpypes: requirements.txt pins {pinned and pinned.group(1)}, "
-                  f"the Dockerfile says BACPYPES_VERSION={arg and arg.group(1)}")
-if not re.search(r"--hash=sha256:[0-9a-f]{64}", requirements):
-    errors.append("adapters/bacpypes/requirements.txt has no --hash=sha256 (pip --require-hashes)")
+# BACpypes3 and legacy BACpypes: the Dockerfile's version check compares the
+# installed wheel with the ARG, so requirements.txt and the ARG must name one
+# version, and pip --require-hashes needs the wheel's hash.
+for adapter, package, argname in (("bacpypes3", "bacpypes3", "BACPYPES3_VERSION"), ("bacpypes", "bacpypes", "BACPYPES_VERSION")):
+    requirements = (root / f"adapters/{adapter}/requirements.txt").read_text()
+    pinned = re.search(rf"^{package}==(\S+)", requirements, re.M)
+    arg = re.search(rf"^ARG {argname}=(\S+)$", (root / f"adapters/{adapter}/Dockerfile").read_text(), re.M)
+    if not pinned or not arg or pinned.group(1) != arg.group(1):
+        errors.append(f"adapters/{adapter}: requirements.txt pins {pinned and pinned.group(1)}, "
+                      f"the Dockerfile says {argname}={arg and arg.group(1)}")
+    if not re.search(r"--hash=sha256:[0-9a-f]{64}", requirements):
+        errors.append(f"adapters/{adapter}/requirements.txt has no --hash=sha256 (pip --require-hashes)")
 
 pkg = json.loads((root / "adapters/bacnet-js/package.json").read_text())
 lock = json.loads((root / "adapters/bacnet-js/package-lock.json").read_text())

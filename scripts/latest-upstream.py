@@ -9,7 +9,7 @@ workflow and for `make candidate-<stack>`:
     pin=<the release pin>
     latest=<the latest stable upstream release; for worldiety and ulbios the HEAD commit>
     latest_sha=<the commit of latest, for a stack that is pinned by commit;
-                for bacpypes the sha256 of the latest release's wheel>
+                for bacpypes and bacpypes3 the sha256 of the latest release's wheel>
     update=yes|no
     source=<where latest was looked up>
 
@@ -20,9 +20,9 @@ HEAD. cB-Sigma's two modules (bacnet, bacnet-sim) are pinned by their vX.Y.Z
 tags in adapters/cbsigma/go.mod, the source of truth (the Dockerfile ARGs
 repeat them). ulbios/bacnet has no tags or releases either: its pin is a
 commit of the default branch, as the pseudo-version in adapters/ulbios/go.mod
-(the Dockerfile ARG ULBIOS_COMMIT repeats it). Legacy BACpypes (PyPI
-bacpypes, not bacpypes3) is pinned by version and wheel sha256 in
-adapters/bacpypes/requirements.txt. bacnet-js follows the npm
+(the Dockerfile ARG ULBIOS_COMMIT repeats it). BACpypes3 and legacy BACpypes
+(PyPI bacpypes, not bacpypes3) are pinned by version and wheel sha256 in
+their requirements.txt. bacnet-js follows the npm
 registry versions of @bacnet-js/client; its pin is
 adapters/bacnet-js/package.json (with package-lock.json). Commits are shown
 with 12 digits. Nothing is modified.
@@ -90,15 +90,20 @@ def bacnet_stack():
 
 
 def bacpypes3():
+    """The pin is installed by its wheel hash, so latest_sha is the sha256 of
+    the latest wheel."""
     text = (ROOT / "adapters/bacpypes3/requirements.txt").read_text()
     match = re.search(r"^bacpypes3==(\S+)", text, re.M)
     if not match:
         raise SystemExit("adapters/bacpypes3/requirements.txt has no bacpypes3==<pin>")
     pin = match.group(1)
     releases = json.loads(fetch("https://pypi.org/pypi/bacpypes3/json"))["releases"]
-    live = [v for v, files in releases.items() if files and not all(f.get("yanked") for f in files)]
+    live = {v: files for v, files in releases.items() if files and not all(f.get("yanked") for f in files)}
     latest = newest(live)
-    return pin, latest, "", latest != pin, "PyPI"
+    wheels = [f for f in live[latest] if f.get("packagetype") == "bdist_wheel" and not f.get("yanked")]
+    if len(wheels) != 1:
+        raise SystemExit(f"bacpypes3 {latest}: {len(wheels)} wheels on PyPI, the candidate build needs exactly one")
+    return pin, latest, wheels[0]["digests"]["sha256"], latest != pin, "PyPI"
 
 
 def bacpypes():

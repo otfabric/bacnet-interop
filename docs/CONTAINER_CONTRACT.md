@@ -13,7 +13,7 @@ Contract version **1.1** (`contract_version` in [versions.yaml](../versions.yaml
 Every image writes JSON Lines to stdout. The first line is the ready event, written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.15.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.16.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
 `version` is the adapter release (a commit for a local build), `peer_version` the upstream stack. The two routers add `networks` and `addresses`; `cbsigma` adds `role` (`device` or `sim`, `CBSIGMA_ROLE`). The legacy BACpypes image (`bacpypes`, not BACpypes3) has client mode as well, under the same contract 1.1. Some adapters then write `{"event":"operation","adapter":…,"operation":…,"result":…}` lines for requests that have no observable reply. Diagnostics go to stderr.
@@ -24,7 +24,7 @@ Fixtures are listed in [fixtures/manifest.json](../fixtures/manifest.json) and v
 
 ## Capabilities
 
-[adapters/inventory.yaml](../adapters/inventory.yaml) states per peer and capability: `native`, `adapter-shim`, `unsupported` or `topology-aid`. [PEER_SUPPORT.md](../PEER_SUPPORT.md) has the observed behaviour.
+[adapters/inventory.yaml](../adapters/inventory.yaml) states per peer and capability: `native`, `adapter-shim`, `unsupported` or `topology-aid` (`client_capabilities`: the first three). Its schema is [schemas/capabilities-v1.schema.json](../schemas/capabilities-v1.schema.json); `make validate-fixtures` validates the file against it and fails on an unknown key, role or cell value. [PEER_SUPPORT.md](../PEER_SUPPORT.md) has the observed behaviour. The images do not report their capabilities themselves (no `print-capabilities` command, no `schemaVersion` in the ready line); only the own-stack image has `print-capabilities` ([own/go-bacnet/README.md](../own/go-bacnet/README.md)).
 
 ## Exit codes
 

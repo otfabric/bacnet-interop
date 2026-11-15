@@ -20,8 +20,8 @@ by any BACnet client implementation.
 consumes these reference images to validate its own BACnet protocol
 implementation.
 
-**Latest images:** [v0.15.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.15.0)
-([what changed](RELEASE.md#v0150)).
+**Latest images:** [v0.16.0](https://github.com/otfabric/bacnet-interop/releases/tag/v0.16.0)
+([what changed](RELEASE.md#v0160)).
 
 ## Peers
 
@@ -84,7 +84,7 @@ does and does not prove.
 ## Build and check
 
 ```bash
-make validate-fixtures   # manifest, schemas, fixture metadata
+make validate-fixtures   # manifest, schemas, fixture metadata, adapters/inventory.yaml
 make dissect-fixtures    # codec vectors against Wireshark's dissector (needs tshark)
 make build               # all adapter images as bacnet-interop-<name>:local
 make smoke               # ready event (and a Who-Is probe) per image; writes reports/results.json (interop-result-v1)
@@ -114,7 +114,7 @@ Every image writes JSON Lines to stdout. The first line is the ready event,
 written once the BACnet/IP socket is bound:
 
 ```json
-{"event":"ready","adapter":"bacnet-stack","version":"0.15.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
+{"event":"ready","adapter":"bacnet-stack","version":"0.16.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"bacnet-stack-1.6.1"}
 ```
 
 `version` is the adapter release (a commit for a local build), `peer_version`
@@ -128,7 +128,7 @@ A consumer pins the images by digest (go-bacnet:
 
 ```bash
 # by tag, for a quick local run
-BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:0.15.0
+BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack:0.16.0
 # by digest, for CI
 BACNET_STACK_IMAGE=ghcr.io/otfabric/bacnet-interop-bacnet-stack@sha256:<digest>
 ```
@@ -201,6 +201,7 @@ bacnet-interop/
 ├── BLOCKERS.md            open work
 ├── PLAN.md                forward plan
 ├── Makefile
+├── licenses/              upstream licence texts copied into the images (THIRD_PARTY_NOTICES.md)
 ├── scripts/               fixture validation, dissector check, smoke test, release notes,
 │                          upstream check and candidates
 ├── fixtures/
@@ -236,6 +237,6 @@ containers and are not linked into go-bacnet.
 | Push to a branch | none | nothing; dispatch `ci.yml`, `validate-fixtures.yml` to test a branch without a pull request |
 | Push to `main` | `policy.yml` | the light checks; the merged commit was tested as the pull request's merge commit |
 | Schedule | `upstream.yml` | the scheduled runs, on `main` |
-| Release | `release.yml` | the release workflow tests the release commit again |
+| Release | `release.yml` | `make validate-fixtures` on the release commit; every image built natively on amd64 and arm64 and smoke-tested there (`scripts/smoke-test.sh`) before it is pushed; no client matrix. `manifest.json` is refused when an adapter has no digest |
 
 Documentation means an added or modified `*.md` file outside `.github/`, `testdata/` and `vendor/`, other than `AGENTS.md` and `CLAUDE.md`. A deleted or renamed document, or any other file, runs everything. `OT Fabric Required Checks` fails unless every job that applies succeeded; its summary lists them.

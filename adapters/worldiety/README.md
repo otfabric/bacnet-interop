@@ -100,6 +100,17 @@ make build-worldiety
 SMOKE_ONLY=worldiety make smoke
 ```
 
+`internal/service/loopback_test.go` serves `device-baseline-v2` over loopback
+UDP and decodes the answers to ReadProperty, ReadPropertyMultiple,
+WriteProperty, WritePropertyMultiple (with its Error) and ReadRange with
+Worldiety's own client and tag decoders. The image build runs it
+(`FIXTURES_DIR`); from the repository root:
+`(cd adapters/worldiety && go test ./...)`. Worldiety's client encodes the
+WritePropertyMultiple and ReadRange requests differently from the standard
+(an extra `[0]` around each WriteAccessSpecification; context-tagged range
+fields, bySequenceNumber and byTime as `[4]` and `[5]`), so the test encodes
+those two requests itself.
+
 ## Environment
 
 | Variable | Default | Purpose |
@@ -112,7 +123,7 @@ SMOKE_ONLY=worldiety make smoke
 ## Ready event
 
 ```json
-{"event":"ready","adapter":"worldiety","version":"0.15.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"3cb2aa80…"}
+{"event":"ready","adapter":"worldiety","version":"0.16.0","fixture":"device-baseline-v2","address":"0.0.0.0:47808","peer_version":"3cb2aa80…"}
 ```
 
 ## BBMD / router

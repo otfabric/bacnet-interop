@@ -45,6 +45,11 @@ ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
 
 COPY --from=build /tmp/device_server.jar /usr/local/lib/device_server.jar
 COPY adapters/bacnet4j/entrypoint.sh /usr/local/bin/entrypoint.sh
+# Licence texts (THIRD_PARTY_NOTICES.md): the upstream's from licenses/ under
+# /licenses/<component>/, this repository's under /licenses/bacnet-interop/.
+COPY licenses/bacnet4j /licenses/bacnet4j
+COPY LICENSE /licenses/bacnet-interop/LICENSE
+COPY THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md
 COPY fixtures/scenarios/ /scenarios/
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
 COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json

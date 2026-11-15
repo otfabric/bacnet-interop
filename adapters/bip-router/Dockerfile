@@ -28,6 +28,9 @@ ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
 
 COPY adapters/bip-router/bip_router.py /usr/local/bin/bip_router.py
 COPY adapters/bip-router/entrypoint.sh /usr/local/bin/entrypoint.sh
+# Licence texts (THIRD_PARTY_NOTICES.md): this repository's code only.
+COPY LICENSE /licenses/bacnet-interop/LICENSE
+COPY THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md
 
 RUN chmod 755 /usr/local/bin/bip_router.py /usr/local/bin/entrypoint.sh
 

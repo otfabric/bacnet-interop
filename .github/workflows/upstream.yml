@@ -120,8 +120,9 @@ jobs:
 
             - **bacnet-stack:** `ARG BACNET_STACK_SHA` and `BACNET_STACK_VERSION` (both
               places) in `adapters/bacnet-stack/Dockerfile` and `adapters/bacnet-stack-router/Dockerfile`.
-            - **BACpypes3:** `adapters/bacpypes3/requirements.txt` and `ARG BACPYPES3_VERSION`
-              in its Dockerfile.
+            - **BACpypes3:** `bacpypes3==<version>` and its wheel `--hash=sha256:<latest_sha>`
+              in `adapters/bacpypes3/requirements.txt`, `ARG BACPYPES3_VERSION` in its Dockerfile,
+              and `versions.yaml` (version, `wheel_sha256`, `upstream_commit`).
             - **BACpypes (legacy, not BACpypes3):** `bacpypes==<version>` and its wheel
               `--hash=sha256:<latest_sha>` in `adapters/bacpypes/requirements.txt`, and
               `ARG BACPYPES_VERSION` in its Dockerfile.
