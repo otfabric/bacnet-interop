@@ -8,7 +8,7 @@ If you discover a security vulnerability in `bacnet-interop`, please report it r
 
 Instead, please email **security@otfabric.io**, or open a private advisory on GitHub (the [Security](https://github.com/otfabric/bacnet-interop/security) tab → **Advisories** → **Report a vulnerability**), with a description, steps to reproduce and the affected image tag or digest.
 
-Vulnerabilities in the bundled implementations themselves (bacnet-stack, BACpypes3, legacy BACpypes, BACnet4J, System.IO.BACnet, worldiety/bacnet) belong upstream; report them there, and tell us so that the pin can be moved.
+Vulnerabilities in the bundled implementations themselves (bacnet-stack, BACpypes3, legacy BACpypes, BACnet4J, System.IO.BACnet, worldiety/bacnet, cB-Sigma bacnet and bacnet-sim, ulbios/bacnet, @bacnet-js/client) belong upstream; report them there, and tell us so that the pin can be moved.
 
 ## Supported Versions
 
@@ -29,13 +29,13 @@ The images run **unauthenticated, unencrypted BACnet/IP devices and routers** on
 
 ### Image hardening
 
-- The device images (bacnet-stack, BACpypes3, legacy BACpypes, BACnet4J, System.IO.BACnet, Worldiety) run as a non-root user (uid 10001)
+- The device images (bacnet-stack, BACpypes3, legacy BACpypes, BACnet4J, System.IO.BACnet, Worldiety, cB-Sigma, ulbios, bacnet-js) and the own-stack image (`otfabric`) run as a non-root user (uid 10001)
 - The two router images (`bip-router`, `bacnet-stack-router`) run as root, because they need broadcast and `SO_BINDTODEVICE` on several interfaces. Run them only on private Docker networks
-- Runtime base images are pinned by digest. The Worldiety build stage (`golang:1.26-bookworm`) is pinned by tag only; it does not ship in the runtime image
+- Every base image of an image build, build stages included, is pinned by digest (`base_images` in `versions.yaml`, cross-checked by `scripts/check-versions.py`), and so is the image that validates the CI results. The helper image of `scripts/smoke-test.sh` (`python:3.12-alpine`) is not ([BLOCKERS.md](BLOCKERS.md))
 - The images are rebuilt, not patched: a base image or upstream fix arrives with a new release
 
 ### Supply chain
 
-- Upstream sources are fetched during the image build at pinned versions: bacnet-stack from GitHub, checked out and verified against the pinned commit hash; BACpypes3 from PyPI at an exact version; legacy BACpypes from PyPI by its wheel's sha256 (`pip --require-hashes`); BACnet4J from the Mango Automation Maven repository at an exact version; System.IO.BACnet from nuget.org at an exact version; worldiety/bacnet from the Go module proxy, verified against `go.sum`
+- Upstream sources are fetched during the image build at pinned versions: bacnet-stack from GitHub, checked out and verified against the pinned commit hash; BACpypes3 and legacy BACpypes from PyPI by their wheel's sha256 (`pip --require-hashes`); BACnet4J from the Mango Automation Maven repository at an exact version; System.IO.BACnet from nuget.org at an exact version; worldiety/bacnet, cB-Sigma bacnet and bacnet-sim and ulbios/bacnet from the Go module proxy, verified against `go.sum`; @bacnet-js/client and its dependencies from the npm registry by the integrity hashes of `package-lock.json` (`npm ci`)
 - The adapters never patch an upstream stack; adapter code is in this repository
 - Consumers should pin images by digest, taken from the `manifest.json` of a release

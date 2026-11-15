@@ -34,14 +34,21 @@ ENV PATH="/opt/venv/bin:${PATH}" \
     BACPYPES3_VERSION=${BACPYPES3_VERSION} \
     PYTHONUNBUFFERED=1
 
+# The wheel is installed by its sha256 (--require-hashes); the version check
+# fails the build when requirements.txt and BACPYPES3_VERSION disagree.
 COPY adapters/bacpypes3/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt \
-    && pip show bacpypes3 | grep -E '^Version:' \
+RUN pip install --no-cache-dir --no-deps --only-binary=:all: --require-hashes -r /tmp/requirements.txt \
+    && test "$(pip show bacpypes3 | sed -n 's/^Version: //p')" = "${BACPYPES3_VERSION}" \
     && rm /tmp/requirements.txt
 
 COPY adapters/bacpypes3/device_server.py /usr/local/bin/device_server.py
 COPY adapters/bacpypes3/client_driver.py /usr/local/bin/client_driver.py
 COPY adapters/bacpypes3/entrypoint.sh /usr/local/bin/entrypoint.sh
+# Licence texts (THIRD_PARTY_NOTICES.md): the upstream's from licenses/ under
+# /licenses/<component>/, this repository's under /licenses/bacnet-interop/.
+COPY licenses/bacpypes3 /licenses/bacpypes3
+COPY LICENSE /licenses/bacnet-interop/LICENSE
+COPY THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md
 # Client mode (docs/CLIENT_DRIVER_CONTRACT.md): the published scenario files.
 COPY fixtures/scenarios/ /scenarios/
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json

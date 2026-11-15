@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Validate bacnet-interop fixture manifest and per-fixture metadata."""
+"""Validate bacnet-interop fixture manifest and per-fixture metadata, the
+client-mode scenario files and adapters/inventory.yaml (capabilities)."""
 
 from __future__ import annotations
 
@@ -14,8 +15,150 @@ MANIFEST_SCHEMA = ROOT / "fixtures" / "schema" / "manifest.schema.json"
 DEVICE_SCHEMA = ROOT / "fixtures" / "schema" / "device.schema.json"
 SCENARIOS_SCHEMA = ROOT / "fixtures" / "schema" / "client-scenarios.schema.json"
 RESULT_LINE_SCHEMA = ROOT / "schemas" / "client-result-line-v1.schema.json"
+CAPABILITIES_SCHEMA = ROOT / "schemas" / "capabilities-v1.schema.json"
+INVENTORY = ROOT / "adapters" / "inventory.yaml"
 MANIFEST = ROOT / "fixtures" / "manifest.json"
 HEX_RE = re.compile(r"^[0-9a-f]*$")
+
+# The YAML subset of adapters/inventory.yaml: block mappings and sequences
+# indented by spaces, double-quoted and plain scalars, flow sequences of
+# scalars ([a, b]) and comments. Anything else is refused, not guessed.
+KEY_RE = re.compile(r"^([A-Za-z0-9_][A-Za-z0-9_.-]*):(?:\s+(.*))?$")
+PLAIN_RE = re.compile(r"^[A-Za-z0-9_./+-][^#:]*$")
+FLOW_ITEM_RE = re.compile(r'^(?:[A-Za-z0-9_./+-]+|"[^",\\]*")$')
+INT_RE = re.compile(r"^[-+]?[0-9]+$")
+FLOAT_RE = re.compile(r"^[-+]?(?:[0-9]+\.[0-9]*|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$")
+AMBIGUOUS = {"yes", "no", "on", "off", "y", "n"}
+
+
+def strip_comment(line: str) -> str:
+    """line without its comment (a # at the start or after a space, outside quotes)."""
+    quoted = False
+    for i, ch in enumerate(line):
+        if ch == '"' and (i == 0 or line[i - 1] != "\\"):
+            quoted = not quoted
+        elif ch == "#" and not quoted and (i == 0 or line[i - 1] in " \t"):
+            return line[:i].rstrip()
+    return line.rstrip()
+
+
+def yaml_scalar(text: str, where: str) -> object:
+    if text.startswith('"'):
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError:
+            value = None
+        if not isinstance(value, str):
+            raise ValueError(f"{where}: not a double-quoted string: {text}")
+        return value
+    if text.startswith("["):
+        if not text.endswith("]"):
+            raise ValueError(f"{where}: unterminated flow sequence: {text}")
+        inner = text[1:-1].strip()
+        items = [s.strip() for s in inner.split(",")] if inner else []
+        for item in items:
+            if not FLOW_ITEM_RE.fullmatch(item):
+                raise ValueError(f"{where}: unsupported flow sequence item: {item!r}")
+        return [yaml_scalar(item, where) for item in items]
+    if not PLAIN_RE.fullmatch(text) or text.lower() in AMBIGUOUS:
+        raise ValueError(f"{where}: unsupported scalar: {text}")
+    if text in ("null", "Null", "NULL", "~"):
+        return None
+    if text in ("true", "True", "TRUE"):
+        return True
+    if text in ("false", "False", "FALSE"):
+        return False
+    if INT_RE.fullmatch(text):
+        return int(text)
+    if FLOAT_RE.fullmatch(text):
+        return float(text)
+    return text
+
+
+def load_inventory(text: str, name: str = "adapters/inventory.yaml") -> object:
+    """Parse the YAML subset of adapters/inventory.yaml; ValueError on anything else."""
+    lines = []
+    for no, raw in enumerate(text.replace("\r\n", "\n").split("\n"), 1):
+        body = strip_comment(raw)
+        if not body.strip():
+            continue
+        stripped = body.lstrip(" ")
+        if stripped.startswith("\t") or "\t" in body[: len(body) - len(stripped)]:
+            raise ValueError(f"{name}:{no}: tab in indentation")
+        lines.append((no, len(body) - len(stripped), stripped))
+    if not lines:
+        raise ValueError(f"{name}: empty")
+
+    def item(body: str) -> bool:
+        return body == "-" or body.startswith("- ")
+
+    def block(i: int, indent: int) -> tuple[object, int]:
+        return sequence(i, indent) if item(lines[i][2]) else mapping(i, indent)
+
+    def value_after(i: int, indent: int, rest: str | None, where: str) -> tuple[object, int]:
+        """The value of a key or item on line i, whose content is rest."""
+        if rest:
+            return yaml_scalar(rest, where), i + 1
+        if i + 1 < len(lines) and (lines[i + 1][1] > indent or (lines[i + 1][1] == indent and item(lines[i + 1][2]))):
+            return block(i + 1, lines[i + 1][1])
+        return None, i + 1
+
+    def mapping(i: int, indent: int) -> tuple[object, int]:
+        result: dict[str, object] = {}
+        while i < len(lines) and lines[i][1] == indent and not item(lines[i][2]):
+            no, _, body = lines[i]
+            m = KEY_RE.fullmatch(body)
+            if not m:
+                raise ValueError(f"{name}:{no}: not a key: value line: {body}")
+            key = m.group(1)
+            if key in result:
+                raise ValueError(f"{name}:{no}: duplicate key {key}")
+            result[key], i = value_after(i, indent, m.group(2), f"{name}:{no}")
+        if i < len(lines) and lines[i][1] > indent:
+            raise ValueError(f"{name}:{lines[i][0]}: unexpected indentation")
+        return result, i
+
+    def sequence(i: int, indent: int) -> tuple[object, int]:
+        result: list[object] = []
+        while i < len(lines) and lines[i][1] == indent and item(lines[i][2]):
+            no, _, body = lines[i]
+            rest = body[1:].lstrip(" ")
+            if KEY_RE.fullmatch(rest):
+                # "- key: value" starts a mapping at the column of the key.
+                lines[i] = (no, indent + len(body) - len(rest), rest)
+                value, i = mapping(i, lines[i][1])
+            else:
+                value, i = value_after(i, indent, rest, f"{name}:{no}")
+            result.append(value)
+        if i < len(lines) and lines[i][1] > indent:
+            raise ValueError(f"{name}:{lines[i][0]}: unexpected indentation")
+        return result, i
+
+    if lines[0][1] != 0:
+        raise ValueError(f"{name}:{lines[0][0]}: the document must start at column 0")
+    doc, i = block(0, 0)
+    if i < len(lines):
+        raise ValueError(f"{name}:{lines[i][0]}: unexpected line: {lines[i][2]}")
+    return doc
+
+
+def validate_inventory(Validator, text: str | None = None) -> list[str]:
+    """adapters/inventory.yaml against schemas/capabilities-v1.schema.json."""
+    rel = str(INVENTORY.relative_to(ROOT))
+    try:
+        schema = load_json(CAPABILITIES_SCHEMA)
+        Validator.check_schema(schema)
+    except Exception as exc:  # noqa: BLE001
+        return [f"capabilities schema: {exc}"]
+    try:
+        doc = load_inventory(INVENTORY.read_text(encoding="utf-8") if text is None else text, rel)
+    except (OSError, ValueError) as exc:
+        return [str(exc)]
+    errors = []
+    for err in sorted(Validator(schema).iter_errors(doc), key=lambda e: [str(p) for p in e.path]):
+        loc = "/".join(str(p) for p in err.path) or "(root)"
+        errors.append(f"{rel} {loc}: {err.message}")
+    return errors
 
 
 def load_json(path: Path) -> object:
@@ -93,7 +236,8 @@ def main() -> int:
         )
         return 1
 
-    for path in (FIXTURE_SCHEMA, MANIFEST_SCHEMA, DEVICE_SCHEMA, SCENARIOS_SCHEMA, RESULT_LINE_SCHEMA, MANIFEST):
+    for path in (FIXTURE_SCHEMA, MANIFEST_SCHEMA, DEVICE_SCHEMA, SCENARIOS_SCHEMA, RESULT_LINE_SCHEMA,
+                 CAPABILITIES_SCHEMA, INVENTORY, MANIFEST):
         if not path.is_file():
             errors.append(f"missing {path.relative_to(ROOT)}")
     if errors:
@@ -201,6 +345,7 @@ def main() -> int:
             errors.append(f"{rel} {loc}: {err.message}")
 
     errors.extend(validate_scenarios(Validator))
+    errors.extend(validate_inventory(Validator))
 
     if fixtures:
         for meta_path in ROOT.glob("fixtures/**/*.json"):

@@ -231,6 +231,45 @@ func TestCompare(t *testing.T) {
 	}
 }
 
+// A client whose BACnet/IP socket cannot be opened exits 0 with infra-error
+// on every scenario and a done line (docs/CLIENT_DRIVER_CONTRACT.md, "Exit
+// codes").
+func TestClientWithoutSocket(t *testing.T) {
+	busy, err := net.ListenUDP("udp4", &net.UDPAddr{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = busy.Close() }()
+	port := busy.LocalAddr().(*net.UDPAddr).Port
+
+	path := filepath.Join(fixturesDir(t), "scenarios", "server-baseline-v1.json")
+	var out bytes.Buffer
+	a := clientArgs{target: loopback(port).String(), device: 1234, scenarios: path, fdTTL: 60}
+	if code := runClient(a, clientConfig{timeout: time.Second, retries: 1, port: port}, &out); code != 0 {
+		t.Fatalf("exit %d, want 0", code)
+	}
+	var lines []resultLine
+	for _, raw := range strings.Split(strings.TrimSpace(strings.ReplaceAll(out.String(), "\r\n", "\n")), "\n") {
+		var l resultLine
+		if err := json.Unmarshal([]byte(raw), &l); err != nil {
+			t.Fatalf("not a JSON line: %q", raw)
+		}
+		lines = append(lines, l)
+	}
+	if len(lines) < 3 || lines[0].Event != "ready" || lines[len(lines)-1].Event != "done" {
+		t.Fatalf("want ready, results, done; got %d lines", len(lines))
+	}
+	results := lines[1 : len(lines)-1]
+	for _, l := range results {
+		if l.Event != "result" || l.Outcome != "infra-error" || !strings.Contains(l.Detail, "cannot open the BACnet/IP socket") {
+			t.Errorf("%s: %s %s %q, want a result infra-error", l.Scenario, l.Event, l.Outcome, l.Detail)
+		}
+	}
+	if got := lines[len(lines)-1].Summary["infra-error"]; got != len(results) {
+		t.Errorf("done: infra-error %d, want %d", got, len(results))
+	}
+}
+
 func TestUsage(t *testing.T) {
 	for _, a := range []clientArgs{
 		{device: -1, scenarios: "x"},

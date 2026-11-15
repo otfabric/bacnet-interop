@@ -50,6 +50,11 @@ ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
     DOTNET_EnableDiagnostics=0
 
 COPY --from=build /out /usr/local/lib/sysiobacnet
+# Licence texts (THIRD_PARTY_NOTICES.md): the upstream's from licenses/ under
+# /licenses/<component>/, this repository's under /licenses/bacnet-interop/.
+COPY licenses/sysiobacnet /licenses/sysiobacnet
+COPY LICENSE /licenses/bacnet-interop/LICENSE
+COPY THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
 COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
 COPY fixtures/device/device-baseline-v3.json /fixtures/device/device-baseline-v3.json

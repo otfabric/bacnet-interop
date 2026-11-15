@@ -41,6 +41,6 @@ and not an adapter defect unless it says so. Peer behaviour is documented in
 - `adapters/bacnet-stack/Dockerfile` and
   `adapters/bacnet-stack-router/Dockerfile` pin the same bacnet-stack commit
   in two places; move them together.
-- `adapters/worldiety/Dockerfile` uses `golang:1.26-bookworm` and
-  `scripts/smoke-test.sh` uses `python:3.12-alpine` without a digest; every
-  other base image is pinned by digest.
+- `scripts/smoke-test.sh` uses `python:3.12-alpine` without a digest; every
+  base image of an image build, build stages included, is pinned by digest
+  (`base_images` in `versions.yaml`).

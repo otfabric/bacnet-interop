@@ -49,6 +49,11 @@ COPY adapters/bacpypes/common.py /usr/local/lib/bacpypes-adapter/common.py
 COPY adapters/bacpypes/device_server.py /usr/local/lib/bacpypes-adapter/device_server.py
 COPY adapters/bacpypes/client_driver.py /usr/local/lib/bacpypes-adapter/client_driver.py
 COPY adapters/bacpypes/entrypoint.sh /usr/local/bin/entrypoint.sh
+# Licence texts (THIRD_PARTY_NOTICES.md): the upstream's from licenses/ under
+# /licenses/<component>/, this repository's under /licenses/bacnet-interop/.
+COPY licenses/bacpypes /licenses/bacpypes
+COPY LICENSE /licenses/bacnet-interop/LICENSE
+COPY THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md
 # Client mode (docs/CLIENT_DRIVER_CONTRACT.md): the published scenario files.
 COPY fixtures/scenarios/ /scenarios/
 COPY fixtures/device/ /fixtures/device/

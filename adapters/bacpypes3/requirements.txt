@@ -1,1 +1,5 @@
-bacpypes3==0.0.110
+# The 0.0.110 wheel on PyPI (py3-none-any, uploaded 2026-09-24; the release
+# also has an sdist, which --only-binary=:all: never installs; no
+# dependencies). Installed with --require-hashes.
+bacpypes3==0.0.110 \
+    --hash=sha256:02abc0c9e7e92d7061727898ba00204ec072f1d451a63c4e7de76015b5b14911

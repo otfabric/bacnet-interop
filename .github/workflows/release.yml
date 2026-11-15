@@ -264,8 +264,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push by digest
-        id: build
+      # The image is built into the local Docker, smoke-tested on this
+      # architecture with scripts/smoke-test.sh (the checks CI runs on
+      # linux/amd64), and only then pushed, as <version>-<arch>: the image
+      # merge joins is the one that was tested.
+      - name: Build for linux/${{ matrix.arch }}
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -274,7 +277,40 @@ jobs:
           provenance: false
           build-args: |
             ADAPTER_VERSION=${{ needs.version.outputs.tag }}
-          outputs: type=image,name=${{ matrix.adapter.image }},push-by-digest=true,name-canonical=true,push=true
+          load: true
+          tags: ${{ matrix.adapter.image }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
+
+      - name: Smoke-test ${{ matrix.adapter.name }} on linux/${{ matrix.arch }}
+        env:
+          NAME: ${{ matrix.adapter.name }}
+          ARCH: ${{ matrix.arch }}
+          REF: ${{ matrix.adapter.image }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          # The image variable of scripts/smoke-test.sh: bacnet-js -> BACNET_JS_IMAGE.
+          var="$(printf '%s' "${NAME}" | tr 'a-z-' 'A-Z_')_IMAGE"
+          rc=0
+          env SMOKE_ONLY="${NAME}" "${var}=${REF}" REPORT_DIR="${RUNNER_TEMP}/reports" \
+            scripts/smoke-test.sh 2>&1 | tee "${RUNNER_TEMP}/smoke.log" || rc=$?
+          {
+            echo "### Smoke test: ${NAME} (linux/${ARCH})"
+            echo
+            echo '```'
+            grep -E '^(PASS|FAIL|Results:)' "${RUNNER_TEMP}/smoke.log" || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "${rc}"
+
+      - name: Push the tested image
+        id: build
+        env:
+          REF: ${{ matrix.adapter.image }}:${{ needs.prepare.outputs.version }}-${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          docker push --quiet "${REF}"
+          digest="$(docker buildx imagetools inspect "${REF}" --format '{{.Manifest.Digest}}')"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no digest for ${REF}: ${digest}"; exit 1; }
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Export digest
         run: |
@@ -295,10 +331,6 @@ jobs:
   merge:
     name: Manifest, provenance, release
     needs: [version, prepare, build]
-    if: |
-      always() &&
-      needs.prepare.result == 'success' &&
-      (needs.prepare.outputs.has_adapters != 'true' || needs.build.result == 'success')
     runs-on: ubuntu-24.04
     outputs:
       bacnet-stack-digest: ${{ steps.collect.outputs.bacnet-stack-digest }}
@@ -560,97 +592,9 @@ jobs:
           STACK_ROUTER_DIGEST: ${{ steps.collect.outputs.bacnet-stack-router-digest }}
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json, os, re, pathlib
-
-          adapters = json.loads(os.environ.get("ADAPTERS_JSON") or "[]")
-          digests = {
-              "bacnet-stack": os.environ.get("STACK_DIGEST") or None,
-              "bacpypes3": os.environ.get("BACP_DIGEST") or None,
-              "bacpypes": os.environ.get("BACPYPES_LEGACY_DIGEST") or None,
-              "bacnet4j": os.environ.get("B4J_DIGEST") or None,
-              "worldiety": os.environ.get("WORLD_DIGEST") or None,
-              "sysiobacnet": os.environ.get("SYSIO_DIGEST") or None,
-              "cbsigma": os.environ.get("CBSIGMA_DIGEST") or None,
-              "ulbios": os.environ.get("ULBIOS_DIGEST") or None,
-              "bacnet-js": os.environ.get("BACNETJS_DIGEST") or None,
-              "bip-router": os.environ.get("BIP_DIGEST") or None,
-              "bacnet-stack-router": os.environ.get("STACK_ROUTER_DIGEST") or None,
-          }
-
-          def pin_for(adapter):
-              fixed = adapter.get("pin_fixed") or ""
-              if fixed:
-                  return fixed
-              grep_pat = adapter.get("pin_grep") or ""
-              path = adapter.get("file") or ""
-              if not grep_pat or not path:
-                  return None
-              p = pathlib.Path(path)
-              if not p.is_file():
-                  return None
-              cre = re.compile(grep_pat)
-              for line in p.read_text(encoding="utf-8").splitlines():
-                  if cre.search(line) and "=" in line:
-                      return line.split("=", 1)[1].strip() or None
-              return None
-
-          peers = {}
-          topology = {}
-          for adapter in adapters:
-              entry = {
-                  "pin": pin_for(adapter),
-                  "image": adapter["image"],
-                  "digest": digests.get(adapter["name"]) or None,
-              }
-              if adapter.get("kind") != "topology":
-                  # Every peer is an implementation independent of go-bacnet.
-                  entry["independent"] = True
-              if adapter.get("kind") == "topology":
-                  topology[adapter["name"]] = entry
-              else:
-                  peers[adapter["name"]] = entry
-
-          for name, image in (
-              ("bacnet-stack", "ghcr.io/otfabric/bacnet-interop-bacnet-stack"),
-              ("bacpypes3", "ghcr.io/otfabric/bacnet-interop-bacpypes3"),
-              ("bacpypes", "ghcr.io/otfabric/bacnet-interop-bacpypes"),
-              ("bacnet4j", "ghcr.io/otfabric/bacnet-interop-bacnet4j"),
-              ("worldiety", "ghcr.io/otfabric/bacnet-interop-worldiety"),
-              ("sysiobacnet", "ghcr.io/otfabric/bacnet-interop-sysiobacnet"),
-              ("cbsigma", "ghcr.io/otfabric/bacnet-interop-cbsigma"),
-              ("ulbios", "ghcr.io/otfabric/bacnet-interop-ulbios"),
-              ("bacnet-js", "ghcr.io/otfabric/bacnet-interop-bacnet-js"),
-          ):
-              peers.setdefault(name, {"pin": None, "image": image, "digest": None, "independent": True})
-          topology.setdefault(
-              "bip-router",
-              {
-                  "pin": None,
-                  "image": "ghcr.io/otfabric/bacnet-interop-bip-router",
-                  "digest": None,
-              },
-          )
-          topology.setdefault(
-              "bacnet-stack-router",
-              {
-                  "pin": None,
-                  "image": "ghcr.io/otfabric/bacnet-interop-bacnet-stack-router",
-                  "digest": None,
-              },
-          )
-
-          manifest = {
-              "version": os.environ["TAG"],
-              "fixture_schema": "fixtures/schema/fixture.schema.json",
-              "peers": peers,
-              "topology": topology,
-          }
-          with open("manifest.json", "w", encoding="utf-8") as f:
-              json.dump(manifest, f, indent=2)
-              f.write("\n")
-          print(open("manifest.json", encoding="utf-8").read())
-          PY
+          # Fails, and writes nothing, when an adapter of adapters/inventory.yaml
+          # has no image or no digest.
+          python3 scripts/release-manifest.py manifest.json
 
       - name: Generate checksums.txt
         run: |
@@ -702,7 +646,7 @@ jobs:
             echo "|-------|--------|"
             for entry in "${images[@]}"; do
               IFS='|' read -r name digest _ <<<"${entry}"
-              echo "| \`${registry}/bacnet-interop-${name}:${VERSION}\` | \`${digest:-not published (Dockerfile pending)}\` |"
+              echo "| \`${registry}/bacnet-interop-${name}:${VERSION}\` | \`${digest}\` |"
             done
             echo
             echo "\`bip-router\` is a topology aid (not a peer oracle). \`bacnet-stack-router\` is upstream bacnet-stack \`apps/router\` (a native router, not a device). Worldiety is the fourth peer oracle, System.IO.BACnet (\`sysiobacnet\`) the fifth, cB-Sigma (\`cbsigma\`, device role and simulator) the sixth, ulbios/bacnet (\`ulbios\`, device and client mode) the seventh, legacy BACpypes (\`bacpypes\`, PyPI bacpypes 0.x, not BACpypes3) the eighth, bacnet-js (\`bacnet-js\`, @bacnet-js/client, device and client mode) the ninth."
@@ -712,12 +656,11 @@ jobs:
             echo '```bash'
             for entry in "${images[@]}"; do
               IFS='|' read -r name digest var <<<"${entry}"
-              echo "${var}=${registry}/bacnet-interop-${name}@${digest:-sha256:<digest>}"
+              echo "${var}=${registry}/bacnet-interop-${name}@${digest}"
             done
             echo '```'
             echo
             echo "See \`manifest.json\` for fixture schema path and peer provenance pins."
-            echo "Adapter Dockerfiles may still be pending; fixture-only tags remain valid for schema/manifest consumers."
           } > "${RUNNER_TEMP}/release-body.md"
           cat "${RUNNER_TEMP}/release-body.md"
 
