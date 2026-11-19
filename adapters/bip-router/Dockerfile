@@ -11,6 +11,7 @@ FROM debian:bookworm-slim@${DEBIAN_DIGEST}
 
 ARG ADAPTER_VERSION=dev
 
+COPY adapters/apt.conf /etc/apt/apt.conf.d/80-otfabric
 # tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd.
 RUN --mount=type=tmpfs,target=/tmp \
     apt-get update && apt-get install -y --no-install-recommends \

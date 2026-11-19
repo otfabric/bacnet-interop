@@ -50,15 +50,36 @@ jobs:
 
   dissect:
     name: Wireshark dissector check of codec vectors
-    runs-on: ubuntu-latest
+    # ubuntu-24.04, not ubuntu-latest: Ubuntu 26.04 packages tshark 4.6.4,
+    # whose You-Are dissector (fYouAreRequest) reads the tag header of the
+    # optional device-mac-address past the end of a request without one and
+    # reports the valid service-you-are vector as malformed. tshark 4.2.2
+    # (24.04) and 4.6.9 accept it. Move back to ubuntu-latest when its
+    # package is past 4.6.4 (as go-bacnet's dissector job).
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v7
 
       - name: Install tshark
+        timeout-minutes: 20
         run: |
-          sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tshark
+          # Ubuntu's mirrors (security.ubuntu.com) are at times slow or
+          # unreachable from runners: apt retries each download and drops a
+          # stalled connection after 30 s, and the whole install is retried.
+          apt_opts=(-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          for attempt in 1 2 3; do
+            if sudo apt-get "${apt_opts[@]}" update -qq \
+              && sudo DEBIAN_FRONTEND=noninteractive apt-get "${apt_opts[@]}" install -y -qq tshark; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::tshark could not be installed after $attempt attempts"
+              exit 1
+            fi
+            echo "::warning::tshark install attempt $attempt failed; retrying in $((attempt * 30)) s"
+            sleep $((attempt * 30))
+          done
           tshark --version | head -1
 
       - name: Dissect codec vectors
