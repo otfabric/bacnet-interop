@@ -325,6 +325,20 @@ check_fixture_file() {
     fi
 }
 
+# check_licences <image> <path>...: each path is a non-empty licence directory
+# or file in the image (THIRD_PARTY_NOTICES.md: /licenses/<component>/).
+check_licences() {
+    local image="$1" p script="true"
+    shift
+    at files.licence-texts "" "${ADAPTER}"
+    for p in "$@"; do script="${script} && test -n \"\$(ls ${p})\""; done
+    if docker run --rm --entrypoint sh "${image}" -c "${script}" >/dev/null 2>&1; then
+        pass "licences in ${image}: $*"
+    else
+        fail "licences MISSING in ${image}: $*"
+    fi
+}
+
 # ===========================================================================
 if [ -n "$SMOKE_ONLY" ]; then
     info "SMOKE_ONLY=${SMOKE_ONLY}"
@@ -444,6 +458,7 @@ if want_adapter bacnet-stack && image_exists "$BACNET_STACK_IMAGE"; then
     fi
     check_fixture_file "$BACNET_STACK_IMAGE" /fixtures/device/device-baseline-v2.json
     check_fixture_file "$BACNET_STACK_IMAGE" /fixtures/device/device-baseline-v9.json
+    check_licences "$BACNET_STACK_IMAGE" /licenses/bacnet-stack /licenses/bacnet-interop/LICENSE /licenses/THIRD_PARTY_NOTICES.md
     ready=""; whois=""
     run_start_server ready whois "$BACNET_STACK_IMAGE" 47881
     check_ready_event "bacnet-stack device server" "$ready" "bacnet-stack" "device-baseline-v2"
@@ -455,6 +470,7 @@ if want_adapter bacpypes3 && image_exists "$BACPYPES3_IMAGE"; then
     info ""
     info "=== BACpypes3 ==="
     check_fixture_file "$BACPYPES3_IMAGE" /fixtures/device/device-baseline-v2.json
+    check_licences "$BACPYPES3_IMAGE" /licenses/bacpypes3 /licenses/bacnet-interop/LICENSE /licenses/THIRD_PARTY_NOTICES.md
     at files.entrypoint "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "$BACPYPES3_IMAGE" -c "test -f /usr/local/bin/device_server.py" >/dev/null 2>&1; then
         pass "device_server.py in ${BACPYPES3_IMAGE}"
@@ -488,6 +504,7 @@ if want_adapter bacpypes && image_exists "$BACPYPES_IMAGE"; then
     else
         fail "upstream licence MISSING in ${BACPYPES_IMAGE}"
     fi
+    check_licences "$BACPYPES_IMAGE" /licenses/bacpypes /licenses/bacnet-interop/LICENSE /licenses/THIRD_PARTY_NOTICES.md
     ready=""; whois=""
     run_start_server ready whois "$BACPYPES_IMAGE" 47891
     check_ready_event "bacpypes device server" "$ready" "bacpypes" "device-baseline-v2"
@@ -503,6 +520,7 @@ if want_adapter bacnet4j && image_exists "$BACNET4J_IMAGE"; then
     info ""
     info "=== BACnet4J ==="
     check_fixture_file "$BACNET4J_IMAGE" /fixtures/device/device-baseline-v2.json
+    check_licences "$BACNET4J_IMAGE" /licenses/bacnet4j /licenses/bacnet-interop/LICENSE /licenses/THIRD_PARTY_NOTICES.md
     at files.entrypoint "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "$BACNET4J_IMAGE" -c "test -f /usr/local/lib/device_server.jar" >/dev/null 2>&1; then
         pass "device_server.jar in ${BACNET4J_IMAGE}"
@@ -525,6 +543,7 @@ if want_adapter worldiety && image_exists "$WORLDIETY_IMAGE"; then
     info "=== Worldiety ==="
     check_fixture_file "$WORLDIETY_IMAGE" /fixtures/device/device-baseline-v2.json
     check_binary "$WORLDIETY_IMAGE" device_server
+    check_licences "$WORLDIETY_IMAGE" /licenses/github.com/worldiety/bacnet /licenses/bacnet-interop/LICENSE /licenses/THIRD_PARTY_NOTICES.md
     ready=""; whois=""
     run_start_server ready whois "$WORLDIETY_IMAGE" 47886
     check_ready_event "worldiety device server" "$ready" "worldiety" "device-baseline-v2"
@@ -537,6 +556,7 @@ if want_adapter sysiobacnet && image_exists "$SYSIOBACNET_IMAGE"; then
     info "=== System.IO.BACnet ==="
     check_fixture_file "$SYSIOBACNET_IMAGE" /fixtures/device/device-baseline-v2.json
     check_binary "$SYSIOBACNET_IMAGE" dotnet
+    check_licences "$SYSIOBACNET_IMAGE" /licenses/sysiobacnet /licenses/bacnet-interop/LICENSE /licenses/THIRD_PARTY_NOTICES.md
     at files.entrypoint "" "${ADAPTER}"
     if docker run --rm --entrypoint sh "$SYSIOBACNET_IMAGE" -c "test -f /usr/local/lib/sysiobacnet/device_server.dll && test -f /usr/local/lib/sysiobacnet/BACnet.dll" >/dev/null 2>&1; then
         pass "device_server.dll and BACnet.dll in ${SYSIOBACNET_IMAGE}"
@@ -648,6 +668,7 @@ if want_adapter bip-router && image_exists "$BIP_ROUTER_IMAGE"; then
     else
         fail "bip_router.py MISSING in ${BIP_ROUTER_IMAGE}"
     fi
+    check_licences "$BIP_ROUTER_IMAGE" /licenses/bacnet-interop/LICENSE /licenses/THIRD_PARTY_NOTICES.md
     ready=$(start_bip_router_smoke "$BIP_ROUTER_IMAGE")
     check_ready_event "bip-router" "$ready" "bip-router" "topology-router-v1"
 elif want_adapter bip-router && [ "${BIP_ROUTER_REQUIRED:-}" != "" ]; then
@@ -661,6 +682,7 @@ if want_adapter bacnet-stack-router && image_exists "$BACNET_STACK_ROUTER_IMAGE"
     info ""
     info "=== bacnet-stack-router ==="
     check_binary "$BACNET_STACK_ROUTER_IMAGE" bacnet-router
+    check_licences "$BACNET_STACK_ROUTER_IMAGE" /licenses/bacnet-stack /licenses/bacnet-interop/LICENSE /licenses/THIRD_PARTY_NOTICES.md
     ready=$(start_bip_router_smoke "$BACNET_STACK_ROUTER_IMAGE")
     check_ready_event "bacnet-stack-router" "$ready" "bacnet-stack-router" "topology-router-v1"
 elif [ -z "$SMOKE_ONLY" ] && ! image_exists "$BACNET_STACK_ROUTER_IMAGE" && [ "${BACNET_STACK_ROUTER_REQUIRED:-}" = "" ]; then
@@ -680,6 +702,15 @@ for var in $(compgen -e | grep -E '^ADAPTER_IMAGE_[a-z0-9_-]+$' || true); do
         at image.present "" "${ADAPTER}"
         fail "${var}=${image}: no such image"
         continue
+    fi
+    # What the image says it runs (print-capabilities), for results.json.
+    caps=$(docker run --rm "$image" print-capabilities 2>/dev/null | head -1 || true)
+    if up=$(printf '%s' "$caps" | jq -er '.upstream | select(.version) | [.version, (.revision // ""), (.independentEngine != false)] | @tsv' 2>/dev/null); then
+        IFS=$'\t' read -r up_version up_revision up_independent <<<"$up"
+        implementation "$name" "$up_version" "$up_revision" "$up_independent"
+        info "${name}: $(printf '%s' "$caps" | jq -r '.upstream.name // "upstream"') ${up_version} (${up_revision:-no revision}), independent: ${up_independent}"
+    else
+        info "${name}: no upstream version from print-capabilities"
     fi
     check_fixture_file "$image" /fixtures/device/device-baseline-v2.json
     check_fixture_file "$image" /fixtures/device/device-server-v1.json

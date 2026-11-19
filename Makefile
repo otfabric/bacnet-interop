@@ -28,7 +28,7 @@ help: ## Show this help
 
 VENV := .venv
 
-validate-fixtures: ## Validate manifest + fixture metadata against JSON Schema; check RELEASE.md has the notes of adapter_version
+validate-fixtures: ## Validate manifest + fixture metadata + adapters/inventory.yaml against JSON Schema; check RELEASE.md has the notes of adapter_version
 	@python3 scripts/check-versions.py
 	@scripts/release-notes.sh > /dev/null && echo "ok   RELEASE.md has the notes of adapter_version"
 	@python3 -m unittest discover -q -s scripts -p 'test_*.py'
@@ -179,7 +179,7 @@ client-matrix: ## Run every client-mode image against the bacnet-stack device (s
 CANDIDATE_VERSION ?=
 CANDIDATE_SHA     ?=
 
-candidate-%: FORCE ## Build one stack on CANDIDATE_VERSION (and CANDIDATE_SHA) and smoke it, e.g. candidate-bacpypes3 CANDIDATE_VERSION=0.0.110, candidate-bacpypes CANDIDATE_VERSION=0.19.0 CANDIDATE_SHA=<wheel sha256>, candidate-cbsigma CANDIDATE_VERSION=v0.3.0
+candidate-%: FORCE ## Build one stack on CANDIDATE_VERSION (and CANDIDATE_SHA) and smoke it, e.g. candidate-bacpypes3 CANDIDATE_VERSION=0.0.110 CANDIDATE_SHA=<wheel sha256>, candidate-bacpypes CANDIDATE_VERSION=0.19.0 CANDIDATE_SHA=<wheel sha256>, candidate-cbsigma CANDIDATE_VERSION=v0.3.0
 	@test -n "$(CANDIDATE_VERSION)" || { echo "Error: CANDIDATE_VERSION=<upstream version> is required"; exit 1; }
 	@PLATFORM=$(PLATFORM) scripts/candidate.sh $* "$(CANDIDATE_VERSION)" "$(CANDIDATE_SHA)"
 

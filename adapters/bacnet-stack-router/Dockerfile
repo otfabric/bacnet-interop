@@ -72,6 +72,11 @@ COPY --from=bacnet-stack-router-build /src/bacnet-stack/apps/router/router /usr/
 COPY --from=bacnet-stack-router-build /src/bacnet-stack/apps/router/readme.txt /usr/local/share/bacnet-stack-router/readme.txt
 COPY adapters/bacnet-stack-router/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY adapters/bacnet-stack-router/run_router.py /usr/local/bin/run_router.py
+# Licence texts (THIRD_PARTY_NOTICES.md): the upstream's from licenses/ under
+# /licenses/<component>/, this repository's under /licenses/bacnet-interop/.
+COPY licenses/bacnet-stack /licenses/bacnet-stack
+COPY LICENSE /licenses/bacnet-interop/LICENSE
+COPY THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md
 
 RUN chmod 755 /usr/local/bin/entrypoint.sh /usr/local/bin/bacnet-router /usr/local/bin/run_router.py
 

@@ -25,8 +25,19 @@ COPY adapters/worldiety/go.mod adapters/worldiety/go.sum ./
 RUN go mod download
 
 COPY adapters/worldiety/ ./
+# The handler tests decode every answer with the upstream client over loopback
+# UDP; they read the device fixtures from FIXTURES_DIR. The licence of every
+# linked module is copied to /licenses.
+COPY fixtures/device /fixtures-src/device
 ENV CGO_ENABLED=0
-RUN go build -trimpath -ldflags="-s -w" -o /out/device_server ./cmd/device-server
+RUN go vet ./... \
+    && FIXTURES_DIR=/fixtures-src go test -count=1 ./... \
+    && go build -trimpath -ldflags="-s -w" -o /out/device_server ./cmd/device-server \
+    && for m in $(go list -deps -f '{{with .Module}}{{if not .Main}}{{.Path}}{{end}}{{end}}' ./cmd/device-server | sort -u); do \
+         dir="$(go list -m -f '{{.Dir}}' "$m")" && mkdir -p "/out/licenses/$m" \
+         && cp "$dir"/LICENSE* "/out/licenses/$m/" 2>/dev/null; \
+         ls "/out/licenses/$m" | grep -q . || { echo "no licence in $m"; exit 1; }; \
+       done
 
 FROM debian:bookworm-slim@${DEBIAN_DIGEST} AS runtime
 
@@ -48,6 +59,9 @@ ENV ADAPTER_VERSION=${ADAPTER_VERSION} \
     BACNET_IP_PORT=47808
 
 COPY --from=build /out/device_server /usr/local/bin/device_server
+COPY --from=build /out/licenses /licenses
+COPY LICENSE /licenses/bacnet-interop/LICENSE
+COPY THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
 COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
 COPY fixtures/device/device-baseline-v3.json /fixtures/device/device-baseline-v3.json

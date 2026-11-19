@@ -8,7 +8,7 @@
 # Usage:
 #   scripts/candidate.sh <stack> <version> [<commit>]
 #     bacnet-stack  <bacnet-stack-X.Y.Z tag> <its commit>
-#     bacpypes3     <PyPI version>
+#     bacpypes3     <PyPI version> <sha256 of its wheel>
 #     bacpypes      <PyPI version> <sha256 of its wheel>   (legacy BACpypes, not BACpypes3)
 #     bacnet4j      <Maven version>
 #     worldiety     <any> <commit of worldiety/bacnet>   (needs Go)
@@ -72,8 +72,10 @@ case "${stack}" in
             BACNET_STACK_ROUTER_IMAGE=bacnet-interop-bacnet-stack-router:candidate
         ;;
     bacpypes3)
+        # pip --require-hashes: the candidate wheel is installed by its sha256.
+        need_commit
         keep requirements.txt
-        echo "bacpypes3==${version}" > adapters/bacpypes3/requirements.txt
+        printf 'bacpypes3==%s \\\n    --hash=sha256:%s\n' "${version}" "${commit}" > adapters/bacpypes3/requirements.txt
         build bacpypes3 --build-arg "BACPYPES3_VERSION=${version}"
         export SMOKE_ONLY=bacpypes3 BACPYPES3_IMAGE=bacnet-interop-bacpypes3:candidate
         ;;

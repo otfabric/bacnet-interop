@@ -26,6 +26,12 @@ def result(outcome, **kw):
     return r
 
 
+def image_says(version, revision, independent):
+    """The record results.sh "implementation" writes for what an image reports."""
+    return {"kind": "implementation", "name": "otfabric", "version": version, "revision": revision,
+            "independent": independent}
+
+
 def waiver(reproduced):
     return {"kind": "waiver", "id": "w", "scope": "client@a", "evidence": "https://example.com/1", "reproduced": reproduced}
 
@@ -90,6 +96,21 @@ class Convert(unittest.TestCase):
         self.assertEqual(own["version"], "unknown")
         self.assertTrue(wr.implementation("bacnet-stack", pins, None)["independent"])
 
+    def test_an_own_implementation_takes_the_version_its_image_reports(self):
+        revision = "0123456789abcdef0123456789abcdef01234567"
+        doc = wr.convert([RUN, image_says("v0.9.1", revision, False), result("pass", client="otfabric", server="")],
+                         wr.versions_yaml())
+        own = [i for i in doc["implementations"] if i["name"] == "otfabric"]
+        self.assertEqual(len(own), 1)
+        self.assertEqual((own[0]["version"], own[0]["revision"], own[0]["independent"]), ("v0.9.1", revision, False))
+
+    def test_an_own_implementation_stays_not_independent_whatever_its_image_says(self):
+        doc = wr.convert([RUN, image_says("v0.9.1", "", True), result("pass", client="otfabric", server="")],
+                         wr.versions_yaml())
+        own = [i for i in doc["implementations"] if i["name"] == "otfabric"][0]
+        self.assertEqual((own["version"], own["independent"]), ("v0.9.1", False))
+        self.assertNotIn("revision", own)
+
 
 class Records(unittest.TestCase):
     """scripts/results.sh, through a shell."""
@@ -115,6 +136,13 @@ class Records(unittest.TestCase):
         self.assertNotEqual(code, 0)
         self.assertEqual(doc["results"][0]["id"], "harness.check")
         self.assertEqual(doc["results"][0]["outcome"], "infra-error")
+
+    def test_an_implementation_record(self):
+        code, doc = self.run_shell('results_open t $D "make t"; implementation otfabric v0.9.1 abc false; '
+                                   'at a.b otfabric ""; result pass; results_close')
+        self.assertEqual(code, 0)
+        own = [i for i in doc["implementations"] if i["name"] == "otfabric"][0]
+        self.assertEqual((own["version"], own["revision"], own["independent"]), ("v0.9.1", "abc", False))
 
     def test_a_run_with_no_scenario_fails(self):
         code, _ = self.run_shell('results_open t $D "make t"; results_close')

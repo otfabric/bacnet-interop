@@ -168,11 +168,22 @@ asserts. The image never decides pass/fail for the DUT beyond comparing with
 
 ## Exit codes
 
-Client mode adopts the organisation exit codes
-(`otfabric/engineering` `standards/interoperability.md`): 0 all scenarios
-ran (whatever their outcome), non-zero for usage errors or when the driver
-could not run (no network, unreadable scenario file). Outcomes are read from
-the output, not the exit code.
+What the drivers of contract 1.1 do:
+
+| Exit | When | Output |
+|---|---|---|
+| 0 | the driver wrote a result line for every scenario it was asked to run (whatever their outcome) | ready, results, done |
+| 0 | the driver started, but its stack could not (the BACnet/IP socket cannot be opened, no registration with the BBMD) | ready, `infra-error` on every scenario with the reason in `detail`, done |
+| 2 | a usage error: missing or invalid arguments, an unreadable or invalid scenario file, a scenario file that requires `--bbmd` without it | nothing on stdout; the reason on stderr |
+| 1 | BACnet4J only: no IPv4 interface, or the BACnet4J local device cannot be initialised | nothing on stdout; the reason on stderr |
+
+Outcomes are read from the output, not the exit code: a run that never
+reached the peer exits 0 and is recognised by its `infra-error` lines.
+`scripts/client-matrix.py` fails a pair with a `fail` or `infra-error` line,
+and stops with an environment error when the client printed no result line,
+whatever its exit code. Converging the exit codes on the organisation table
+(`otfabric/engineering` `standards/interoperability.md`) is left to a later
+contract minor.
 
 ## Inventory and versions
 

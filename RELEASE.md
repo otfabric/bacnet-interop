@@ -14,10 +14,12 @@
 3. The release workflow refuses a tag that is not on `main`, whose version
    differs from `adapters/inventory.yaml` or that has no notes here. It then
    validates the fixtures, builds every adapter natively on an amd64 and an
-   arm64 runner, pushes them by digest to GHCR, joins them into the
-   multi-arch `<image>:X.Y.Z` (and `X.Y`, `X`) tags, and creates the GitHub
-   release with `manifest.json` (fixture schema, upstream pins and digests)
-   and `checksums.txt`.
+   arm64 runner, smoke-tests each image there (`scripts/smoke-test.sh`),
+   pushes the tested image to GHCR as `<image>:X.Y.Z-<arch>`, joins them into
+   the multi-arch `<image>:X.Y.Z` (and `X.Y`, `X`) tags, and creates the
+   GitHub release with `manifest.json` (fixture schema, upstream pins and
+   digests) and `checksums.txt`. It stops before the release when an adapter
+   of `adapters/inventory.yaml` has no image digest.
 4. Update the pin in the consuming repository from that manifest.
 
 The notes are the body of the GitHub release, followed by the image digests
@@ -28,6 +30,40 @@ release workflow, so: one section per version, newest first, each ending with
 a `---` line, and no `---` line inside a section.
 
 Tags are immutable. A fix is a new version.
+
+---
+
+## v0.16.0
+
+**Date:** 2026-11-16
+**Previous release:** v0.15.0
+
+Licence texts in every image, the BACpypes3 wheel pinned by its hash, a release that smoke-tests each image on its own architecture before it is pushed, and a schema for the adapter inventory. The device and client behaviour of the images, the upstream pins, the fixtures, the scenario files and the container contract (1.1) are unchanged.
+
+### Added
+
+- Licence texts under `/licenses/` in every image: the upstream texts under `/licenses/<component>/` (from the new [`licenses/`](licenses/) directory, or copied from the linked Go modules for `worldiety`), this repository's licence under `/licenses/bacnet-interop/` and THIRD_PARTY_NOTICES.md. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) says where the corresponding source of the GPL images (bacnet-stack, bacnet-stack-router, BACnet4J) is. `scripts/smoke-test.sh` checks the texts in each image (`files.licence-texts`); `scripts/check-versions.py` fails when a Dockerfile copies none or `license_texts` in `versions.yaml` names no text.
+- [`schemas/capabilities-v1.schema.json`](schemas/capabilities-v1.schema.json), the schema of `adapters/inventory.yaml`. `make validate-fixtures` validates the inventory against it and fails on an unknown key, role or cell value; the file is read by a reader of its YAML subset that refuses what it does not parse.
+- `adapters/worldiety/internal/service/loopback_test.go`: the Worldiety device's answers to ReadProperty, ReadPropertyMultiple, WriteProperty, WritePropertyMultiple (with its Error) and ReadRange, served over loopback UDP and decoded with Worldiety's own client and tag decoders. The image build runs it, with `go vet`.
+- `versions.yaml`: `license_texts` per implementation; `wheel_sha256` and `upstream_commit` for BACpypes3; `base_images.python_slim`.
+
+### Changed
+
+- BACpypes3 0.0.110 is installed by its wheel's sha256 (`pip --require-hashes --no-deps --only-binary=:all:`), as legacy BACpypes is; the build fails when `requirements.txt` and `BACPYPES3_VERSION` disagree. The version and the wheel are the same. `scripts/check-versions.py` requires the hash; `scripts/latest-upstream.py bacpypes3` prints the latest wheel's sha256 and `make candidate-bacpypes3` takes it as `CANDIDATE_SHA`.
+- Release: each image is built natively on amd64 and arm64, smoke-tested there with `scripts/smoke-test.sh` (a summary per adapter and architecture in the run) and only then pushed as `<image>:X.Y.Z-<arch>`.
+- CI: the image that validates `reports/results.json` is pinned by digest, and jsonschema is installed at exactly 4.26.0 from `requirements-dev.txt` (also used by `make validate-fixtures`). `scripts/check-versions.py` also checks the digests used in the workflows.
+- [docs/CLIENT_DRIVER_CONTRACT.md](docs/CLIENT_DRIVER_CONTRACT.md), "Exit codes", states what the client drivers do: exit 0 with a result line for every scenario, also when the stack cannot start (every scenario `infra-error`); 2 for a usage error or an unreadable scenario file; 1 from BACnet4J when it has no IPv4 interface or cannot start. The text said that a driver that could not run exits non-zero. No driver changed; a test of the own-stack image pins the behaviour.
+- SECURITY.md, BLOCKERS.md and PLAN.md describe the current images (cB-Sigma, ulbios and bacnet-js in the lists; the Worldiety build stage is pinned by digest).
+
+### Fixed
+
+- `manifest.json` could list a peer with `"digest": null` when its Dockerfile was missing, and the release went ahead. `scripts/release-manifest.py` now writes the manifest and stops the release when an adapter of `adapters/inventory.yaml` has no image or no digest.
+- `reports/results.json` recorded the own implementation (`otfabric`) with version `unknown`. `scripts/smoke-test.sh` records the version and revision the image reports (`print-capabilities`), and `scripts/write-results.py` uses them; the implementation stays `independent: false`.
+
+### Unchanged
+
+- The device and client behaviour of every image, the upstream pins, the fixtures, the device fixtures, the scenario files and the container contract (1.1).
+- The reference images have no `print-capabilities` command and no `schemaVersion` in the ready line, and the exit codes stay as they are: these wait for container contract 1.2.
 
 ---
 

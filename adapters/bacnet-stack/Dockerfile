@@ -75,6 +75,11 @@ COPY adapters/bacnet-stack/client_driver.py /usr/local/bin/client_driver.py
 COPY fixtures/scenarios/ /scenarios/
 COPY adapters/bacnet-stack/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY adapters/bacnet-stack/run_server.py /usr/local/bin/run_server.py
+# Licence texts (THIRD_PARTY_NOTICES.md): the upstream's from licenses/ under
+# /licenses/<component>/, this repository's under /licenses/bacnet-interop/.
+COPY licenses/bacnet-stack /licenses/bacnet-stack
+COPY LICENSE /licenses/bacnet-interop/LICENSE
+COPY THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md
 COPY fixtures/device/device-baseline-v1.json /fixtures/device/device-baseline-v1.json
 COPY fixtures/device/device-baseline-v2.json /fixtures/device/device-baseline-v2.json
 COPY fixtures/device/device-baseline-v3.json /fixtures/device/device-baseline-v3.json

@@ -6,7 +6,10 @@
 
 Reads every results-*.jsonl in the directory (scripts/results.sh writes them)
 and writes results.json there. Names of implementations are those of
-versions.yaml. The exit status is 1 when the run failed: a fail or infra-error,
+versions.yaml. An implementation the run recorded from the image itself
+(results.sh "implementation": what print-capabilities reports) takes its
+version and revision from there; an own implementation of versions.yaml is
+never independent. The exit status is 1 when the run failed: a fail or infra-error,
 a waiver that no longer reproduces, or no pass at all (scripts/interop_result.py).
 """
 
@@ -55,13 +58,15 @@ def load(directory):
     return records
 
 
-def implementation(name, pins, image):
+def implementation(name, pins, image, reported=None):
     pin = pins.get(name, {})
+    seen = (reported or {}).get(name, {})
     version = "unknown" if pin.get("own") else pin.get("version") or pin.get("revision", "unknown")[:12]
-    i = {"name": name, "version": version, "independent": not pin.get("own")}
+    version = seen.get("version") or version
+    i = {"name": name, "version": version, "independent": not pin.get("own") and seen.get("independent") is not False}
     for key in ("upstream", "revision", "license"):
-        if pin.get(key):
-            i[key] = pin[key]
+        if seen.get(key) or pin.get(key):
+            i[key] = seen.get(key) or pin[key]
     digest = image(name) if image else None
     if digest:
         i["image"] = digest
@@ -69,10 +74,12 @@ def implementation(name, pins, image):
 
 
 def convert(records, pins, image=None):
-    results, waivers, runs = [], {}, []
+    results, waivers, runs, reported = [], {}, [], {}
     for r in records:
         if r["kind"] == "run":
             runs.append(r)
+        elif r["kind"] == "implementation":
+            reported[r["name"]] = {k: r[k] for k in ("version", "revision", "independent") if r.get(k) not in (None, "")}
         elif r["kind"] == "waiver":
             w = waivers.setdefault(r["id"], {k: r[k] for k in ("id", "scope", "evidence")} | {"reproduced": False})
             w["reproduced"] = w["reproduced"] or r["reproduced"]
@@ -93,7 +100,7 @@ def convert(records, pins, image=None):
             "gitSha": interop_result.git_sha(ROOT),
             "startedAt": min((r["startedAt"] for r in runs), default=interop_result.now()),
             "finishedAt": interop_result.now(), "host": interop_result.host(),
-            "implementations": [implementation(n, pins, image) for n in names] or [{"name": "none", "version": "none"}],
+            "implementations": [implementation(n, pins, image, reported) for n in names] or [{"name": "none", "version": "none"}],
             "waivers": list(waivers.values()),
             "reproduce": " && ".join(dict.fromkeys(r["reproduce"] for r in runs)) or "none", "results": results}
 
