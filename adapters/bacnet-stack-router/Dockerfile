@@ -22,6 +22,7 @@ ARG BACNET_STACK_REPO=https://github.com/bacnet-stack/bacnet-stack.git
 ARG BACNET_STACK_SHA=7a53f0a72a92de1621d30fc63703a29afe12bfaf
 ARG BACNET_STACK_VERSION=bacnet-stack-1.6.1
 
+COPY adapters/apt.conf /etc/apt/apt.conf.d/80-otfabric
 # tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd.
 RUN --mount=type=tmpfs,target=/tmp \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -59,6 +60,7 @@ RUN make -C /src/bacnet-stack/apps/router \
 # ---------------------------------------------------------------------------
 FROM debian:bookworm-slim@${DEBIAN_DIGEST} AS runtime
 
+COPY adapters/apt.conf /etc/apt/apt.conf.d/80-otfabric
 RUN --mount=type=tmpfs,target=/tmp \
     apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \

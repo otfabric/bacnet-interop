@@ -16,6 +16,7 @@ FROM eclipse-temurin:17-jdk-jammy@${TEMURIN_JDK_DIGEST} AS build
 
 ARG BACNET4J_VERSION=6.1.1
 
+COPY adapters/apt.conf /etc/apt/apt.conf.d/80-otfabric
 # tmpfs /tmp: Docker Desktop's default /tmp breaks apt-key/gpgv status-fd.
 RUN --mount=type=tmpfs,target=/tmp \
     apt-get update && apt-get install -y --no-install-recommends maven \
@@ -25,7 +26,11 @@ WORKDIR /src
 COPY adapters/bacnet4j/pom.xml /src/pom.xml
 COPY adapters/bacnet4j/src /src/src
 
-RUN mvn -q -DskipTests -Dbacnet4j.version=${BACNET4J_VERSION} package \
+# Maven Central at times drops connections from CI runners: retry each
+# download (wagon HTTP retry handler) instead of failing the build.
+RUN mvn -q -DskipTests -Dbacnet4j.version=${BACNET4J_VERSION} \
+      -Dmaven.wagon.http.retryHandler.count=5 -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 \
+      package \
     && cp target/bacnet4j-adapter-*.jar /tmp/device_server.jar
 
 FROM eclipse-temurin:17-jre-jammy@${TEMURIN_JRE_DIGEST} AS runtime
